@@ -1,2 +1,3 @@
 uvicorn app.main:app --reload
-fastapi dev main.py
+# or
+fastapi dev app/main.py
