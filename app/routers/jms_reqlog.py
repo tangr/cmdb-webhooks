@@ -1,17 +1,15 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import select
 from app.models.jms_reqlog import JMSReqLog, JMSReqLogCreate, JMSReqLogUpdate
-from app.dependencies import SessionDep, get_token_header
+from app.dependencies import SessionDep
 import time
-from fastapi import APIRouter, Depends, HTTPException
-
 
 router = APIRouter()
 
 
 @router.post("/", response_model=JMSReqLog)
 def create_log(log: JMSReqLogCreate, session: SessionDep):
-    db_log = JMSReqLog(**log.dict())
+    db_log = JMSReqLog(**log.model_dump())
     session.add(db_log)
     session.commit()
     session.refresh(db_log)
@@ -31,7 +29,7 @@ def update_log(log_id: int, update: JMSReqLogUpdate, session: SessionDep):
     log = session.get(JMSReqLog, log_id)
     if not log:
         raise HTTPException(status_code=404, detail="Log not found")
-    update_data = update.dict(exclude_unset=True)
+    update_data = update.model_dump(exclude_unset=True)
     for key, value in update_data.items():
         setattr(log, key, value)
     log.updated_at = int(time.time())
