@@ -5,13 +5,14 @@ import time
 
 
 class JMSReqLogBase(SQLModel):
-    host: str
+    jmshost: str
     method: str
     path: str
     query: str
     headers: Dict[str, Any] = Field(sa_column=Column(JSON))
     body: Dict[str, Any] = Field(sa_column=Column(JSON))
     author: str
+    clientip: str
     status: int
     output: Optional[str] = None
 
@@ -29,13 +30,14 @@ class JMSReqLogCreate(JMSReqLogBase):
 
 
 class JMSReqLogUpdate(SQLModel):
-    host: Optional[str] = None
+    jmshost: Optional[str] = None
     method: Optional[str] = None
     path: Optional[str] = None
     query: Optional[str] = None
     headers: Optional[Dict[str, Any]] = None
     body: Optional[Dict[str, Any]] = None
     author: Optional[str] = None
+    clientip: Optional[str] = None
     status: Optional[int] = None
     output: Optional[str] = None
 
