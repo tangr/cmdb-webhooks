@@ -11,7 +11,7 @@ app = FastAPI()
 
 app.include_router(users.router)
 app.include_router(items.router)
-app.include_router(jms_reqlog.router)
+app.include_router(jms_reqlog.router, prefix="/jms_reqlog", tags=["jms_reqlog"])
 app.include_router(
     admin.router,
     prefix="/admin",
