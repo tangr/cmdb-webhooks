@@ -8,7 +8,7 @@ class Settings(BaseSettings):
     admin_email: str
     items_per_user: int = 50
 
-    database_url: str = "mysql+pymysql://user:password@localhost/dbname"
+    database_url: str = "mysql+pymysql://root:mypassword@127.0.0.1/test2"
     database_echo: bool = True
 
     class Config:
