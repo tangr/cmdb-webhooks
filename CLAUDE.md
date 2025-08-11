@@ -5,6 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Development Commands
 
 ### Running the Application
+
 ```bash
 # Development server (preferred)
 fastapi dev app/main.py
@@ -14,6 +15,7 @@ uvicorn app.main:app --reload
 ```
 
 ### Environment Setup
+
 ```bash
 # Install dependencies
 pip install -r requirements.txt
@@ -23,12 +25,14 @@ export PYTHONDONTWRITEBYTECODE=1
 ```
 
 ### Database Setup
+
 ```bash
 # Initialize database using the schema
 mysql -u root -p < sql/db.sql
 ```
 
 ### Maintenance
+
 ```bash
 # Clean Python cache files
 python3 -m pyclean .
@@ -37,6 +41,7 @@ python3 -m pyclean .
 ```
 
 ### Code Quality
+
 ```bash
 # The project is configured to use Black formatter in VS Code
 # Format code (if Black is installed)
@@ -61,6 +66,7 @@ This is a FastAPI application that serves as a webhook receiver and request logg
 ### Database Architecture
 
 The application uses MySQL with SQLModel/SQLAlchemy for ORM. Key characteristics:
+
 - Database connection configured in `config/config.py` with connection string from environment
 - Primary entity is `JMSReqLog` which stores HTTP request/response data from JMS systems
 - JSON columns used for flexible storage of headers and body data
@@ -74,6 +80,7 @@ The application uses MySQL with SQLModel/SQLAlchemy for ORM. Key characteristics
 ### API Structure
 
 The application provides CRUD operations for request logs:
+
 - `GET /jms_reqlog/` - List all logs
 - `GET /jms_reqlog/list` - Paginated log listing
 - `POST /jms_reqlog/` - Create new log entry
@@ -84,12 +91,14 @@ The application provides CRUD operations for request logs:
 ### Authentication
 
 Basic token-based authentication is implemented:
+
 - Admin endpoints require `X-Token` header with value `fake-super-secret-token`
 - Query token authentication available but currently disabled
 
 ### Configuration
 
 Application settings are managed through Pydantic Settings:
+
 - Database URL configurable via environment variables
 - Settings loaded from `.env` file
 - Default MySQL connection: `mysql+pymysql://root:mypassword@127.0.0.1/test2`
