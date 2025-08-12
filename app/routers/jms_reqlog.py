@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import HTMLResponse
 from sqlmodel import select
 from app.models.jms_reqlog import JMSReqLog, JMSReqLogCreate, JMSReqLogUpdate
 from app.dependencies import (
@@ -18,15 +19,25 @@ router = APIRouter()
 
 
 # ==================== Public Endpoints (No Authentication) ====================
-@router.get("/", response_model=List[JMSReqLog])
-def read_all_logs(session: SessionDep, request: Request):
+@router.get("/", response_class=HTMLResponse)
+def read_all_logs(
+    session: SessionDep,
+    request: Request,
+    current_user: Optional[User] = Depends(get_current_user_flexible),
+):
     """获取所有日志记录 (Public endpoint for webhook receiving)"""
     statement = select(JMSReqLog)
     logs = session.exec(statement).all()
     return templates.TemplateResponse(
-        request=request, name="show.html", context={"jobs": logs}
+        request=request,
+        name="show.html",
+        context={
+            "jobs": logs,
+            "current_user": current_user,
+            "page_name": "Logs",
+            "url": request.url_for("read_all_logs"),
+        },
     )
-    return logs
 
 
 @router.post("/", response_model=JMSReqLog)

@@ -24,6 +24,23 @@ app.include_router(
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
+# Convenience redirects for common pages
 @app.get("/")
 async def root():
-    return {"message": "Hello Bigger Applications!"}
+    from fastapi.responses import RedirectResponse
+
+    return RedirectResponse(url="/auth/", status_code=302)
+
+
+@app.get("/login")
+async def login_redirect():
+    from fastapi.responses import RedirectResponse
+
+    return RedirectResponse(url="/auth/login-page", status_code=302)
+
+
+@app.get("/dashboard")
+async def dashboard_redirect():
+    from fastapi.responses import RedirectResponse
+
+    return RedirectResponse(url="/auth/dashboard", status_code=302)

@@ -3,41 +3,41 @@
 <body>
   <div class="wrapper">
     <div class="ui container maincontainer">
-      
+
       <div class="ui middle aligned center aligned grid">
         <div class="column" style="max-width: 450px;">
-          
+
           <h2 class="ui teal image header">
             <div class="content">
               Webhook Proxy Login
             </div>
           </h2>
-          
+
           <form class="ui large form" id="loginForm">
             <div class="ui stacked segment">
-              
+
               <div class="field">
                 <div class="ui left icon input">
                   <i class="user icon"></i>
                   <input type="text" name="username" placeholder="Username" required>
                 </div>
               </div>
-              
+
               <div class="field">
                 <div class="ui left icon input">
                   <i class="lock icon"></i>
                   <input type="password" name="password" placeholder="Password" required>
                 </div>
               </div>
-              
+
               <button type="submit" class="ui fluid large teal submit button">
                 Login
               </button>
-              
+
             </div>
-            
+
             <div class="ui error message"></div>
-            
+
           </form>
 
           <div class="ui message">
@@ -45,18 +45,18 @@
             <p>User: <code>testuser</code> / <code>testpass</code></p>
             <p>Admin: <code>admin</code> / <code>admin123</code></p>
           </div>
-          
+
         </div>
       </div>
-      
+
     </div>
-    
+
     {% include "base_foot.html" %}
   </div>
 
   <script type="text/javascript">
-    $(document).ready(function() {
-      
+    $(document).ready(function () {
+
       // Initialize form validation
       $('.ui.form').form({
         fields: {
@@ -64,52 +64,53 @@
           password: 'empty'
         }
       });
-      
+
       // Handle form submission
-      $('#loginForm').submit(function(e) {
+      $('#loginForm').submit(function (e) {
         e.preventDefault();
-        
+
         if (!$('.ui.form').form('is valid')) {
           return false;
         }
-        
+
         const formData = new FormData();
         formData.append('username', $('input[name="username"]').val());
         formData.append('password', $('input[name="password"]').val());
-        
+
         // Show loading state
         $('.submit.button').addClass('loading');
         $('.ui.error.message').hide();
-        
+
         // Send login request
         fetch('/auth/login', {
           method: 'POST',
           body: formData
         })
-        .then(response => {
-          if (response.ok) {
-            // Login successful, redirect to dashboard
-            window.location.href = '/dashboard';
-          } else {
-            // Login failed, show error
-            return response.json().then(data => {
-              throw new Error(data.detail || 'Login failed');
-            });
-          }
-        })
-        .catch(error => {
-          console.error('Login error:', error);
-          $('.ui.error.message')
-            .html('<div class="header">Login Failed</div><p>' + error.message + '</p>')
-            .show();
-        })
-        .finally(() => {
-          $('.submit.button').removeClass('loading');
-        });
+          .then(response => {
+            if (response.ok) {
+              // Login successful, redirect to dashboard
+              window.location.href = '/dashboard';
+            } else {
+              // Login failed, show error
+              return response.json().then(data => {
+                throw new Error(data.detail || 'Login failed');
+              });
+            }
+          })
+          .catch(error => {
+            console.error('Login error:', error);
+            $('.ui.error.message')
+              .html('<div class="header">Login Failed</div><p>' + error.message + '</p>')
+              .show();
+          })
+          .finally(() => {
+            $('.submit.button').removeClass('loading');
+          });
       });
-      
+
     });
   </script>
 
 </body>
+
 </html>

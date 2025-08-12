@@ -1,44 +1,59 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Response
+from fastapi import APIRouter, Depends, HTTPException, status, Response, Request
 from fastapi.security import OAuth2PasswordRequestForm
+from fastapi.templating import Jinja2Templates
+from fastapi.responses import HTMLResponse, RedirectResponse
 from pydantic import BaseModel
 from datetime import datetime, timedelta
 from app.dependencies import (
-    create_access_token, create_session_token, verify_session,
-    get_current_user_jwt, get_current_user_session, get_current_user_flexible,
-    User, ACTIVE_SESSIONS, ACCESS_TOKEN_EXPIRE_MINUTES
+    create_access_token,
+    create_session_token,
+    verify_session,
+    get_current_user_jwt,
+    get_current_user_session,
+    get_current_user_flexible,
+    User,
+    ACTIVE_SESSIONS,
+    ACCESS_TOKEN_EXPIRE_MINUTES,
 )
 
+templates = Jinja2Templates(directory="templates")
+
 router = APIRouter()
+
 
 # Request/Response models
 class Token(BaseModel):
     access_token: str
     token_type: str
 
+
 class UserCreate(BaseModel):
     username: str
     password: str
+
 
 class UserResponse(BaseModel):
     user_id: str
     username: str
     roles: list[str]
 
+
 # Mock user database (replace with real database)
 MOCK_USERS = {
     "testuser": {
         "user_id": "1",
-        "username": "testuser", 
+        "username": "testuser",
         "password": "testpass",  # In production, use hashed passwords
-        "roles": ["user"]
+        "roles": ["user"],
     },
     "admin": {
         "user_id": "2",
         "username": "admin",
         "password": "admin123",
-        "roles": ["admin", "user"]
-    }
+        "roles": ["admin", "user"],
+    },
 }
+
 
 def authenticate_user(username: str, password: str) -> dict:
     """Authenticate user credentials (mock implementation)"""
@@ -46,6 +61,7 @@ def authenticate_user(username: str, password: str) -> dict:
     if not user or user["password"] != password:
         return None
     return user
+
 
 # ==================== JWT Token Authentication ====================
 @router.post("/token", response_model=Token)
@@ -58,43 +74,46 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={
             "sub": user["user_id"],
-            "username": user["username"], 
-            "roles": user["roles"]
+            "username": user["username"],
+            "roles": user["roles"],
         },
-        expires_delta=access_token_expires
+        expires_delta=access_token_expires,
     )
-    
+
     return {"access_token": access_token, "token_type": "bearer"}
+
 
 # ==================== Session Cookie Authentication ====================
 @router.post("/login")
-async def login_session(form_data: OAuth2PasswordRequestForm = Depends(), response: Response = None):
+async def login_session(
+    form_data: OAuth2PasswordRequestForm = Depends(), response: Response = None
+):
     """Web login endpoint that sets session cookie"""
     user = authenticate_user(form_data.username, form_data.password)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password"
+            detail="Incorrect username or password",
         )
-    
+
     # Create session
     session_token = create_session_token()
     session_expires = datetime.utcnow() + timedelta(hours=24)
-    
+
     ACTIVE_SESSIONS[session_token] = {
         "user": {
             "user_id": user["user_id"],
             "username": user["username"],
-            "roles": user["roles"]
+            "roles": user["roles"],
         },
-        "expires": session_expires
+        "expires": session_expires,
     }
-    
+
     # Set httpOnly cookie
     response.set_cookie(
         key="session",
@@ -102,28 +121,32 @@ async def login_session(form_data: OAuth2PasswordRequestForm = Depends(), respon
         max_age=86400,  # 24 hours
         httponly=True,
         secure=False,  # Set to True in production with HTTPS
-        samesite="lax"
+        samesite="lax",
     )
-    
+
     return {
         "message": "Login successful",
         "user": {
             "user_id": user["user_id"],
             "username": user["username"],
-            "roles": user["roles"]
-        }
+            "roles": user["roles"],
+        },
     }
 
+
 @router.post("/logout")
-async def logout_session(response: Response, session_user: User = Depends(get_current_user_session)):
+async def logout_session(
+    response: Response, session_user: User = Depends(get_current_user_session)
+):
     """Web logout endpoint that clears session"""
     if not session_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
-    
+
     # Clear session cookie
     response.delete_cookie(key="session")
-    
+
     return {"message": "Logout successful"}
+
 
 # ==================== User Info Endpoints ====================
 @router.get("/me", response_model=UserResponse)
@@ -131,38 +154,41 @@ async def read_users_me(current_user: User = Depends(get_current_user_flexible))
     """Get current user info (supports both JWT and session auth)"""
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
-    
+
     return UserResponse(
         user_id=current_user.user_id,
         username=current_user.username,
-        roles=current_user.roles
+        roles=current_user.roles,
     )
+
 
 @router.get("/me/jwt")
 async def read_users_me_jwt(current_user: User = Depends(get_current_user_jwt)):
     """Get current user info via JWT only"""
     if not current_user:
         raise HTTPException(status_code=401, detail="JWT token required")
-    
+
     return {
         "user_id": current_user.user_id,
         "username": current_user.username,
         "roles": current_user.roles,
-        "auth_method": "jwt"
+        "auth_method": "jwt",
     }
+
 
 @router.get("/me/session")
 async def read_users_me_session(current_user: User = Depends(get_current_user_session)):
     """Get current user info via session only"""
     if not current_user:
         raise HTTPException(status_code=401, detail="Session required")
-    
+
     return {
         "user_id": current_user.user_id,
         "username": current_user.username,
         "roles": current_user.roles,
-        "auth_method": "session"
+        "auth_method": "session",
     }
+
 
 # ==================== Session Management ====================
 @router.get("/sessions")
@@ -173,11 +199,12 @@ async def list_active_sessions():
         "sessions": [
             {
                 "user": session["user"]["username"],
-                "expires": session["expires"].isoformat()
+                "expires": session["expires"].isoformat(),
             }
             for session in ACTIVE_SESSIONS.values()
-        ]
+        ],
     }
+
 
 @router.delete("/sessions")
 async def clear_all_sessions():
@@ -185,3 +212,44 @@ async def clear_all_sessions():
     count = len(ACTIVE_SESSIONS)
     ACTIVE_SESSIONS.clear()
     return {"message": f"Cleared {count} active sessions"}
+
+
+# ==================== Web Pages ====================
+@router.get("/login-page", response_class=HTMLResponse)
+async def login_page(
+    request: Request, current_user: User = Depends(get_current_user_flexible)
+):
+    """Show login page"""
+    # Redirect to dashboard if already logged in
+    if current_user:
+        return RedirectResponse(url="/dashboard", status_code=302)
+
+    return templates.TemplateResponse(
+        request=request, name="login.html", context={"page_name": "Login"}
+    )
+
+
+@router.get("/dashboard", response_class=HTMLResponse)
+async def dashboard_page(
+    request: Request, current_user: User = Depends(get_current_user_flexible)
+):
+    """Show user dashboard"""
+    # Redirect to login if not authenticated
+    if not current_user:
+        return RedirectResponse(url="/login-page", status_code=302)
+
+    return templates.TemplateResponse(
+        request=request,
+        name="dashboard.html",
+        context={"page_name": "Dashboard", "current_user": current_user},
+    )
+
+
+# Root redirect
+@router.get("/")
+async def root(current_user: User = Depends(get_current_user_flexible)):
+    """Root redirect - go to dashboard if logged in, otherwise login"""
+    if current_user:
+        return RedirectResponse(url="/dashboard", status_code=302)
+    else:
+        return RedirectResponse(url="/login-page", status_code=302)
