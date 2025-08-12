@@ -4,6 +4,7 @@ from .dependencies import get_query_token, get_token_header
 from .internal import admin
 from .routers import items, users, jms_reqlog
 from config.config import settings
+from fastapi.staticfiles import StaticFiles
 
 # app = FastAPI(dependencies=[Depends(get_query_token)])
 app = FastAPI()
@@ -19,6 +20,7 @@ app.include_router(
     dependencies=[Depends(get_token_header)],
     responses={418: {"description": "I'm a teapot"}},
 )
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
 @app.get("/")
