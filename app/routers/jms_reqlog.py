@@ -1,18 +1,24 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlmodel import select
 from app.models.jms_reqlog import JMSReqLog, JMSReqLogCreate, JMSReqLogUpdate
 from app.dependencies import SessionDep
 from typing import List
 import time
+from fastapi.templating import Jinja2Templates
+
+templates = Jinja2Templates(directory="templates")
 
 router = APIRouter()
 
 
 @router.get("/", response_model=List[JMSReqLog])
-def read_all_logs(session: SessionDep):
+def read_all_logs(session: SessionDep, request: Request):
     """获取所有日志记录"""
     statement = select(JMSReqLog)
     logs = session.exec(statement).all()
+    return templates.TemplateResponse(
+        request=request, name="show.html", context={"jobs": logs}
+    )
     return logs
 
 
