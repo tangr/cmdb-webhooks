@@ -35,14 +35,14 @@
             </div>
           </div>
         </div>
-        
+
         <div class="ui divider"></div>
-        
+
         <div class="ui labels">
           {% for role in current_user.roles %}
-            <div class="ui {% if role == 'admin' %}red{% else %}blue{% endif %} label">
-              {{ role }}
-            </div>
+          <div class="ui {% if role == 'admin' %}red{% else %}blue{% endif %} label">
+            {{ role }}
+          </div>
           {% endfor %}
         </div>
       </div>
@@ -70,7 +70,7 @@
       <!-- Logs Table -->
       <div class="ui segment">
         <h4 class="ui header">Recent Request Logs</h4>
-        
+
         <table class="ui selectable table" id="logsTable">
           <thead>
             <tr>
@@ -88,11 +88,11 @@
             <!-- Logs will be loaded here -->
           </tbody>
         </table>
-        
+
         <div class="ui active centered inline loader" id="loadingLogs">
           Loading logs...
         </div>
-        
+
         <div class="ui center aligned basic segment">
           <div class="ui pagination menu" id="pagination">
             <!-- Pagination will be added here -->
@@ -141,8 +141,8 @@
   <script type="text/javascript">
     let currentPage = 1;
     let currentLogId = null;
-    
-    $(document).ready(function() {
+
+    $(document).ready(function () {
       $('.ui.dropdown').dropdown();
       loadLogs();
     });
@@ -150,15 +150,15 @@
     function loadLogs(page = 1) {
       $('#loadingLogs').show();
       $('#logsTable tbody').empty();
-      
-      fetch(`/jms_reqlog/list?skip=${(page-1)*10}&limit=10`)
+
+      fetch(`/jms_reqlog/list?skip=${(page - 1) * 10}&limit=10`)
         .then(response => response.json())
         .then(data => {
           $('#loadingLogs').hide();
-          
+
           if (data.logs && data.logs.length > 0) {
             const tbody = $('#logsTable tbody');
-            
+
             data.logs.forEach(log => {
               const row = `
                 <tr>
@@ -182,7 +182,7 @@
           } else {
             $('#logsTable tbody').html('<tr><td colspan="8" class="center aligned">No logs found</td></tr>');
           }
-          
+
           currentPage = page;
         })
         .catch(error => {
@@ -194,14 +194,14 @@
 
     function showLogDetails(logId) {
       currentLogId = logId;
-      
+
       fetch(`/jms_reqlog/${logId}`)
         .then(response => response.json())
         .then(log => {
           $('#logHeaders').val(JSON.stringify(log.headers || {}, null, 2));
           $('#logBody').val(log.body || 'No body content');
           $('#logOutput').val(log.output || 'No output');
-          
+
           $('#logDetailModal').modal('show');
         })
         .catch(error => {
@@ -214,49 +214,49 @@
       if (!confirm('Are you sure you want to delete this log?')) {
         return;
       }
-      
+
       fetch(`/jms_reqlog/${logId}`, {
         method: 'DELETE'
       })
-      .then(response => {
-        if (response.ok) {
-          $('#logDetailModal').modal('hide');
-          loadLogs(currentPage);
+        .then(response => {
+          if (response.ok) {
+            $('#logDetailModal').modal('hide');
+            loadLogs(currentPage);
+            $('body').toast({
+              title: 'Success',
+              message: 'Log deleted successfully',
+              class: 'success'
+            });
+          } else {
+            throw new Error('Delete failed');
+          }
+        })
+        .catch(error => {
+          console.error('Error deleting log:', error);
           $('body').toast({
-            title: 'Success',
-            message: 'Log deleted successfully',
-            class: 'success'
+            title: 'Error',
+            message: 'Failed to delete log',
+            class: 'error'
           });
-        } else {
-          throw new Error('Delete failed');
-        }
-      })
-      .catch(error => {
-        console.error('Error deleting log:', error);
-        $('body').toast({
-          title: 'Error',
-          message: 'Failed to delete log',
-          class: 'error'
         });
-      });
     }
 
     function logout() {
       fetch('/auth/logout', {
         method: 'POST'
       })
-      .then(response => {
-        if (response.ok) {
+        .then(response => {
+          if (response.ok) {
+            window.location.href = '/login';
+          } else {
+            console.error('Logout failed');
+          }
+        })
+        .catch(error => {
+          console.error('Logout error:', error);
+          // Force redirect even if logout request fails
           window.location.href = '/login';
-        } else {
-          console.error('Logout failed');
-        }
-      })
-      .catch(error => {
-        console.error('Logout error:', error);
-        // Force redirect even if logout request fails
-        window.location.href = '/login';
-      });
+        });
     }
 
     function showAdminPanel() {
@@ -265,7 +265,7 @@
     }
 
     function getMethodColor(method) {
-      switch(method) {
+      switch (method) {
         case 'GET': return 'blue';
         case 'POST': return 'green';
         case 'PUT': return 'yellow';
@@ -290,4 +290,5 @@
   </script>
 
 </body>
+
 </html>

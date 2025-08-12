@@ -1,8 +1,9 @@
 <!DOCTYPE html>
 <html>
+
 <head>
-    <title>{{ page_name }} - Webhook Proxy</title>
-    <meta charset="UTF-8">
+  <title>{{ page_name }} - Webhook Proxy</title>
+  <meta charset="UTF-8">
 </head>
 
 <link rel="icon" href="/resource/image/favicon.ico" type="image/x-icon">
@@ -22,25 +23,28 @@
 <script src="/static/plugin/dompurify-2.4.0/purify.min.js"></script>
 
 <style>
-    html, body {
-        height: 100%;
-        margin: 0;
-    }
+  html,
+  body {
+    height: 100%;
+    margin: 0;
+  }
 
-    .wrapper {
-        display: flex;
-        flex-direction: column;
-        min-height: 100vh; /* 保证撑满整个视口 */
-    }
+  .wrapper {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    /* 保证撑满整个视口 */
+  }
 
-    .maincontainer {
-      flex: 1; /* 关键：自动撑满剩余空间 */
-      margin-top: 2em;
-    }
+  .maincontainer {
+    flex: 1;
+    /* 关键：自动撑满剩余空间 */
+    margin-top: 2em;
+  }
 
-    .ui.footer.segment {
-      margin: 0; /* 避免下方额外空隙 */
-      padding: 2em 0em;
-    }
-
+  .ui.footer.segment {
+    margin: 0;
+    /* 避免下方额外空隙 */
+    padding: 2em 0em;
+  }
 </style>
