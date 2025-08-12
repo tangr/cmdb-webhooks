@@ -21,15 +21,6 @@
 - **Black** - 代码格式化工具（在 VS Code 中配置）
 - **VS Code** - 推荐的开发环境
 
-### 认证
-
-- 基于 Token 的简单认证机制
-
-### 环境管理
-
-- 环境变量配置
-- 支持`.env`文件进行本地开发
-
 ## 项目结构
 
 ```
@@ -54,55 +45,6 @@ webhook-proxy/
 ├── startup.sh            # 应用启动脚本
 ├── CLAUDE.md             # Claude Code指导文档
 └── README.md             # 项目文档
-```
-
-## 开发命令
-
-### 运行应用程序
-
-```bash
-# Development server (preferred)
-fastapi dev app/main.py
-
-# Alternative using uvicorn
-uvicorn app.main:app --reload
-```
-
-### 环境设置
-
-```bash
-# Install dependencies
-pip install -r requirements.txt
-
-# Set environment variable to prevent bytecode generation
-export PYTHONDONTWRITEBYTECODE=1
-```
-
-### 数据库设置
-
-```bash
-# Initialize database using the schema
-mysql -u root -p < sql/db.sql
-```
-
-### 维护
-
-```bash
-# Clean Python cache files
-python3 -m pyclean .
-# Or use the provided script
-./clearcache.sh
-```
-
-### 代码质量
-
-```bash
-# The project is configured to use Black formatter in VS Code
-# Format code (if Black is installed)
-black .
-
-# Note: No tests are currently present in the codebase
-# No linting commands are configured
 ```
 
 ## 架构概述
