@@ -4,23 +4,8 @@
     <a class="item" href="/">
       Home
     </a>
-    <a class="item" href="/">Pipelines</a>
     <div class="right menu">
-      {{if or (eq .Config.admin.author_enable false) (eq .Session.IsAdmin true)}}
       <div class="ui right dropdown item">
-        Admin
-        <i class="dropdown icon"></i>
-        <div class="menu">
-          <a class="item" href="/pipelines">Pipelines</a>
-          <a class="item" href="/scripts">Scripts</a>
-          <a class="item" href="/agents">Agents</a>
-          <a class="item" href="/users">Users</a>
-          <a class="item" href="/groups">Groups</a>
-        </div>
-      </div>
-      {{end}}
-      <div class="ui right dropdown item">
-        {{.Session.username}}
         <i class="dropdown icon"></i>
         <div class="menu">
           <a class="item" href="/logout">Logout</a>
