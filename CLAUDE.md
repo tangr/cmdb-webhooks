@@ -9,6 +9,14 @@
 - **FastAPI** - 主要的 Web 框架，用于构建 API
 - **SQLModel/SQLAlchemy** - 数据库 ORM 和数据建模
 - **Pydantic** - 数据验证和设置管理
+- **Jinja2** - HTML 模板引擎
+
+### 前端技术
+
+- **Fomantic UI 2.9.4** - 基于 Semantic UI 的响应式 UI 框架
+- **jQuery 3.1.1** - JavaScript 库，用于 DOM 操作和事件处理
+- **DOMPurify 2.4.0** - XSS 防护的 DOM 净化库
+- **Marked 16.1.1** - Markdown 解析和渲染库
 
 ### 数据库
 
@@ -25,7 +33,7 @@
 
 ```
 webhook-proxy/
-├── app/                    # 主应用程序目录
+├── app/                    # 主应用程序目录（后端API）
 │   ├── dependencies.py     # 共享依赖（数据库会话管理）
 │   ├── main.py            # FastAPI应用程序入口点
 │   ├── internal/          # 内部模块
@@ -33,9 +41,21 @@ webhook-proxy/
 │   ├── models/            # 数据模型
 │   │   └── jms_reqlog.py  # JMS请求日志模型
 │   └── routers/           # API路由处理器
+│       ├── auth.py        # 认证相关路由
 │       ├── items.py       # 项目相关路由
 │       ├── jms_reqlog.py  # JMS日志路由
 │       └── users.py       # 用户相关路由
+├── templates/             # HTML模板文件（前端页面）
+│   ├── base_head.html     # 基础模板头部
+│   ├── base_foot.html     # 基础模板底部
+│   ├── base_menu.html     # 基础模板菜单
+│   └── show.html          # 显示页面模板
+├── static/                # 静态资源目录（前端资源）
+│   └── plugin/            # 前端插件库
+│       ├── fomantic-ui-2.9.4/    # UI框架
+│       ├── jquery-3.1.1/         # jQuery库
+│       ├── dompurify-2.4.0/      # DOM净化库
+│       └── markdown-16.1.1/      # Markdown解析库
 ├── config/                # 配置模块
 │   └── config.py          # Pydantic设置配置
 ├── sql/                   # 数据库脚本
@@ -49,15 +69,24 @@ webhook-proxy/
 
 ## 架构概述
 
-这是一个 FastAPI 应用程序，用作 JMS（Jump Server）系统的 webhook 接收器和请求记录器。应用程序采用模块化的 FastAPI 结构，具有清晰的关注点分离。
+这是一个全栈 FastAPI 应用程序，用作 JMS（Jump Server）系统的 webhook 接收器和请求记录器。应用程序采用前后端分离的架构，后端提供 RESTful API，前端提供 Web 界面，具有清晰的关注点分离。
 
 ### 核心组件
 
+**后端组件：**
 - **主应用程序** (`app/main.py`): 带有路由注册的 FastAPI 应用
 - **配置** (`config/config.py`): 带有数据库连接和应用配置的 Pydantic 设置
 - **模型** (`app/models/`): 基于 SQLModel 的数据库实体数据模型
 - **路由器** (`app/routers/`): 按功能组织的 API 端点处理器
 - **依赖项** (`app/dependencies.py`): 包括数据库会话管理在内的共享依赖项
+
+**前端组件：**
+- **HTML 模板** (`templates/`): 基于 Jinja2 的 HTML 页面模板
+- **静态资源** (`static/`): 前端 UI 框架和 JavaScript 库
+  - **Fomantic UI**: 响应式 UI 框架
+  - **jQuery**: JavaScript 库
+  - **DOMPurify**: XSS 防护的 DOM 净化库
+  - **Marked**: Markdown 解析库
 
 ### 数据库架构
 
@@ -103,10 +132,17 @@ webhook-proxy/
 
 ### 文件组织
 
+**后端组织：**
 - 遵循模块化 FastAPI 结构，清晰分离关注点
 - 将模型保存在`app/models/`目录中
 - 按功能在`app/routers/`中组织 API 端点
 - 将共享依赖项放在`app/dependencies.py`中
+
+**前端组织：**
+- HTML 模板存放在`templates/`目录中
+- 静态资源（CSS、JS、图片）存放在`static/`目录中
+- 第三方前端库存放在`static/plugin/`目录中
+- 遵循模板继承模式，使用基础模板组件
 
 ### 代码风格
 
