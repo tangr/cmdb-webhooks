@@ -32,7 +32,8 @@
   },
   "[html]": {
     "editor.defaultFormatter": "vscode.html-language-features",
-    "editor.formatOnSave": true
+    "editor.formatOnSave": true,
+    "files.insertFinalNewline": true
   },
   "[css]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode",
