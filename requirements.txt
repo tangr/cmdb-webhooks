@@ -5,3 +5,6 @@ pydantic-settings==2.10.1
 pymysql==1.1.1
 cryptography==45.0.5
 pyclean
+python-jose[cryptography]==3.3.0
+python-multipart==0.0.20
+passlib[bcrypt]==1.7.4

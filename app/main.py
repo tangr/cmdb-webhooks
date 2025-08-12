@@ -2,7 +2,7 @@ from fastapi import Depends, FastAPI
 
 from .dependencies import get_query_token, get_token_header
 from .internal import admin
-from .routers import items, users, jms_reqlog
+from .routers import items, users, jms_reqlog, auth
 from config.config import settings
 from fastapi.staticfiles import StaticFiles
 
@@ -10,6 +10,7 @@ from fastapi.staticfiles import StaticFiles
 app = FastAPI()
 
 
+app.include_router(auth.router, prefix="/auth", tags=["authentication"])
 app.include_router(users.router)
 app.include_router(items.router)
 app.include_router(jms_reqlog.router, prefix="/jms_reqlog", tags=["jms_reqlog"])
