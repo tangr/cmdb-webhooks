@@ -25,7 +25,7 @@ def read_all_logs(
     request: Request,
     current_user: Optional[User] = Depends(get_current_user_flexible),
 ):
-    """获取所有日志记录 (Public endpoint for webhook receiving)"""
+    """Get all log records (Public endpoint for webhook receiving)"""
     statement = select(JMSReqLog)
     logs = session.exec(statement).all()
     return templates.TemplateResponse(
@@ -42,7 +42,7 @@ def read_all_logs(
 
 @router.post("/", response_model=JMSReqLog)
 def create_log(log: JMSReqLogCreate, session: SessionDep):
-    """创建新的日志记录 (Public endpoint for webhook receiving)"""
+    """Create new log record (Public endpoint for webhook receiving)"""
     db_log = JMSReqLog(**log.model_dump())
     session.add(db_log)
     session.commit()
@@ -58,7 +58,7 @@ def read_logs_with_pagination(
     skip: int = 0,
     limit: int = 100,
 ):
-    """分页获取日志记录 (Supports both JWT and Session auth)"""
+    """Get paginated log records (Supports both JWT and Session auth)"""
     # Optional authentication - provides more features if authenticated
     if current_user:
         # Authenticated users can see more details or have higher limits
@@ -83,7 +83,7 @@ def read_log_by_id(
     session: SessionDep,
     current_user: User = Depends(get_current_user_any_required),
 ):
-    """根据ID获取单条日志记录 (Requires authentication via JWT or Session)"""
+    """Get single log record by ID (Requires authentication via JWT or Session)"""
     log = session.get(JMSReqLog, log_id)
     if not log:
         raise HTTPException(status_code=404, detail="Log not found")
@@ -98,7 +98,7 @@ def update_log(
     session: SessionDep,
     current_user: User = Depends(require_roles("admin")),
 ):
-    """更新日志记录 (Requires admin role)"""
+    """Update log record (Requires admin role)"""
     log = session.get(JMSReqLog, log_id)
     if not log:
         raise HTTPException(status_code=404, detail="Log not found")
@@ -120,7 +120,7 @@ def delete_log(
     session: SessionDep,
     current_user: User = Depends(require_roles("admin")),
 ):
-    """删除日志记录 (Requires admin role)"""
+    """Delete log record (Requires admin role)"""
     log = session.get(JMSReqLog, log_id)
     if not log:
         raise HTTPException(status_code=404, detail="Log not found")
