@@ -175,14 +175,15 @@
     // Handle send request button click
     $('#sendRequestBtn').click(function () {
       if (currentJobId) {
-        // Send PUT request to the log endpoint
+        // Send PUT request to re-execute the logged request
         $.ajax({
           url: '/jms_reqlog/' + currentJobId,
           type: 'PUT',
-          contentType: 'application/json'
+          contentType: 'application/json',
+          data: JSON.stringify({})
         })
           .done(function (data) {
-            console.log('Request sent successfully:', data);
+            console.log('Request re-executed successfully:', data);
             $('#previewModal').modal('hide');
           })
           .fail(function (xhr, status, error) {
