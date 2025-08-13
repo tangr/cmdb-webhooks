@@ -34,9 +34,9 @@
           <td>{{ job.jmshost }}</td>
           <td>{{ job.path }}</td>
           <td>{{ job.query }}</td>
-          <td>{{ job.method }}</td>
+          <td id="req_{{ job.id }}_method">{{ job.method }}</td>
           <td>{{ job.headers }}</td>
-          <td>{{ job.body }}</td>
+          <td id="req_{{ job.id }}_body">{{ job.body }}</td>
           <td>{{ job.status }}</td>
           <td>{{ job.author }}</td>
           <td data-tooltip="{{ job.updated_at }}">{{ job.updated_at }}</td>
@@ -101,14 +101,6 @@
             <div class="ui bottom attached tab segment" id="new_deploy" data-tab="new_deploy">
             </div>
 
-
-            <div class="ui divider"></div>
-            <div class="field">
-              <div class="ui fluid input">
-                <input type="text" placeholder="Comment" name="COMMENT" autocomplete="off">
-                <input type="hidden" name="JOBTYPE" value="">
-              </div>
-            </div>
             <div class="ui divider"></div>
             <div class="ui red right floated submit button">Yes, Deploy</div>
             <!-- <div class="ui error message"></div> -->
@@ -129,27 +121,6 @@
     $('.ui.dropdown').dropdown();
     $('.menu .item').tab();
 
-    $('#new_job_modal .item').on('click', function () {
-      $(this).addClass('active')
-        .closest('.ui.menu')
-        .find('.item')
-        .not($(this))
-        .removeClass('active');
-      var jobtype = $(this).data("jobtype");
-      console.log(jobtype);
-      $("#new_job_main").empty();
-      if (jobtype == "BUILD") {
-        click_new_job("BUILD");
-        $("#new_build").append($("#new_job_main"))
-      };
-
-      if (jobtype == "DEPLOY") {
-        click_new_job("DEPLOY");
-        $("#new_deploy").append($("#new_job_main"));
-      }
-
-    });
-
     function isString(s) {
       return typeof (s) === 'string' || s instanceof String;
     }
@@ -163,36 +134,6 @@
     }
 
     function click_new_job(jobtype) {
-      console.log("click_new_job: " + jobtype);
-      $.ajax({
-        url: "{{ body_url }}",
-        type: 'GET',
-        dataType: 'json',
-        success: function (res) {
-          console.log(res);
-          // var pipeline_body = JSON.parse(res.body);
-          var pipeline_body = res;
-          if ($('#new_job_main').is(':empty') || typeof jobtype !== "undefined") {
-            var form_validation = { COMMENT: 'empty' };
-            if (jobtype == "BUILD") {
-              console.log("jobtype: " + jobtype);
-              make_newjob_view(pipeline_body.stageCI.envs, form_validation);
-              $('.field.newjob form').form('set value', 'JOBTYPE', 'BUILD');
-            } else if (jobtype == "DEPLOY") {
-              console.log("jobtype: " + jobtype);
-              make_newjob_view(pipeline_body.stageCD.envs, form_validation);
-              $('.field.newjob form').form('set value', 'JOBTYPE', 'DEPLOY');
-            } else {
-              console.log("jobtype: " + "else");
-              make_newjob_view(pipeline_body.stageCI.envs, form_validation);
-              $('.field.newjob form').form('set value', 'JOBTYPE', 'BUILD');
-            }
-          }
-          $('#job_body').val(res.body);
-          $('#agent_id').dropdown('set selected', res.agent_id);
-          $('#pipeline_body').val(res.body);
-        }
-      });
       $('.ui.modal').modal({ autofocus: false, }).modal('show');
     }
 
