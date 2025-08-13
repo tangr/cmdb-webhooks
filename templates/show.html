@@ -17,11 +17,7 @@
       <table class="ui selectable table">
         <thead>
           <tr>
-            <th>Jmshost</th>
-            <th>Path</th>
-            <th>Query</th>
             <th>Method</th>
-            <th>Headers</th>
             <th>Body</th>
             <th>Status</th>
             <th>Author</th>
@@ -31,11 +27,7 @@
         </thead>
         <tbody>
           {% for job in jobs %}
-          <td>{{ job.jmshost }}</td>
-          <td>{{ job.path }}</td>
-          <td>{{ job.query }}</td>
           <td id="req_{{ job.id }}_method">{{ job.method }}</td>
-          <td>{{ job.headers }}</td>
           <td id="req_{{ job.id }}_body">{{ job.body }}</td>
           <td>{{ job.status }}</td>
           <td>{{ job.author }}</td>
