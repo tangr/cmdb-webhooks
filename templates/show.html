@@ -43,7 +43,8 @@
           <td>
             <span style="display: inline-flex; align-items: center; gap: 4px;">
               <i class="redo icon" style="color: brown; cursor: pointer;" onclick="showPreview(this)"
-                data-method="{{ job.method }}" data-body="{{ job.body | escape }}" title="Preview Request"></i>
+                data-method="{{ job.method }}" data-body="{{ job.body | escape }}" data-id="{{ job.id }}"
+                title="Preview Request"></i>
               <a href="{{ url }}{{ job.id }}"><i class="info icon" style="color: gray;"></i></a>
             </span>
           </td>
@@ -132,7 +133,8 @@
       </div>
     </div>
     <div class="actions">
-      <div class="ui cancel button">Close</div>
+      <div class="ui primary button" id="sendRequestBtn">Send Request</div>
+      <div class="ui cancel button">Cancel</div>
     </div>
   </div>
 
@@ -141,12 +143,18 @@
     $('.ui.dropdown').dropdown();
     $('.menu .item').tab();
 
+    var currentJobId = null;
+
     function showPreview(element) {
       // Get data from attributes
       var method = $(element).data('method');
       var body = $(element).data('body');
+      var jobId = $(element).data('id');
 
-      console.log('showPreview called with method:', method, 'and body:', body);
+      console.log('showPreview called with method:', method, 'body:', body, 'jobId:', jobId);
+
+      // Store the job ID for the send request button
+      currentJobId = jobId;
 
       // Set method value
       $('#previewMethod').val(method);
@@ -163,6 +171,22 @@
       // Show the preview modal
       $('#previewModal').modal('show');
     }
+
+    // Handle send request button click
+    $('#sendRequestBtn').click(function () {
+      if (currentJobId) {
+        // Send GET request to the log endpoint
+        $.get('/jms_reqlog/' + currentJobId)
+          .done(function (data) {
+            console.log('Request sent successfully:', data);
+            $('#previewModal').modal('hide');
+          })
+          .fail(function (xhr, status, error) {
+            console.error('Request failed:', error);
+            alert('Request failed: ' + error);
+          });
+      }
+    });
 
   </script>
 
