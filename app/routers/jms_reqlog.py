@@ -35,7 +35,7 @@ def read_all_logs(
     logs = session.exec(statement).all()
     return templates.TemplateResponse(
         request=request,
-        name="show.html",
+        name="cmdb/show.html",
         context={
             "jobs": logs,
             "current_user": current_user,

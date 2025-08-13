@@ -49,7 +49,7 @@ webhook-proxy/
 │   ├── base_head.html     # 基础模板头部
 │   ├── base_foot.html     # 基础模板底部
 │   ├── base_menu.html     # 基础模板菜单
-│   └── show.html          # 显示页面模板
+│   └── cmdb/show.html     # 显示页面模板
 ├── static/                # 静态资源目录（前端资源）
 │   └── plugin/            # 前端插件库
 │       ├── fomantic-ui-2.9.4/    # UI框架
@@ -74,6 +74,7 @@ webhook-proxy/
 ### 核心组件
 
 **后端组件：**
+
 - **主应用程序** (`app/main.py`): 带有路由注册的 FastAPI 应用
 - **配置** (`config/config.py`): 带有数据库连接和应用配置的 Pydantic 设置
 - **模型** (`app/models/`): 基于 SQLModel 的数据库实体数据模型
@@ -81,6 +82,7 @@ webhook-proxy/
 - **依赖项** (`app/dependencies.py`): 包括数据库会话管理在内的共享依赖项
 
 **前端组件：**
+
 - **HTML 模板** (`templates/`): 基于 Jinja2 的 HTML 页面模板
 - **静态资源** (`static/`): 前端 UI 框架和 JavaScript 库
   - **Fomantic UI**: 响应式 UI 框架
@@ -133,12 +135,14 @@ webhook-proxy/
 ### 文件组织
 
 **后端组织：**
+
 - 遵循模块化 FastAPI 结构，清晰分离关注点
 - 将模型保存在`app/models/`目录中
 - 按功能在`app/routers/`中组织 API 端点
 - 将共享依赖项放在`app/dependencies.py`中
 
 **前端组织：**
+
 - HTML 模板存放在`templates/`目录中
 - 静态资源（CSS、JS、图片）存放在`static/`目录中
 - 第三方前端库存放在`static/plugin/`目录中
