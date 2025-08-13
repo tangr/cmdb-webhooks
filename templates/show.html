@@ -65,13 +65,6 @@
             </div>
           </div>
 
-          <div class="right aligned column">
-            <div class="ui right vertical fluid ">
-
-              <button class="ui right floated secondary button" onclick="click_new_job()">Deploy</button>
-
-            </div>
-          </div>
         </div>
       </div>
 
@@ -148,22 +141,6 @@
     $('.ui.dropdown').dropdown();
     $('.menu .item').tab();
 
-    function isString(s) {
-      return typeof (s) === 'string' || s instanceof String;
-    }
-
-    function isArray(obj) {
-      if (Array.isArray) {
-        return Array.isArray(obj)
-      } else {
-        return Object.prototype.toString.call(obj) === '[object Array]'
-      }
-    }
-
-    function click_new_job(jobtype) {
-      $('.ui.modal').modal({ autofocus: false, }).modal('show');
-    }
-
     function showPreview(element) {
       // Get data from attributes
       var method = $(element).data('method');
@@ -185,91 +162,6 @@
 
       // Show the preview modal
       $('#previewModal').modal('show');
-    }
-
-    function make_newjob_view(job_body, form_validation) {
-      var job_envs = job_body;
-      console.log('make_newjob_view: ' + job_envs);
-      for (envk in job_envs) {
-        console.log('envk: ' + envk);
-        if (!/^[a-zA-Z0-9_]{2,100}$/.test(envk)) continue;
-        console.log('job_envs envk: ' + job_envs[envk]);
-        if (envk.startsWith("REPO_") && isString(job_envs[envk])) {
-          console.log('REPO_envk: ' + envk);
-          form_validation[envk] = 'empty';
-          new_option = '';
-          new_option = new_option + '<div class="field" id="' + envk + '">';
-          new_option = new_option + '<label>' + envk + '</label>';
-          new_option = new_option + '<div class="ui fluid search selection dropdown">';
-          new_option = new_option + '<input type="hidden" name="' + envk + '">';
-          new_option = new_option + '<i class="dropdown icon"></i>';
-          new_option = new_option + '<div class="default text">Select Branch or Tag of  ' + job_envs[envk] + '</div>';
-          new_option = new_option + '</div>';
-          new_option = new_option + '</div>';
-          $('#new_job_main').append(new_option);
-          $('#' + envk + ' .ui.dropdown')
-            .dropdown({
-              apiSettings: {
-                // this url just returns a list of tags (with API response expected above)
-                url: "{{ url }}" + job_envs[envk],
-                filterRemoteData: true,
-                cache: false,
-                saveRemoteData: false
-              }
-            });
-        }
-        if (envk.startsWith("PKGRDM") && isString(job_envs[envk])) {
-          form_validation[envk] = 'empty';
-          new_option = '';
-          new_option = new_option + '<div class="field" id="' + envk + '">';
-          new_option = new_option + '<label>' + "Package Name" + '</label>';
-          new_option = new_option + '<div class="ui fluid search selection dropdown">';
-          new_option = new_option + '<input type="hidden" name="' + "PKGRDM" + '">';
-          new_option = new_option + '<i class="dropdown icon"></i>';
-          new_option = new_option + '<div class="default text">Select Package</div>';
-          new_option = new_option + '</div>';
-          new_option = new_option + '</div>';
-          $('#new_job_main').append(new_option);
-          $('#' + envk + ' .ui.dropdown')
-            .dropdown({
-              apiSettings: {
-                // this url just returns a list of tags (with API response expected above)
-                url: "{{ pkgurl }}",
-                filterRemoteData: true,
-                cache: false,
-                saveRemoteData: false
-              }
-            });
-        }
-      }
-
-      new_option = '';
-      for (envk in job_envs) {
-        // console.log('job_envs33: ' + job_envs);
-        if (!/^[a-zA-Z0-9_]{2,100}$/.test(envk)) continue;
-        envk_v = job_envs[envk]
-        if (!isArray(envk_v)) continue;
-        form_validation[envk + '[]'] = 'checked';
-        new_option = new_option + '<div class="inline fields">';
-        new_option = new_option + '<label>' + envk + '</label>';
-        for (k in envk_v) {
-          new_option = new_option + '<div class="field">';
-          new_option = new_option + '<div class="ui checkbox">';
-          new_option = new_option + '<input type="checkbox" name="' + envk + '[]" value="' + envk_v[k] + '"';
-          // if (k == 0) { new_option = new_option+' checked="checked"'}
-          new_option = new_option + '/>';
-          new_option = new_option + '<label>' + envk_v[k] + '</label>';
-          new_option = new_option + '</div>';
-          new_option = new_option + '</div>';
-        }
-        new_option = new_option + '</div>';
-      }
-      $('#new_job_main').append(new_option);
-
-      $('.field.newjob form').form({
-        fields: form_validation
-      });
-
     }
 
   </script>
