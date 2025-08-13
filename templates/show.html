@@ -17,36 +17,38 @@
       <table class="ui selectable table">
         <thead>
           <tr>
-            <th>ID</th>
+            <th>Jmshost</th>
             <th>Path</th>
             <th>Query</th>
             <th>Method</th>
             <th>Headers</th>
             <th>Body</th>
             <th>Status</th>
-            <th>Output</th>
-            <th>ClientIP</th>
             <th>Author</th>
             <th>Time</th>
+            <th>Action</th>
           </tr>
         </thead>
         <tbody>
           {% for job in jobs %}
-          <td class="selectable">
-            <a href="{{ url }}{{ job.id }}">{{ job.jmshost }}</a>
-          </td>
+          <td>{{ job.jmshost }}</td>
           <td>{{ job.path }}</td>
           <td>{{ job.query }}</td>
           <td>{{ job.method }}</td>
           <td>{{ job.headers }}</td>
           <td>{{ job.body }}</td>
           <td>{{ job.status }}</td>
-          <td>{{ job.output }}</td>
-          <td>{{ job.clientip }}</td>
           <td>{{ job.author }}</td>
           <td data-tooltip="{{ job.updated_at }}">{{ job.updated_at }}</td>
+          <td>
+            <span style="display: inline-flex; align-items: center; gap: 4px;">
+              <i class="redo icon" style="color: brown;"></i>
+              <a href="{{ url }}{{ job.id }}"><i class="info icon" style="color: gray;"></i></a>
+            </span>
+          </td>
           </tr>
           {% endfor %}
+
         </tbody>
       </table>
 
