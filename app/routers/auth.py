@@ -18,6 +18,11 @@ from app.dependencies import (
 
 templates = Jinja2Templates(directory="templates")
 
+# Import and register custom time filters
+from app.utils.template_filters import time_to_str, time_diff_now
+templates.env.filters["timeToStr"] = time_to_str
+templates.env.filters["timeDiffNow"] = time_diff_now
+
 router = APIRouter()
 
 

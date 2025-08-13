@@ -39,7 +39,7 @@
           <td id="req_{{ job.id }}_body">{{ job.body }}</td>
           <td>{{ job.status }}</td>
           <td>{{ job.author }}</td>
-          <td data-tooltip="{{ job.updated_at }}">{{ job.updated_at }}</td>
+          <td data-tooltip="{{ job.updated_at | timeToStr }}">{{ job.updated_at | timeDiffNow }}</td>
           <td>
             <span style="display: inline-flex; align-items: center; gap: 4px;">
               <i class="redo icon" style="color: brown; cursor: pointer;" onclick="showPreview(this)"

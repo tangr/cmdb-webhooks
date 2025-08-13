@@ -12,8 +12,13 @@ from app.dependencies import (
 from typing import List, Optional
 import time
 from fastapi.templating import Jinja2Templates
+from app.utils.template_filters import time_to_str, time_diff_now
 
 templates = Jinja2Templates(directory="templates")
+
+# Register custom filters
+templates.env.filters["timeToStr"] = time_to_str
+templates.env.filters["timeDiffNow"] = time_diff_now
 
 router = APIRouter()
 
