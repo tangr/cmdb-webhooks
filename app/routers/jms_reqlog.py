@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse
-from sqlmodel import select, func
+from sqlmodel import select, func, desc
 from app.models.jms_reqlog import (
     JMSReqLog,
     JMSReqLogCreate,
@@ -42,7 +42,7 @@ def read_all_logs(
     skip = (page - 1) * limit
 
     # Get paginated logs with one extra record to check if there are more pages
-    statement = select(JMSReqLog).offset(skip).limit(limit + 1)
+    statement = select(JMSReqLog).order_by(desc(JMSReqLog.updated_at)).offset(skip).limit(limit + 1)
     logs = session.exec(statement).all()
 
     # Check if there are more pages
@@ -95,7 +95,7 @@ def read_logs_with_pagination(
         # Anonymous users have restricted access
         limit = min(limit, 10)  # Lower limit for anonymous users
 
-    statement = select(JMSReqLog).offset(skip).limit(limit)
+    statement = select(JMSReqLog).order_by(desc(JMSReqLog.updated_at)).offset(skip).limit(limit)
     logs = session.exec(statement).all()
 
     return {
