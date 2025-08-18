@@ -1,17 +1,26 @@
 from typing import Dict, Optional
 import yaml
-import os
+from pathlib import Path
 
 
 # Global webhook mapping storage
 _webhook_mapping: Dict[str, str] = {}
 
 
+def _find_project_root() -> Path:
+    """Find the project root directory by looking for requirements.txt"""
+    current_path = Path(__file__).resolve()
+    for parent in current_path.parents:
+        if (parent / "requirements.txt").exists():
+            return parent
+    # Fallback to current file's parent directories
+    return current_path.parent.parent.parent
+
+
 def load_webhook_mapping() -> Dict[str, str]:
     """Load webhook ID to name mapping from YAML file"""
-    config_path = os.path.join(
-        os.path.dirname(__file__), "../../config/webhook_mapping.yaml"
-    )
+    project_root = _find_project_root()
+    config_path = project_root / "config" / "webhook_mapping.yaml"
 
     try:
         with open(config_path, "r", encoding="utf-8") as file:
