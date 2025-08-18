@@ -3,7 +3,8 @@ from fastapi.responses import JSONResponse
 from sqlmodel import select
 from app.models.feishu_reqlog import FeishuReqLog, FeishuReqLogCreate
 from app.dependencies import SessionDep
-from config.config import settings, get_webhook_id_by_name
+from config.config import settings
+from app.services.webhook_mapping import get_webhook_id_by_name
 from typing import Dict, Any
 import httpx
 import json

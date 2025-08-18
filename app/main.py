@@ -3,7 +3,8 @@ from fastapi import Depends, FastAPI
 from .dependencies import get_query_token, get_token_header
 from .internal import admin
 from .routers import items, users, jms_reqlog, auth, feishu
-from config.config import settings, init_webhook_mapping
+from config.config import settings
+from .services.webhook_mapping import init_webhook_mapping
 from fastapi.staticfiles import StaticFiles
 
 # app = FastAPI(dependencies=[Depends(get_query_token)])
