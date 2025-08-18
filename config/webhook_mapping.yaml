@@ -1,0 +1,14 @@
+# Webhook ID to name mapping configuration
+# This file maps Feishu webhook IDs to human-readable names
+# Format: webhook_id: webhook_name
+
+webhooks:
+  # Example mappings - replace with your actual webhook configurations
+  xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx: alert-system
+  yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy: monitoring
+  zzzzzzzz-zzzz-zzzz-zzzz-zzzzzzzzzzzz: notification
+
+  # Add more webhook mappings as needed
+  # your-webhook-id-here: grafana-alerts
+  # your-webhook-id-here: jenkins-ci
+  # your-webhook-id-here: system-alerts

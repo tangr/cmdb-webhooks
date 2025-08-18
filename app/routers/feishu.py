@@ -3,7 +3,7 @@ from fastapi.responses import JSONResponse
 from sqlmodel import select
 from app.models.feishu_reqlog import FeishuReqLog, FeishuReqLogCreate
 from app.dependencies import SessionDep
-from config.config import settings
+from config.config import settings, get_webhook_id_by_name
 from typing import Dict, Any
 import httpx
 import json
@@ -50,13 +50,12 @@ def is_grafana_alert(payload: Dict[str, Any]) -> bool:
     )
 
 
-@router.post("/webhook/{webhook_id}")
-async def feishu_webhook_proxy(
+async def _process_webhook_request(
     webhook_id: str,
     request: Request,
     session: SessionDep,
 ):
-    """Feishu webhook proxy endpoint"""
+    """Internal function to process webhook request"""
 
     # Get client IP
     client_ip = request.client.host
@@ -181,6 +180,34 @@ async def feishu_webhook_proxy(
         session.commit()
 
         raise HTTPException(status_code=500, detail=error_msg)
+
+
+@router.post("/webhook/proxy/{webhook_id}")
+async def feishu_webhook_proxy(
+    webhook_id: str,
+    request: Request,
+    session: SessionDep,
+):
+    """Feishu webhook proxy endpoint using webhook ID"""
+    return await _process_webhook_request(webhook_id, request, session)
+
+
+@router.post("/webhook/alias/{webhook_name}")
+async def feishu_webhook_alias(
+    webhook_name: str,
+    request: Request,
+    session: SessionDep,
+):
+    """Feishu webhook proxy endpoint using webhook name alias"""
+    # Get webhook ID from name mapping
+    webhook_id = get_webhook_id_by_name(webhook_name)
+    if not webhook_id:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Webhook name '{webhook_name}' not found in configuration",
+        )
+
+    return await _process_webhook_request(webhook_id, request, session)
 
 
 @router.get("/logs")

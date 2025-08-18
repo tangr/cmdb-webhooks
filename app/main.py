@@ -3,11 +3,18 @@ from fastapi import Depends, FastAPI
 from .dependencies import get_query_token, get_token_header
 from .internal import admin
 from .routers import items, users, jms_reqlog, auth, feishu
-from config.config import settings
+from config.config import settings, init_webhook_mapping
 from fastapi.staticfiles import StaticFiles
 
 # app = FastAPI(dependencies=[Depends(get_query_token)])
 app = FastAPI()
+
+
+@app.on_event("startup")
+async def startup_event():
+    """Initialize application on startup"""
+    # Load webhook name to ID mappings
+    init_webhook_mapping()
 
 
 app.include_router(auth.router, prefix="/auth", tags=["authentication"])
