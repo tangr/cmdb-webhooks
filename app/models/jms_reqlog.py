@@ -43,7 +43,7 @@ class JMSReqLogUpdate(SQLModel):
 
 
 class JMSReqLogRead(JMSReqLogBase):
-    """用于 API 响应的模型"""
+    """Model for API responses"""
 
     id: int
     created_at: int
