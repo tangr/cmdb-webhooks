@@ -41,13 +41,16 @@ def read_all_logs(
     # Calculate skip value based on page number
     skip = (page - 1) * limit
 
-    # Get total count for pagination calculation
-    total_count = session.exec(select(func.count(JMSReqLog.id))).one()
-    total_pages = (total_count + limit - 1) // limit  # Ceiling division
-
-    # Get paginated logs
-    statement = select(JMSReqLog).offset(skip).limit(limit)
+    # Get paginated logs with one extra record to check if there are more pages
+    statement = select(JMSReqLog).offset(skip).limit(limit + 1)
     logs = session.exec(statement).all()
+
+    # Check if there are more pages
+    has_next = len(logs) > limit
+    if has_next:
+        logs = logs[:limit]  # Remove the extra record
+
+    has_prev = page > 1
 
     return templates.TemplateResponse(
         request=request,
@@ -58,8 +61,8 @@ def read_all_logs(
             "page_name": "Logs",
             "url": request.url_for("read_all_logs"),
             "current_page": page,
-            "total_pages": total_pages,
-            "total_count": total_count,
+            "has_next": has_next,
+            "has_prev": has_prev,
             "limit": limit,
         },
     )
