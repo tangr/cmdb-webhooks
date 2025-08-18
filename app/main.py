@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from fastapi import Depends, FastAPI
 
 from .dependencies import get_query_token, get_token_header
@@ -7,15 +8,18 @@ from config.config import settings
 from .services.webhook_mapping import init_webhook_mapping
 from fastapi.staticfiles import StaticFiles
 
-# app = FastAPI(dependencies=[Depends(get_query_token)])
-app = FastAPI()
 
-
-@app.on_event("startup")
-async def startup_event():
-    """Initialize application on startup"""
-    # Load webhook name to ID mappings
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifespan events"""
+    # Startup
     init_webhook_mapping()
+    yield
+    # Shutdown (if needed)
+
+
+# app = FastAPI(dependencies=[Depends(get_query_token)])
+app = FastAPI(lifespan=lifespan)
 
 
 app.include_router(auth.router, prefix="/auth", tags=["authentication"])
