@@ -61,7 +61,7 @@ async def feishu_webhook_proxy(
             forward_headers = {
                 k: v
                 for k, v in headers.items()
-                if k.lower() not in ["host", "x-forwarded-for", "x-real-ip"]
+                if k.lower() not in ["host", "x-forwarded-for", "x-real-ip", "content-length"]
             }
 
             response = await client.post(
