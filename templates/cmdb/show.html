@@ -9,21 +9,23 @@
 
       {% include "base_menu.html" %}
 
-      <div class="ui breadcrumb">
-        <a class="section" href="{{ url }}">Home</a>
-        <div class="divider"> / </div>
-      </div>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <div class="ui breadcrumb">
+          <a class="section" href="{{ url }}">Home</a>
+          <div class="divider"> / </div>
+        </div>
 
-      <div style="margin-bottom: 1rem;">
-        {% if show_all %}
-        <a href="{{ url }}?page={{ current_page }}&limit={{ limit }}" class="ui button">
-          <i class="filter icon"></i>Only Non-200 Status
-        </a>
-        {% else %}
-        <a href="{{ url }}?page={{ current_page }}&limit={{ limit }}&show_all=true" class="ui primary button">
-          <i class="eye icon"></i>Show All Status
-        </a>
-        {% endif %}
+        <div>
+          {% if show_all %}
+          <a href="{{ url }}?page={{ current_page }}&limit={{ limit }}" class="ui button">
+            <i class="filter icon"></i>Only Non-200 Status
+          </a>
+          {% else %}
+          <a href="{{ url }}?page={{ current_page }}&limit={{ limit }}&show_all=true" class="ui primary button">
+            <i class="eye icon"></i>Show All Status
+          </a>
+          {% endif %}
+        </div>
       </div>
 
       <table class="ui selectable table">
