@@ -1,7 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse
-from sqlmodel import select
-from app.models.jms_reqlog import JMSReqLog, JMSReqLogCreate, JMSReqLogUpdate, JMSReqLogListResponse
+from sqlmodel import select, func
+from app.models.jms_reqlog import (
+    JMSReqLog,
+    JMSReqLogCreate,
+    JMSReqLogUpdate,
+    JMSReqLogListResponse,
+)
 from app.dependencies import (
     SessionDep,
     get_current_user_flexible,
@@ -29,10 +34,21 @@ def read_all_logs(
     session: SessionDep,
     request: Request,
     current_user: Optional[User] = Depends(get_current_user_flexible),
+    page: int = 1,
+    limit: int = 50,
 ):
-    """Get all log records (Public endpoint for webhook receiving)"""
-    statement = select(JMSReqLog)
+    """Get paginated log records (Public endpoint for webhook receiving)"""
+    # Calculate skip value based on page number
+    skip = (page - 1) * limit
+
+    # Get total count for pagination calculation
+    total_count = session.exec(select(func.count(JMSReqLog.id))).one()
+    total_pages = (total_count + limit - 1) // limit  # Ceiling division
+
+    # Get paginated logs
+    statement = select(JMSReqLog).offset(skip).limit(limit)
     logs = session.exec(statement).all()
+
     return templates.TemplateResponse(
         request=request,
         name="cmdb/show.html",
@@ -41,6 +57,10 @@ def read_all_logs(
             "current_user": current_user,
             "page_name": "Logs",
             "url": request.url_for("read_all_logs"),
+            "current_page": page,
+            "total_pages": total_pages,
+            "total_count": total_count,
+            "limit": limit,
         },
     )
 
