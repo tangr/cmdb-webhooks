@@ -34,22 +34,31 @@
 ```
 webhook-proxy/
 ├── app/                    # 主应用程序目录（后端API）
-│   ├── dependencies.py     # 共享依赖（数据库会话管理）
+│   ├── dependencies.py     # 共享依赖（数据库会话管理、认证）
 │   ├── main.py            # FastAPI应用程序入口点
 │   ├── internal/          # 内部模块
 │   │   └── admin.py       # 管理员相关功能
 │   ├── models/            # 数据模型
-│   │   └── jms_reqlog.py  # JMS请求日志模型
-│   └── routers/           # API路由处理器
-│       ├── auth.py        # 认证相关路由
-│       ├── items.py       # 项目相关路由
-│       ├── jms_reqlog.py  # JMS日志路由
-│       └── users.py       # 用户相关路由
+│   │   ├── jms_reqlog.py  # JMS请求日志模型
+│   │   └── feishu_reqlog.py # 飞书请求日志模型
+│   ├── routers/           # API路由处理器
+│   │   ├── auth.py        # 认证相关路由（JWT + Session）
+│   │   ├── bot_webhook.py # Bot Webhook路由
+│   │   ├── feishu.py      # 飞书Webhook代理路由
+│   │   ├── items.py       # 项目相关路由
+│   │   ├── jms_reqlog.py  # JMS日志路由
+│   │   └── users.py       # 用户相关路由
+│   └── utils/             # 工具模块
+│       └── template_filters.py # Jinja2模板过滤器
 ├── templates/             # HTML模板文件（前端页面）
+│   ├── alert/             # 警告/通知模板目录
 │   ├── base_head.html     # 基础模板头部
 │   ├── base_foot.html     # 基础模板底部
 │   ├── base_menu.html     # 基础模板菜单
-│   └── cmdb/show.html     # 显示页面模板
+│   ├── dashboard.html     # 用户仪表板页面
+│   ├── login.html         # 登录页面
+│   └── cmdb/              # CMDB相关模板
+│       └── show.html      # 显示页面模板
 ├── static/                # 静态资源目录（前端资源）
 │   └── plugin/            # 前端插件库
 │       ├── fomantic-ui-2.9.4/    # UI框架
@@ -69,7 +78,13 @@ webhook-proxy/
 
 ## 架构概述
 
-这是一个全栈 FastAPI 应用程序，用作 JMS（Jump Server）系统的 webhook 接收器和请求记录器。应用程序采用前后端分离的架构，后端提供 RESTful API，前端提供 Web 界面，具有清晰的关注点分离。
+这是一个全栈 FastAPI 应用程序，主要功能包括：
+- **Webhook 代理服务**: 接收并转发各种系统的 Webhook 请求
+- **请求日志记录**: 记录和管理来自 JMS（Jump Server）和飞书等系统的 HTTP 请求/响应数据
+- **用户认证系统**: 支持 JWT 和 Session 两种认证方式的多层次权限管理
+- **Web 管理界面**: 提供直观的 Web 界面进行日志查看和系统管理
+
+应用程序采用前后端分离的架构，后端提供 RESTful API，前端提供 Web 界面，具有清晰的关注点分离。
 
 ### 核心组件
 
@@ -95,32 +110,76 @@ webhook-proxy/
 应用程序使用 MySQL 和 SQLModel/SQLAlchemy 作为 ORM。主要特点：
 
 - 数据库连接在`config/config.py`中配置，连接字符串来自环境变量
-- 主要实体是`JMSReqLog`，存储来自 JMS 系统的 HTTP 请求/响应数据
+- 主要数据实体包括：
+  - `JMSReqLog`: 存储来自 JMS 系统的 HTTP 请求/响应数据
+  - `FeishuReqLog`: 存储飞书 Webhook 代理的请求/响应数据
 - 使用 JSON 列灵活存储标头和正文数据
 - 时间戳存储为 Unix 时间戳
+- 支持用户会话管理和基于角色的访问控制
 
 ### 关键数据模型
 
-- **JMSReqLog**: 存储 HTTP 请求详细信息的主要记录实体（方法、路径、标头、正文、状态等）
-- 模型遵循 SQLModel 模式，包含用于创建、更新和读取操作的独立类
+- **JMSReqLog**: 存储来自 JMS 系统的 HTTP 请求详细信息（方法、路径、标头、正文、状态等）
+- **FeishuReqLog**: 存储飞书 Webhook 代理请求的详细信息（包括请求和响应数据）
+- **User**: 用户认证和权限管理的用户实体（支持角色基础的访问控制）
+- 所有模型遵循 SQLModel 模式，包含用于创建、更新和读取操作的独立类
 
 ### API 结构
 
-应用程序为请求日志提供 CRUD 操作：
+应用程序提供多个功能模块的 API 端点：
 
-- `GET /jms_reqlog/` - 列出所有日志
-- `GET /jms_reqlog/list` - 分页日志列表
-- `POST /jms_reqlog/` - 创建新日志条目
-- `GET /jms_reqlog/{id}` - 获取特定日志
-- `PUT /jms_reqlog/{id}` - 更新日志条目
-- `DELETE /jms_reqlog/{id}` - 删除日志条目
+**认证模块 (`/auth/*`)**
+- `POST /auth/token` - OAuth2 兼容的 JWT Token 获取
+- `POST /auth/login` - Web 登录（设置 Session Cookie）
+- `POST /auth/logout` - Web 登出（清除 Session）
+- `GET /auth/me` - 获取当前用户信息（支持 JWT + Session）
+- `GET /auth/me/jwt` - 获取当前用户信息（仅 JWT）
+- `GET /auth/me/session` - 获取当前用户信息（仅 Session）
+- `GET /auth/sessions` - 列出所有活跃会话（管理员）
+- `DELETE /auth/sessions` - 清除所有会话（管理员）
+- `GET /auth/login-page` - 登录页面（HTML）
+- `GET /auth/dashboard` - 用户仪表板页面（HTML）
+- `GET /auth/` - 根路径重定向
+
+**JMS 请求日志模块 (`/jms_reqlog/*`)**
+- `GET /jms_reqlog/` - 列出所有日志（HTML页面，公开端点）
+- `POST /jms_reqlog/` - 创建新日志条目（公开端点，用于接收Webhook）
+- `GET /jms_reqlog/list` - 分页日志列表（支持灵活认证）
+- `GET /jms_reqlog/{id}` - 获取特定日志（需要认证）
+- `PUT /jms_reqlog/{id}` - 更新日志条目（需要管理员权限）
+- `DELETE /jms_reqlog/{id}` - 删除日志条目（需要管理员权限）
+
+**飞书 Webhook 模块 (`/feishu/*`)**
+- `POST /feishu/webhook/{webhook_id}` - 飞书 Webhook 代理端点
+- `GET /feishu/logs` - 获取飞书 Webhook 日志
+- `GET /feishu/logs/{log_id}` - 获取特定飞书 Webhook 日志
+
+**管理员模块 (`/admin/*`)**
+- 需要 `X-Token` 头认证的管理员功能
+
+**其他端点**
+- `GET /` - 根路径重定向到登录或仪表板
+- `GET /login` - 重定向到登录页面
+- `GET /dashboard` - 重定向到仪表板页面
 
 ### 认证
 
-实现了基本的基于 Token 的认证：
+应用程序实现了多层次的认证系统：
 
-- 管理员端点需要值为`fake-super-secret-token`的`X-Token`头
-- 查询 Token 认证可用但当前已禁用
+**认证方式:**
+- **JWT Token 认证**: 适用于 API 访问，通过 `Authorization: Bearer <token>` 头传递
+- **Session Cookie 认证**: 适用于 Web 界面，使用 HttpOnly Cookie 存储会话信息
+- **管理员 Token 认证**: 管理员端点需要值为 `fake-super-secret-token` 的 `X-Token` 头
+
+**认证级别:**
+- **公开端点**: 无需认证，用于接收 Webhook 等
+- **灵活认证端点**: 支持 JWT 或 Session 认证，提供不同功能级别
+- **必需认证端点**: 要求用户必须通过 JWT 或 Session 认证
+- **基于角色的端点**: 需要特定角色（如 admin）才能访问
+
+**用户角色:**
+- **user**: 普通用户角色
+- **admin**: 管理员角色，可访问管理功能
 
 ### 配置
 
