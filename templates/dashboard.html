@@ -53,12 +53,6 @@
           <i class="refresh icon"></i>
           Refresh Logs
         </button>
-        {% if 'admin' in current_user.roles %}
-        <button class="ui secondary button" onclick="showAdminPanel()">
-          <i class="settings icon"></i>
-          Admin Panel
-        </button>
-        {% endif %}
         <button class="ui button" onclick="logout()">
           <i class="sign out icon"></i>
           Logout
@@ -259,10 +253,6 @@
         });
     }
 
-    function showAdminPanel() {
-      // Navigate to admin section
-      window.location.href = '/admin';
-    }
 
     function getMethodColor(method) {
       switch (method) {

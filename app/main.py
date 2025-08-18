@@ -1,8 +1,7 @@
 from contextlib import asynccontextmanager
 from fastapi import Depends, FastAPI
 
-from .dependencies import get_query_token, get_token_header
-from .internal import admin
+from .dependencies import get_query_token
 from .routers import items, users, jms_reqlog, auth, feishu
 from config.config import settings
 from .services.webhook_mapping import init_webhook_mapping
@@ -27,13 +26,6 @@ app.include_router(users.router)
 app.include_router(items.router)
 app.include_router(jms_reqlog.router, prefix="/jms_reqlog", tags=["jms_reqlog"])
 app.include_router(feishu.router, prefix="/feishu", tags=["feishu"])
-app.include_router(
-    admin.router,
-    prefix="/admin",
-    tags=["admin"],
-    dependencies=[Depends(get_token_header)],
-    responses={418: {"description": "I'm a teapot"}},
-)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 

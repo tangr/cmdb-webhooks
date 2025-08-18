@@ -10,12 +10,6 @@
     Logs
   </a>
 
-  {% if current_user and 'admin' in current_user.roles %}
-  <a class="item" href="/admin">
-    <i class="settings icon"></i>
-    Admin
-  </a>
-  {% endif %}
 
   <div class="right menu">
     {% if current_user %}

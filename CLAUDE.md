@@ -36,8 +36,6 @@ webhook-proxy/
 ├── app/                    # 主应用程序目录（后端API）
 │   ├── dependencies.py     # 共享依赖（数据库会话管理、认证）
 │   ├── main.py            # FastAPI应用程序入口点
-│   ├── internal/          # 内部模块
-│   │   └── admin.py       # 管理员相关功能
 │   ├── models/            # 数据模型
 │   │   ├── jms_reqlog.py  # JMS请求日志模型
 │   │   └── feishu_reqlog.py # 飞书请求日志模型
@@ -98,7 +96,7 @@ webhook-proxy/
 - **配置** (`config/config.py`): 带有数据库连接和应用配置的 Pydantic 设置
 - **模型** (`app/models/`): 基于 SQLModel 的数据库实体数据模型
 - **路由器** (`app/routers/`): 按功能组织的 API 端点处理器
-- **依赖项** (`app/dependencies.py`): 包括数据库会话管理在内的共享依赖项
+- **依赖项** (`app/dependencies.py`): 包括数据库会话管理和认证在内的共享依赖项
 
 **前端组件：**
 
@@ -161,10 +159,6 @@ webhook-proxy/
 - `GET /feishu/logs` - 获取飞书 Webhook 日志
 - `GET /feishu/logs/{log_id}` - 获取特定飞书 Webhook 日志
 
-**管理员模块 (`/admin/*`)**
-
-- 需要 `X-Token` 头认证的管理员功能
-
 **其他端点**
 
 - `GET /` - 根路径重定向到登录或仪表板
@@ -179,7 +173,6 @@ webhook-proxy/
 
 - **JWT Token 认证**: 适用于 API 访问，通过 `Authorization: Bearer <token>` 头传递
 - **Session Cookie 认证**: 适用于 Web 界面，使用 HttpOnly Cookie 存储会话信息
-- **管理员 Token 认证**: 管理员端点需要值为 `fake-super-secret-token` 的 `X-Token` 头
 
 **认证级别:**
 
