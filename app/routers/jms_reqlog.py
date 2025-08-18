@@ -35,7 +35,7 @@ def read_all_logs(
     request: Request,
     current_user: Optional[User] = Depends(get_current_user_flexible),
     page: int = 1,
-    limit: int = 50,
+    limit: int = 10,
 ):
     """Get paginated log records (Public endpoint for webhook receiving)"""
     # Calculate skip value based on page number
