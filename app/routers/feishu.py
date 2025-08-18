@@ -10,8 +10,44 @@ import httpx
 import json
 import time
 import math
+import logging
 
 router = APIRouter()
+
+# Configure logger for console output
+logger = logging.getLogger(__name__)
+
+
+def log_feishu_request(session: SessionDep, log_entry: FeishuReqLogCreate):
+    """Log feishu request to database and/or console based on configuration"""
+
+    # Console logging
+    if settings.enable_console_logging:
+        log_message = (
+            f"Feishu Webhook - "
+            f"ID: {log_entry.webhook_id}, "
+            f"Method: {log_entry.method}, "
+            f"Path: {log_entry.path}, "
+            f"Status: {log_entry.status}, "
+            f"Client IP: {log_entry.clientip}"
+        )
+
+        if hasattr(log_entry, "error_message") and log_entry.error_message:
+            log_message += f", Error: {log_entry.error_message}"
+            logger.error(log_message)
+        else:
+            logger.info(log_message)
+
+    # Database logging
+    if settings.enable_database_logging:
+        try:
+            db_log = FeishuReqLog(**log_entry.model_dump())
+            session.add(db_log)
+            session.commit()
+        except Exception as e:
+            # If database logging fails and console logging is enabled, log the error
+            if settings.enable_console_logging:
+                logger.error(f"Failed to save log to database: {str(e)}")
 
 
 def convert_grafana_to_feishu(grafana_payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -128,10 +164,8 @@ async def _process_webhook_request(
             log_entry.response_headers = response_headers
             log_entry.response_body = response_body
 
-            # Save to database
-            db_log = FeishuReqLog(**log_entry.model_dump())
-            session.add(db_log)
-            session.commit()
+            # Save log based on configuration
+            log_feishu_request(session, log_entry)
 
             # Return Feishu response to client
             return JSONResponse(
@@ -150,10 +184,8 @@ async def _process_webhook_request(
         log_entry.status = 504
         log_entry.error_message = error_msg
 
-        # Save error to database
-        db_log = FeishuReqLog(**log_entry.model_dump())
-        session.add(db_log)
-        session.commit()
+        # Save error log based on configuration
+        log_feishu_request(session, log_entry)
 
         raise HTTPException(status_code=504, detail=error_msg)
 
@@ -163,10 +195,8 @@ async def _process_webhook_request(
         log_entry.status = 502
         log_entry.error_message = error_msg
 
-        # Save error to database
-        db_log = FeishuReqLog(**log_entry.model_dump())
-        session.add(db_log)
-        session.commit()
+        # Save error log based on configuration
+        log_feishu_request(session, log_entry)
 
         raise HTTPException(status_code=502, detail=error_msg)
 
@@ -176,10 +206,8 @@ async def _process_webhook_request(
         log_entry.status = 500
         log_entry.error_message = error_msg
 
-        # Save error to database
-        db_log = FeishuReqLog(**log_entry.model_dump())
-        session.add(db_log)
-        session.commit()
+        # Save error log based on configuration
+        log_feishu_request(session, log_entry)
 
         raise HTTPException(status_code=500, detail=error_msg)
 

@@ -13,6 +13,10 @@ class Settings(BaseSettings):
 
     feishu_webhook_base_url: str = "https://open.feishu.cn/open-apis/bot/v2/hook/"
 
+    # Logging configuration
+    enable_database_logging: bool = True
+    enable_console_logging: bool = False
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
