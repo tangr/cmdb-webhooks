@@ -7,6 +7,7 @@ webhooks:
   xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx: alert-system
   yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy: monitoring
   zzzzzzzz-zzzz-zzzz-zzzz-zzzzzzzzzzzz: notification
+  5c620c34-623a-4c26-96bd-a46db9c4b732: tang-mytest-bot
 
   # Add more webhook mappings as needed
   # your-webhook-id-here: grafana-alerts
