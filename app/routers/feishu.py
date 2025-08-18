@@ -20,7 +20,7 @@ def convert_grafana_to_feishu(grafana_payload: Dict[str, Any]) -> Dict[str, Any]
     message = grafana_payload.get("message", "")
 
     # Map status to Feishu template color
-    template_map = {"firing": "red", "resolved": "green", "unknown": "blue"}
+    template_map = {"firing": "red", "resolved": "green", "unknown": "wathet"}
     template = template_map.get(status.lower(), "blue")
 
     # Build Feishu interactive card payload
