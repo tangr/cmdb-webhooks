@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from sqlmodel import select
-from app.models.jms_reqlog import JMSReqLog, JMSReqLogCreate, JMSReqLogUpdate
+from app.models.jms_reqlog import JMSReqLog, JMSReqLogCreate, JMSReqLogUpdate, JMSReqLogListResponse
 from app.dependencies import (
     SessionDep,
     get_current_user_flexible,
@@ -56,7 +56,7 @@ def create_log(log: JMSReqLogCreate, session: SessionDep):
 
 
 # ==================== User-Level Endpoints (Flexible Authentication) ====================
-@router.get("/list", response_model=List[JMSReqLog])
+@router.get("/list", response_model=JMSReqLogListResponse)
 def read_logs_with_pagination(
     session: SessionDep,
     current_user: Optional[User] = Depends(get_current_user_flexible),

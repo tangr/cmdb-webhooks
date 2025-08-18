@@ -1,6 +1,6 @@
 from sqlmodel import SQLModel, Field, Column
 from sqlalchemy import JSON
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 import time
 
 
@@ -48,3 +48,11 @@ class JMSReqLogRead(JMSReqLogBase):
     id: int
     created_at: int
     updated_at: int
+
+
+class JMSReqLogListResponse(SQLModel):
+    """Model for paginated log list response"""
+
+    logs: List[JMSReqLog]
+    user: str
+    limit: int
