@@ -20,6 +20,7 @@ templates = Jinja2Templates(directory="templates")
 
 # Import and register custom time filters
 from app.utils.template_filters import time_to_str, time_diff_now
+
 templates.env.filters["timeToStr"] = time_to_str
 templates.env.filters["timeDiffNow"] = time_diff_now
 
@@ -227,7 +228,7 @@ async def login_page(
     """Show login page"""
     # Redirect to dashboard if already logged in
     if current_user:
-        return RedirectResponse(url="/dashboard", status_code=302)
+        return RedirectResponse(url="/auth/dashboard", status_code=302)
 
     return templates.TemplateResponse(
         request=request, name="login.html", context={"page_name": "Login"}
@@ -241,7 +242,7 @@ async def dashboard_page(
     """Show user dashboard"""
     # Redirect to login if not authenticated
     if not current_user:
-        return RedirectResponse(url="/login-page", status_code=302)
+        return RedirectResponse(url="/auth/login-page", status_code=302)
 
     return templates.TemplateResponse(
         request=request,
@@ -255,6 +256,6 @@ async def dashboard_page(
 async def root(current_user: User = Depends(get_current_user_flexible)):
     """Root redirect - go to dashboard if logged in, otherwise login"""
     if current_user:
-        return RedirectResponse(url="/dashboard", status_code=302)
+        return RedirectResponse(url="/auth/dashboard", status_code=302)
     else:
-        return RedirectResponse(url="/login-page", status_code=302)
+        return RedirectResponse(url="/auth/login-page", status_code=302)
