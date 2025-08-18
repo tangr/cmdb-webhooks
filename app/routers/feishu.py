@@ -3,6 +3,7 @@ from fastapi.responses import JSONResponse
 from sqlmodel import select
 from app.models.feishu_reqlog import FeishuReqLog, FeishuReqLogCreate
 from app.dependencies import SessionDep
+from config.config import settings
 from typing import Dict, Any
 import httpx
 import json
@@ -83,7 +84,7 @@ async def feishu_webhook_proxy(
         body = convert_grafana_to_feishu(body)
 
     # Feishu API URL
-    feishu_url = f"https://open.feishu.cn/open-apis/bot/v2/hook/{webhook_id}"
+    feishu_url = f"{settings.feishu_webhook_base_url}{webhook_id}"
 
     # Initialize log entry with original body for logging
     log_entry = FeishuReqLogCreate(

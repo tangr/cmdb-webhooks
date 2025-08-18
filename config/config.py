@@ -11,6 +11,8 @@ class Settings(BaseSettings):
     database_url: str = "mysql+pymysql://root:mypassword@127.0.0.1/test2"
     database_echo: bool = True
 
+    feishu_webhook_base_url: str = "https://open.feishu.cn/open-apis/bot/v2/hook/"
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
