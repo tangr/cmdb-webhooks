@@ -14,6 +14,18 @@
         <div class="divider"> / </div>
       </div>
 
+      <div style="margin-bottom: 1rem;">
+        {% if show_all %}
+        <a href="{{ url }}?page={{ current_page }}&limit={{ limit }}" class="ui button">
+          <i class="filter icon"></i>Only Non-200 Status
+        </a>
+        {% else %}
+        <a href="{{ url }}?page={{ current_page }}&limit={{ limit }}&show_all=true" class="ui primary button">
+          <i class="eye icon"></i>Show All Status
+        </a>
+        {% endif %}
+      </div>
+
       <table class="ui selectable table">
         <thead>
           <tr>
@@ -52,7 +64,8 @@
             {% if has_prev or has_next %}
             <div class="ui pagination menu">
               {% if has_prev %}
-              <a class="icon item" href="{{ url }}?page={{ current_page - 1 }}&limit={{ limit }}">
+              <a class="icon item"
+                href="{{ url }}?page={{ current_page - 1 }}&limit={{ limit }}{% if show_all %}&show_all=true{% endif %}">
                 <i class="angle left icon"></i>
               </a>
               {% endif %}
@@ -60,7 +73,8 @@
               <div class="active item">{{ current_page }}</div>
 
               {% if has_next %}
-              <a class="icon item" href="{{ url }}?page={{ current_page + 1 }}&limit={{ limit }}">
+              <a class="icon item"
+                href="{{ url }}?page={{ current_page + 1 }}&limit={{ limit }}{% if show_all %}&show_all=true{% endif %}">
                 <i class="angle right icon"></i>
               </a>
               {% endif %}

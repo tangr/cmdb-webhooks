@@ -36,13 +36,21 @@ def read_all_logs(
     current_user: Optional[User] = Depends(get_current_user_flexible),
     page: int = 1,
     limit: int = 10,
+    show_all: bool = False,
 ):
     """Get paginated log records (Public endpoint for webhook receiving)"""
     # Calculate skip value based on page number
     skip = (page - 1) * limit
 
+    # Build query statement with optional status filter
+    statement = select(JMSReqLog)
+    if not show_all:
+        statement = statement.where(JMSReqLog.status != 200)
+
     # Get paginated logs with one extra record to check if there are more pages
-    statement = select(JMSReqLog).order_by(desc(JMSReqLog.updated_at)).offset(skip).limit(limit + 1)
+    statement = (
+        statement.order_by(desc(JMSReqLog.updated_at)).offset(skip).limit(limit + 1)
+    )
     logs = session.exec(statement).all()
 
     # Check if there are more pages
@@ -64,6 +72,7 @@ def read_all_logs(
             "has_next": has_next,
             "has_prev": has_prev,
             "limit": limit,
+            "show_all": show_all,
         },
     )
 
@@ -95,7 +104,9 @@ def read_logs_with_pagination(
         # Anonymous users have restricted access
         limit = min(limit, 10)  # Lower limit for anonymous users
 
-    statement = select(JMSReqLog).order_by(desc(JMSReqLog.updated_at)).offset(skip).limit(limit)
+    statement = (
+        select(JMSReqLog).order_by(desc(JMSReqLog.updated_at)).offset(skip).limit(limit)
+    )
     logs = session.exec(statement).all()
 
     return {
