@@ -48,6 +48,8 @@ webhook-proxy/
 │   │   ├── items.py       # 项目相关路由
 │   │   ├── jms_reqlog.py  # JMS日志路由
 │   │   └── users.py       # 用户相关路由
+│   ├── services/          # 服务层模块
+│   │   └── webhook_mapping.py # Webhook映射服务
 │   └── utils/             # 工具模块
 │       └── template_filters.py # Jinja2模板过滤器
 ├── templates/             # HTML模板文件（前端页面）
@@ -66,7 +68,8 @@ webhook-proxy/
 │       ├── dompurify-2.4.0/      # DOM净化库
 │       └── markdown-16.1.1/      # Markdown解析库
 ├── config/                # 配置模块
-│   └── config.py          # Pydantic设置配置
+│   ├── config.py          # Pydantic设置配置
+│   └── webhook_mapping.yaml # Webhook映射配置文件
 ├── sql/                   # 数据库脚本
 │   └── db.sql            # 数据库初始化脚本
 ├── requirements.txt       # Python依赖包
@@ -79,6 +82,7 @@ webhook-proxy/
 ## 架构概述
 
 这是一个全栈 FastAPI 应用程序，主要功能包括：
+
 - **Webhook 代理服务**: 接收并转发各种系统的 Webhook 请求
 - **请求日志记录**: 记录和管理来自 JMS（Jump Server）和飞书等系统的 HTTP 请求/响应数据
 - **用户认证系统**: 支持 JWT 和 Session 两种认证方式的多层次权限管理
@@ -129,6 +133,7 @@ webhook-proxy/
 应用程序提供多个功能模块的 API 端点：
 
 **认证模块 (`/auth/*`)**
+
 - `POST /auth/token` - OAuth2 兼容的 JWT Token 获取
 - `POST /auth/login` - Web 登录（设置 Session Cookie）
 - `POST /auth/logout` - Web 登出（清除 Session）
@@ -142,22 +147,26 @@ webhook-proxy/
 - `GET /auth/` - 根路径重定向
 
 **JMS 请求日志模块 (`/jms_reqlog/*`)**
-- `GET /jms_reqlog/` - 列出所有日志（HTML页面，公开端点）
-- `POST /jms_reqlog/` - 创建新日志条目（公开端点，用于接收Webhook）
+
+- `GET /jms_reqlog/` - 列出所有日志（HTML 页面，公开端点）
+- `POST /jms_reqlog/` - 创建新日志条目（公开端点，用于接收 Webhook）
 - `GET /jms_reqlog/list` - 分页日志列表（支持灵活认证）
 - `GET /jms_reqlog/{id}` - 获取特定日志（需要认证）
 - `PUT /jms_reqlog/{id}` - 更新日志条目（需要管理员权限）
 - `DELETE /jms_reqlog/{id}` - 删除日志条目（需要管理员权限）
 
 **飞书 Webhook 模块 (`/feishu/*`)**
+
 - `POST /feishu/webhook/{webhook_id}` - 飞书 Webhook 代理端点
 - `GET /feishu/logs` - 获取飞书 Webhook 日志
 - `GET /feishu/logs/{log_id}` - 获取特定飞书 Webhook 日志
 
 **管理员模块 (`/admin/*`)**
+
 - 需要 `X-Token` 头认证的管理员功能
 
 **其他端点**
+
 - `GET /` - 根路径重定向到登录或仪表板
 - `GET /login` - 重定向到登录页面
 - `GET /dashboard` - 重定向到仪表板页面
@@ -167,17 +176,20 @@ webhook-proxy/
 应用程序实现了多层次的认证系统：
 
 **认证方式:**
+
 - **JWT Token 认证**: 适用于 API 访问，通过 `Authorization: Bearer <token>` 头传递
 - **Session Cookie 认证**: 适用于 Web 界面，使用 HttpOnly Cookie 存储会话信息
 - **管理员 Token 认证**: 管理员端点需要值为 `fake-super-secret-token` 的 `X-Token` 头
 
 **认证级别:**
+
 - **公开端点**: 无需认证，用于接收 Webhook 等
 - **灵活认证端点**: 支持 JWT 或 Session 认证，提供不同功能级别
 - **必需认证端点**: 要求用户必须通过 JWT 或 Session 认证
 - **基于角色的端点**: 需要特定角色（如 admin）才能访问
 
 **用户角色:**
+
 - **user**: 普通用户角色
 - **admin**: 管理员角色，可访问管理功能
 
