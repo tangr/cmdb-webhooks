@@ -11,6 +11,44 @@ import time
 router = APIRouter()
 
 
+def convert_grafana_to_feishu(grafana_payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Convert Grafana alert payload to Feishu interactive card format"""
+
+    # Extract required fields from Grafana payload
+    status = grafana_payload.get("status", "unknown")
+    title = grafana_payload.get("title", "Alert")
+    message = grafana_payload.get("message", "")
+
+    # Map status to Feishu template color
+    template_map = {"firing": "red", "resolved": "green", "unknown": "blue"}
+    template = template_map.get(status.lower(), "blue")
+
+    # Build Feishu interactive card payload
+    feishu_payload = {
+        "msg_type": "interactive",
+        "card": {
+            "schema": "2.0",
+            "header": {
+                "template": template,
+                "title": {"content": title, "tag": "plain_text"},
+            },
+            "body": {"elements": [{"tag": "markdown", "content": message}]},
+        },
+    }
+
+    return feishu_payload
+
+
+def is_grafana_alert(payload: Dict[str, Any]) -> bool:
+    """Check if payload is from Grafana alerting"""
+    return (
+        isinstance(payload, dict)
+        and "status" in payload
+        and "title" in payload
+        and "message" in payload
+    )
+
+
 @router.post("/webhook/{webhook_id}")
 async def feishu_webhook_proxy(
     webhook_id: str,
@@ -39,17 +77,22 @@ async def feishu_webhook_proxy(
     except json.JSONDecodeError:
         body = {"raw": body_bytes.decode("utf-8", errors="ignore")}
 
+    # Convert Grafana alert to Feishu format if needed
+    original_body = body.copy()
+    if is_grafana_alert(body):
+        body = convert_grafana_to_feishu(body)
+
     # Feishu API URL
     feishu_url = f"https://open.feishu.cn/open-apis/bot/v2/hook/{webhook_id}"
 
-    # Initialize log entry
+    # Initialize log entry with original body for logging
     log_entry = FeishuReqLogCreate(
         webhook_id=webhook_id,
         method=method,
         path=path,
         query=query,
         headers=headers,
-        body=body,
+        body=original_body,  # Log original payload
         clientip=client_ip,
         status=0,  # Will update after response
     )
@@ -61,7 +104,8 @@ async def feishu_webhook_proxy(
             forward_headers = {
                 k: v
                 for k, v in headers.items()
-                if k.lower() not in ["host", "x-forwarded-for", "x-real-ip", "content-length"]
+                if k.lower()
+                not in ["host", "x-forwarded-for", "x-real-ip", "content-length"]
             }
 
             response = await client.post(
