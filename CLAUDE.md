@@ -42,20 +42,20 @@ webhook-proxy/
 │   ├── internal/          # 内部管理模块
 │   │   └── admin.py       # 管理员路由和功能
 │   ├── models/            # 数据模型
-│   │   ├── jms_reqlog.py  # JMS请求日志模型
+│   │   ├── cmdb_reqlog.py  # CMDB请求日志模型
 │   │   └── feishu_reqlog.py # 飞书请求日志模型
 │   ├── routers/           # API路由处理器
 │   │   ├── auth.py        # 认证相关路由（JWT + Session + OIDC）
-│   │   ├── bot_webhook.py # Bot Webhook路由
-│   │   ├── feishu.py      # 飞书Webhook代理路由
-│   │   ├── items.py       # 项目相关路由
-│   │   ├── jms_reqlog.py  # JMS日志路由
-│   │   └── users.py       # 用户相关路由
+│   │   ├── cmdb.py        # CMDB日志路由
+│   │   └── feishu.py      # 飞书Webhook代理路由
 │   ├── services/          # 服务层模块
-│   │   ├── webhook_mapping.py # Webhook映射服务
-│   │   └── redis_session.py   # Redis会话管理服务
+│   │   ├── feishu_service.py    # 飞书服务逻辑
+│   │   ├── redis_session.py     # Redis会话管理服务
+│   │   └── webhook_mapping.py   # Webhook映射服务
 │   └── utils/             # 工具模块
-│       └── template_filters.py # Jinja2模板过滤器
+│       ├── logger.py            # 日志工具
+│       ├── template_filters.py  # Jinja2模板过滤器
+│       └── webhook_security.py  # Webhook安全验证
 ├── templates/             # HTML模板文件（前端页面）
 │   ├── alert/             # 警告/通知模板目录
 │   ├── base_head.html     # 基础模板头部
@@ -88,7 +88,7 @@ webhook-proxy/
 这是一个全栈 FastAPI 应用程序，主要功能包括：
 
 - **Webhook 代理服务**: 接收并转发各种系统的 Webhook 请求
-- **请求日志记录**: 记录和管理来自 JMS（Jump Server）和飞书等系统的 HTTP 请求/响应数据
+- **请求日志记录**: 记录和管理来自 CMDB 和飞书等系统的 HTTP 请求/响应数据
 - **用户认证系统**: 支持 JWT、Session 和 OIDC 三种认证方式的多层次权限管理
 - **Web 管理界面**: 提供直观的 Web 界面进行日志查看和系统管理
 
@@ -123,7 +123,7 @@ webhook-proxy/
 
 - 数据库连接在`config/config.py`中配置，连接字符串来自环境变量
 - 主要数据实体包括：
-  - `JMSReqLog`: 存储来自 JMS 系统的 HTTP 请求/响应数据
+  - `CmdbReqLog`: 存储来自 CMDB 系统的 HTTP 请求/响应数据
   - `FeishuReqLog`: 存储飞书 Webhook 代理的请求/响应数据
 - 使用 JSON 列灵活存储标头和正文数据
 - 时间戳存储为 Unix 时间戳
@@ -137,7 +137,7 @@ webhook-proxy/
 
 ### 关键数据模型
 
-- **JMSReqLog**: 存储来自 JMS 系统的 HTTP 请求详细信息（方法、路径、标头、正文、状态等）
+- **CmdbReqLog**: 存储来自 CMDB 系统的 HTTP 请求详细信息（方法、路径、标头、正文、状态等）
 - **FeishuReqLog**: 存储飞书 Webhook 代理请求的详细信息（包括请求和响应数据）
 - **User**: 用户认证和权限管理的用户实体（支持角色基础的访问控制）
 - 所有模型遵循 SQLModel 模式，包含用于创建、更新和读取操作的独立类
@@ -150,6 +150,12 @@ webhook-proxy/
   - 支持会话创建、读取、删除和批量操作
   - 自动处理会话过期和清理
   - 包含管理员功能（查看所有会话、批量清理）
+
+- **FeishuService** (`app/services/feishu_service.py`):
+
+  - 处理飞书 Webhook 代理请求的核心业务逻辑
+  - 包含安全验证和请求转发功能
+  - 记录请求/响应日志
 
 - **WebHookMapping** (`app/services/webhook_mapping.py`):
   - 处理 Webhook 请求的路由和映射逻辑
@@ -171,21 +177,24 @@ webhook-proxy/
 - `DELETE /auth/sessions` - 清除所有会话（管理员）
 - `GET /auth/login-page` - 登录页面（HTML）
 - `GET /auth/dashboard` - 用户仪表板页面（HTML）
+- `GET /auth/oidc/login` - OIDC 登录重定向
+- `GET /auth/oidc/callback` - OIDC 回调处理
 - `GET /auth/` - 根路径重定向
 
-**JMS 请求日志模块 (`/jms_reqlog/*`)**
+**CMDB 请求日志模块 (`/cmdb/*`)**
 
-- `GET /jms_reqlog/` - 列出所有日志（HTML 页面，公开端点）
-- `POST /jms_reqlog/` - 创建新日志条目（公开端点，用于接收 Webhook）
-- `GET /jms_reqlog/list` - 分页日志列表（支持灵活认证）
-- `GET /jms_reqlog/{id}` - 获取特定日志（需要认证）
-- `PUT /jms_reqlog/{id}` - 更新日志条目（需要管理员权限）
-- `DELETE /jms_reqlog/{id}` - 删除日志条目（需要管理员权限）
+- `GET /cmdb/` - 列出所有日志（HTML 页面，需要认证）
+- `POST /cmdb/` - 创建新日志条目（公开端点，用于接收 Webhook）
+- `GET /cmdb/list` - 分页日志列表（需要认证）
+- `GET /cmdb/{log_id}` - 获取特定日志（需要认证）
+- `PUT /cmdb/{log_id}` - 更新日志条目（需要管理员权限）
+- `DELETE /cmdb/{log_id}` - 删除日志条目（需要管理员权限）
 
 **飞书 Webhook 模块 (`/feishu/*`)**
 
-- `POST /feishu/webhook/{webhook_id}` - 飞书 Webhook 代理端点
-- `GET /feishu/logs` - 获取飞书 Webhook 日志
+- `POST /feishu/webhook/proxy/{webhook_id}` - 飞书 Webhook 代理端点（按 ID）
+- `POST /feishu/webhook/alias/{webhook_name}` - 飞书 Webhook 代理端点（按名称别名）
+- `GET /feishu/logs` - 获取飞书 Webhook 日志列表
 - `GET /feishu/logs/{log_id}` - 获取特定飞书 Webhook 日志
 
 **其他端点**
