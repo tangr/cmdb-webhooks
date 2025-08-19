@@ -1,6 +1,9 @@
 from pydantic_settings import BaseSettings
 from sqlmodel import create_engine, Session
-from typing import Generator, Dict, List, Any
+from typing import Generator, Dict, List, Any, Optional
+import redis.asyncio as redis
+import json
+from datetime import datetime, timedelta
 
 
 class Settings(BaseSettings):
@@ -19,6 +22,16 @@ class Settings(BaseSettings):
     oidc_client_secret: str = "d5363c0d0bf650873176"
     oidc_redirect_uri: str = "http://localhost:8000/auth/oidc/callback"
     oidc_scope: str = "openid profile email"
+
+    # Redis Configuration for Session Storage
+    redis_host: str = "127.0.0.1"
+    redis_port: int = 6379
+    redis_db: int = 13
+    redis_password: str = ""
+    redis_max_connections: int = 10
+    redis_decode_responses: bool = True
+    session_redis_key_prefix: str = "session:"
+    session_expire_seconds: int = 86400  # 24 hours
 
     # Logging configuration
     enable_database_logging: bool = True

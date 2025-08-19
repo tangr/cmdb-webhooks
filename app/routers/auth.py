@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Response, Request, Cookie
+from typing import Optional
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -14,9 +15,9 @@ from app.dependencies import (
     get_oidc_discovery,
     verify_oidc_token,
     User,
-    ACTIVE_SESSIONS,
     ACCESS_TOKEN_EXPIRE_MINUTES,
 )
+from app.services.redis_session import redis_session_manager
 from config.config import settings
 import httpx
 import secrets
@@ -96,18 +97,23 @@ async def login_session(
             detail="Incorrect username or password",
         )
 
-    # Create session
+    # Create session in Redis
     session_token = create_session_token()
-    session_expires = datetime.utcnow() + timedelta(hours=24)
-
-    ACTIVE_SESSIONS[session_token] = {
-        "user": {
-            "user_id": user["user_id"],
-            "username": user["username"],
-            "roles": user["roles"],
-        },
-        "expires": session_expires,
+    user_data = {
+        "user_id": user["user_id"],
+        "username": user["username"],
+        "roles": user["roles"],
     }
+
+    # Store session in Redis with 24 hour expiration
+    success = await redis_session_manager.set_session(
+        session_token, user_data, expire_seconds=86400
+    )
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to create session",
+        )
 
     # Set httpOnly cookie
     response.set_cookie(
@@ -121,21 +127,23 @@ async def login_session(
 
     return {
         "message": "Login successful",
-        "user": {
-            "user_id": user["user_id"],
-            "username": user["username"],
-            "roles": user["roles"],
-        },
+        "user": user_data,
     }
 
 
 @router.post("/logout")
 async def logout_session(
-    response: Response, session_user: User = Depends(get_current_user_session)
+    response: Response,
+    session: Optional[str] = Cookie(None),
+    session_user: User = Depends(get_current_user_session),
 ):
     """Web logout endpoint that clears session"""
     if not session_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
+
+    # Delete session from Redis
+    if session:
+        await redis_session_manager.delete_session(session)
 
     # Clear session cookie
     response.delete_cookie(key="session")
@@ -189,14 +197,18 @@ async def read_users_me_session(current_user: User = Depends(get_current_user_se
 @router.get("/sessions")
 async def list_active_sessions():
     """List all active sessions (admin only - for demo purposes)"""
+    sessions = await redis_session_manager.get_all_sessions()
     return {
-        "active_sessions": len(ACTIVE_SESSIONS),
+        "active_sessions": len(sessions),
         "sessions": [
             {
+                "token": session["token"],
                 "user": session["user"]["username"],
-                "expires": session["expires"].isoformat(),
+                "created_at": session["created_at"],
+                "expires_at": session["expires_at"],
+                "ttl_seconds": session["ttl_seconds"],
             }
-            for session in ACTIVE_SESSIONS.values()
+            for session in sessions
         ],
     }
 
@@ -204,8 +216,7 @@ async def list_active_sessions():
 @router.delete("/sessions")
 async def clear_all_sessions():
     """Clear all active sessions (admin only - for demo purposes)"""
-    count = len(ACTIVE_SESSIONS)
-    ACTIVE_SESSIONS.clear()
+    count = await redis_session_manager.clear_all_sessions()
     return {"message": f"Cleared {count} active sessions"}
 
 
@@ -272,13 +283,12 @@ async def oidc_login(request: Request):
 
         auth_url = f"{authorization_endpoint}?{urlencode(auth_params)}"
 
-        # Store state in session for validation (simple in-memory storage for demo)
-        # In production, use proper session storage
+        # Store state in Redis for validation
         session_token = secrets.token_urlsafe(32)
-        ACTIVE_SESSIONS[f"oidc_state_{session_token}"] = {
-            "state": state,
-            "expires": datetime.utcnow() + timedelta(minutes=10),
-        }
+        state_data = {"state": state}
+        await redis_session_manager.set_session(
+            f"oidc_state_{session_token}", state_data, expire_seconds=600
+        )  # 10 minutes
 
         response = RedirectResponse(url=auth_url, status_code=302)
         response.set_cookie(
@@ -329,10 +339,10 @@ async def oidc_callback(
     # Validate state parameter
     if oidc_session:
         session_key = f"oidc_state_{oidc_session}"
-        session_data = ACTIVE_SESSIONS.get(session_key)
+        session_data = await redis_session_manager.get_session(session_key)
         if session_data and session_data.get("state") == state:
             # Clean up temporary session
-            del ACTIVE_SESSIONS[session_key]
+            await redis_session_manager.delete_session(session_key)
         else:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -391,23 +401,26 @@ async def oidc_callback(
 
         print(f"OIDC user_info: {user_info}")  # Debug logging
 
-        # Create session for the user
+        # Create session for the user in Redis
         session_token = create_session_token()
-        session_expires = datetime.utcnow() + timedelta(hours=24)
-
-        ACTIVE_SESSIONS[session_token] = {
-            "user": {
-                "user_id": user_info["user_id"],
-                "username": user_info["username"],
-                "roles": user_info["roles"],
-            },
-            "expires": session_expires,
+        session_user_data = {
+            "user_id": user_info["user_id"],
+            "username": user_info["username"],
+            "roles": user_info["roles"],
             "auth_method": "oidc",
             "oidc_access_token": access_token,
         }
 
+        success = await redis_session_manager.set_session(
+            session_token, session_user_data, expire_seconds=86400
+        )  # 24 hours
+        if not success:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to create session",
+            )
+
         print(f"Created session: {session_token}")  # Debug logging
-        print(f"Active sessions count: {len(ACTIVE_SESSIONS)}")  # Debug logging
 
         # Create redirect response
         response = RedirectResponse(url="/auth/dashboard", status_code=302)

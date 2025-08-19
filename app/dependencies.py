@@ -110,32 +110,25 @@ async def get_current_user_required(token: str = Depends(oauth2_scheme)) -> User
 
 
 # ==================== 3. Session Cookie Authentication (Web Users) ====================
-ACTIVE_SESSIONS = {}  # In production, use Redis or database
+from app.services.redis_session import redis_session_manager
 
 
 def create_session_token() -> str:
     """Create secure session token"""
-    return secrets.token_urlsafe(32)
+    return redis_session_manager.create_session_token()
 
 
-def verify_session(session_token: str) -> Optional[dict]:
-    """Verify session token"""
+async def verify_session(session_token: str) -> Optional[dict]:
+    """Verify session token using Redis"""
     print(f"Verifying session token: {session_token}")  # Debug logging
-    print(f"Active sessions: {list(ACTIVE_SESSIONS.keys())}")  # Debug logging
 
-    session_data = ACTIVE_SESSIONS.get(session_token)
-    if not session_data:
-        print("Session not found in active sessions")  # Debug logging
-        return None
-
-    # Check expiration
-    if datetime.utcnow() > session_data["expires"]:
-        print("Session expired")  # Debug logging
-        del ACTIVE_SESSIONS[session_token]
+    user_data = await redis_session_manager.get_session(session_token)
+    if not user_data:
+        print("Session not found in Redis")  # Debug logging
         return None
 
     print("Session verified successfully")  # Debug logging
-    return session_data["user"]
+    return user_data
 
 
 async def get_current_user_session(
@@ -147,7 +140,7 @@ async def get_current_user_session(
         print("No session cookie found")  # Debug logging
         return None
 
-    user_data = verify_session(session)
+    user_data = await verify_session(session)
     print(f"Session data: {user_data}")  # Debug logging
     if not user_data:
         print("Session verification failed")  # Debug logging
