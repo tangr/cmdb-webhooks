@@ -1,8 +1,7 @@
 from contextlib import asynccontextmanager
 from fastapi import Depends, FastAPI
 
-from .dependencies import get_query_token
-from .routers import items, users, jms_reqlog, auth, feishu
+from .routers import jms_reqlog, auth, feishu
 from config.config import settings
 from .services.webhook_mapping import init_webhook_mapping
 from fastapi.staticfiles import StaticFiles
@@ -20,13 +19,10 @@ async def lifespan(app: FastAPI):
     # Shutdown (if needed)
 
 
-# app = FastAPI(dependencies=[Depends(get_query_token)])
 app = FastAPI(lifespan=lifespan)
 
 
 app.include_router(auth.router, prefix="/auth", tags=["authentication"])
-app.include_router(users.router)
-app.include_router(items.router)
 app.include_router(jms_reqlog.router, prefix="/jms_reqlog", tags=["jms_reqlog"])
 app.include_router(feishu.router, prefix="/feishu", tags=["feishu"])
 app.mount("/static", StaticFiles(directory="static"), name="static")

@@ -33,14 +33,6 @@ class User:
         self.roles = roles or []
 
 
-# ==================== 1. X-Token Authentication (Internal Services) ====================
-async def get_token_header(x_token: str = Header()):
-    """Internal service authentication via X-Token header"""
-    if x_token != "fake-super-secret-token":
-        raise HTTPException(status_code=400, detail="X-Token header invalid")
-    return {"auth_type": "x_token", "service": "internal"}
-
-
 # ==================== 2. OAuth2 JWT Authentication (API Users) ====================
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     """Create JWT access token"""
@@ -367,9 +359,3 @@ async def verify_oidc_token(token: str) -> Optional[dict]:
         return None
     except Exception as e:
         return None
-
-
-# Legacy function (kept for compatibility)
-async def get_query_token(token: str):
-    if token != "jessica":
-        raise HTTPException(status_code=400, detail="No Jessica token provided")
