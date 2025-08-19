@@ -68,7 +68,7 @@ def read_all_logs(
         context={
             "jobs": logs,
             "current_user": current_user,
-            "page_name": "Logs",
+            "page_name": "cmdb Logs",
             "url": request.url_for("read_all_logs"),
             "current_page": page,
             "has_next": has_next,
