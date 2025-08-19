@@ -38,6 +38,22 @@ class Settings(BaseSettings):
     enable_database_logging: bool = True
     enable_console_logging: bool = False
 
+    # Role mapping configuration for OIDC users
+    # Map usernames to roles - users not in any list get default "user" role
+    oidc_role_mapping: Dict[str, List[str]] = {
+        "admin": [
+            # Add admin usernames here
+            "admin@example.com",
+            "administrator",
+            "root",
+            "tangshoubin",
+        ],
+        "user": [
+            # Add regular user usernames here (optional, as "user" is default)
+            # "user@example.com",
+        ],
+    }
+
     # Mock user database configuration
     mock_users: Dict[str, Dict[str, Any]] = {
         "testuser": {

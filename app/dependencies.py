@@ -331,10 +331,28 @@ async def verify_oidc_token(token: str) -> Optional[dict]:
             "roles": ["user"],  # Default role, can be customized based on claims
         }
 
-        # Check for admin role based on groups or other claims
-        groups = claims.get("groups", [])
-        if isinstance(groups, list) and "admin" in groups:
-            user_info["roles"].append("admin")
+        # Role assignment logic:
+        # 1. First try username-based role mapping from configuration
+        # 2. Fallback to groups-based role assignment for backward compatibility
+
+        roles_assigned = set(["user"])  # Always include user role
+
+        # Check username-based role mapping
+        for role, usernames in settings.oidc_role_mapping.items():
+            if username in usernames:
+                roles_assigned.add(role)
+                print(
+                    f"Assigned role '{role}' to user '{username}' via username mapping"
+                )
+
+        # Fallback: Check for admin role based on groups (backward compatibility)
+        if "admin" not in roles_assigned:
+            groups = claims.get("groups", [])
+            if isinstance(groups, list) and "admin" in groups:
+                roles_assigned.add("admin")
+                print(f"Assigned role 'admin' to user '{username}' via groups")
+
+        user_info["roles"] = list(roles_assigned)
 
         return user_info
 
