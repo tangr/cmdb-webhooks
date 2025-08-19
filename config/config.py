@@ -26,9 +26,17 @@ class Settings(BaseSettings):
     feishu_webhook_secret: Optional[str] = (
         None  # Set this to enable Feishu webhook signature verification
     )
-    webhook_ip_whitelist: List[str] = (
-        []
-    )  # List of allowed IP addresses for webhook requests
+    webhook_ip_whitelist: List[str] = [
+        # IP Whitelist for webhook requests (empty list = deny all)
+        # Examples:
+        # "192.168.1.100",        # Single IP address
+        # "10.0.0.0/8",          # CIDR block for entire 10.x.x.x network
+        # "172.16.0.0/12",       # CIDR block for 172.16.x.x - 172.31.x.x
+        # "127.0.0.1",           # Localhost
+        # "::1",                 # IPv6 localhost
+        # "0.0.0.0/0",           # Allow all IPv4 (equivalent to disabling IP restriction)
+        # "::/0",                # Allow all IPv6 (equivalent to disabling IP restriction)
+    ]
 
     # OIDC Configuration
     oidc_issuer_url: str = "https://sso-test.exodushk.com"

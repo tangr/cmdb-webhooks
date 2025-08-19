@@ -98,9 +98,8 @@ async def process_webhook_request(
     # Store request body for verification
     request._body = await request.body()
 
-    # Verify IP whitelist if configured
-    if settings.webhook_ip_whitelist:
-        verify_webhook_ip_whitelist(request, settings.webhook_ip_whitelist)
+    # Verify IP whitelist (empty list = deny all)
+    verify_webhook_ip_whitelist(request, settings.webhook_ip_whitelist)
 
     # Verify Feishu webhook signature if configured
     if settings.feishu_webhook_secret:

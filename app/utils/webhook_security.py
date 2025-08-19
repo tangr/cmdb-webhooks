@@ -1,8 +1,9 @@
 import hashlib
 import hmac
 import time
+import ipaddress
 from fastapi import HTTPException, Header, Request
-from typing import Optional
+from typing import Optional, List, Union
 from config.config import settings
 from app.utils.logger import get_logger
 
@@ -134,34 +135,63 @@ def verify_feishu_webhook(
         raise HTTPException(status_code=403, detail="Invalid signature")
 
 
-def verify_webhook_ip_whitelist(request: Request, allowed_ips: list = None) -> bool:
+def verify_webhook_ip_whitelist(
+    request: Request, allowed_ips: List[str] = None
+) -> bool:
     """
-    Verify webhook request comes from allowed IP addresses
+    Verify webhook request comes from allowed IP addresses or CIDR blocks
 
     Args:
         request: FastAPI request object
-        allowed_ips: List of allowed IP addresses/CIDR blocks
+        allowed_ips: List of allowed IP addresses or CIDR blocks (e.g., ["192.168.1.1", "10.0.0.0/8"])
 
     Returns:
         bool: True if IP is allowed
 
     Raises:
-        HTTPException: If IP is not allowed
+        HTTPException: If IP is not allowed or invalid IP format
     """
     if not allowed_ips:
-        return True  # No IP restriction
+        logger.warning("Webhook IP whitelist is empty - rejecting all requests")
+        raise HTTPException(
+            status_code=403, detail="IP whitelist is empty - access denied"
+        )
 
-    # Get client IP
+    # Get client IP from various headers (handle reverse proxy scenarios)
     client_ip = request.client.host
     if "x-forwarded-for" in request.headers:
         client_ip = request.headers["x-forwarded-for"].split(",")[0].strip()
     elif "x-real-ip" in request.headers:
         client_ip = request.headers["x-real-ip"]
 
-    # Simple IP check (could be enhanced with CIDR support)
-    if client_ip in allowed_ips:
-        logger.debug(f"Webhook IP {client_ip} allowed")
-        return True
-    else:
-        logger.warning(f"Webhook IP {client_ip} not in whitelist")
-        raise HTTPException(status_code=403, detail="IP address not allowed")
+    if not client_ip:
+        logger.warning("Could not determine client IP address")
+        raise HTTPException(status_code=403, detail="Unable to verify client IP")
+
+    try:
+        client_ip_obj = ipaddress.ip_address(client_ip)
+    except ValueError:
+        logger.warning(f"Invalid client IP address format: {client_ip}")
+        raise HTTPException(status_code=403, detail="Invalid client IP address")
+
+    # Check against each allowed IP/CIDR in the whitelist
+    for allowed_ip in allowed_ips:
+        try:
+            # Try to parse as network (CIDR) first
+            if "/" in allowed_ip:
+                network = ipaddress.ip_network(allowed_ip, strict=False)
+                if client_ip_obj in network:
+                    logger.debug(f"Webhook IP {client_ip} allowed by CIDR {allowed_ip}")
+                    return True
+            else:
+                # Parse as individual IP address
+                allowed_ip_obj = ipaddress.ip_address(allowed_ip)
+                if client_ip_obj == allowed_ip_obj:
+                    logger.debug(f"Webhook IP {client_ip} allowed by exact match")
+                    return True
+        except ValueError:
+            logger.warning(f"Invalid IP/CIDR format in whitelist: {allowed_ip}")
+            continue
+
+    logger.warning(f"Webhook IP {client_ip} not in whitelist: {allowed_ips}")
+    raise HTTPException(status_code=403, detail="IP address not allowed")

@@ -91,9 +91,8 @@ async def create_log(
     # Store request body for signature verification
     request._body = await request.body()
 
-    # Verify IP whitelist if configured
-    if settings.webhook_ip_whitelist:
-        verify_webhook_ip_whitelist(request, settings.webhook_ip_whitelist)
+    # Verify IP whitelist (empty list = deny all)
+    verify_webhook_ip_whitelist(request, settings.webhook_ip_whitelist)
 
     # Verify webhook authentication if security is configured
     if settings.cmdb_webhook_api_key or settings.cmdb_webhook_secret:
