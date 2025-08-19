@@ -16,9 +16,10 @@ class Settings(BaseSettings):
 
     feishu_webhook_base_url: str = "https://open.feishu.cn/open-apis/bot/v2/hook/"
 
+    # X-API-Key
     # Webhook Security Configuration - API Key based authentication (supports multiple keys for rotation)
     cmdb_webhook_api_keys: str = (
-        ""  # Comma-separated API keys for CMDB webhook verification (empty = no verification)
+        "QNbl7W9Ez7hVkR44ja93"  # Comma-separated API keys for CMDB webhook verification (empty = no verification)
     )
     feishu_webhook_api_keys: str = (
         ""  # Comma-separated API keys for Feishu webhook verification (empty = no verification)
