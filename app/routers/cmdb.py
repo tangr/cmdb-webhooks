@@ -102,7 +102,7 @@ async def create_log(
 
 
 # ==================== User-Level Endpoints (Authentication Required) ====================
-@router.get("/list", response_model=CmdbReqLogListResponse)
+@router.get("/logs", response_model=CmdbReqLogListResponse)
 def read_logs_with_pagination(
     session: SessionDep,
     current_user: User = Depends(get_current_user_any_required),
