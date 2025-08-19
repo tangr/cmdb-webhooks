@@ -110,7 +110,7 @@ def read_logs_with_pagination(
     session: SessionDep,
     current_user: User = Depends(get_current_user_any_required),
     skip: int = 0,
-    limit: int = 100,
+    limit: int = 10,
 ):
     """Get paginated log records (Requires authentication)"""
     # Authenticated users can access with reasonable limits
