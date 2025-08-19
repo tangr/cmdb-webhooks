@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, Header
 from fastapi.responses import HTMLResponse
 from sqlmodel import select, func, desc
-from app.models.jms_reqlog import (
+from app.models.cmdb_reqlog import (
     CmdbReqLog,
     CmdbReqLogCreate,
     CmdbReqLogUpdate,
@@ -18,7 +18,7 @@ from typing import List, Optional
 import time
 from fastapi.templating import Jinja2Templates
 from app.utils.template_filters import time_to_str, time_diff_now
-from app.utils.webhook_security import verify_jms_webhook, verify_webhook_ip_whitelist
+from app.utils.webhook_security import verify_cmdb_webhook, verify_webhook_ip_whitelist
 from config.config import settings
 
 templates = Jinja2Templates(directory="templates")
@@ -85,7 +85,7 @@ async def create_log(
     request: Request,
     session: SessionDep,
     x_api_key: Optional[str] = Header(None, alias="X-API-Key"),
-    x_jms_signature: Optional[str] = Header(None, alias="X-JMS-Signature"),
+    x_cmdb_signature: Optional[str] = Header(None, alias="X-CMDB-Signature"),
 ):
     """Create new log record (Webhook endpoint with security verification)"""
     # Store request body for signature verification
@@ -96,8 +96,8 @@ async def create_log(
         verify_webhook_ip_whitelist(request, settings.webhook_ip_whitelist)
 
     # Verify webhook authentication if security is configured
-    if settings.jms_webhook_api_key or settings.jms_webhook_secret:
-        verify_jms_webhook(request, x_api_key, x_jms_signature)
+    if settings.cmdb_webhook_api_key or settings.cmdb_webhook_secret:
+        verify_cmdb_webhook(request, x_api_key, x_cmdb_signature)
 
     db_log = CmdbReqLog(**log.model_dump())
     session.add(db_log)
