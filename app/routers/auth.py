@@ -15,6 +15,7 @@ from app.dependencies import (
     ACTIVE_SESSIONS,
     ACCESS_TOKEN_EXPIRE_MINUTES,
 )
+from config.config import settings
 
 templates = Jinja2Templates(directory="templates")
 
@@ -44,26 +45,9 @@ class UserResponse(BaseModel):
     roles: list[str]
 
 
-# Mock user database (replace with real database)
-MOCK_USERS = {
-    "testuser": {
-        "user_id": "1",
-        "username": "testuser",
-        "password": "testpass",  # In production, use hashed passwords
-        "roles": ["user"],
-    },
-    "admin": {
-        "user_id": "2",
-        "username": "admin",
-        "password": "admin123",
-        "roles": ["admin", "user"],
-    },
-}
-
-
 def authenticate_user(username: str, password: str) -> dict:
     """Authenticate user credentials (mock implementation)"""
-    user = MOCK_USERS.get(username)
+    user = settings.mock_users.get(username)
     if not user or user["password"] != password:
         return None
     return user

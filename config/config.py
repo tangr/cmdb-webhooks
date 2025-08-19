@@ -1,6 +1,6 @@
 from pydantic_settings import BaseSettings
 from sqlmodel import create_engine, Session
-from typing import Generator
+from typing import Generator, Dict, List, Any
 
 
 class Settings(BaseSettings):
@@ -16,6 +16,22 @@ class Settings(BaseSettings):
     # Logging configuration
     enable_database_logging: bool = True
     enable_console_logging: bool = False
+
+    # Mock user database configuration
+    mock_users: Dict[str, Dict[str, Any]] = {
+        "testuser": {
+            "user_id": "1",
+            "username": "testuser",
+            "password": "testpass",  # In production, use hashed passwords
+            "roles": ["user"],
+        },
+        "admin": {
+            "user_id": "2",
+            "username": "admin",
+            "password": "admin123",
+            "roles": ["admin", "user"],
+        },
+    }
 
     class Config:
         env_file = ".env"
