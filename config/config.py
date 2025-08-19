@@ -16,6 +16,20 @@ class Settings(BaseSettings):
 
     feishu_webhook_base_url: str = "https://open.feishu.cn/open-apis/bot/v2/hook/"
 
+    # Webhook Security Configuration
+    jms_webhook_api_key: Optional[str] = (
+        None  # Set this to enable JMS webhook API key verification
+    )
+    jms_webhook_secret: Optional[str] = (
+        None  # Set this to enable JMS webhook signature verification
+    )
+    feishu_webhook_secret: Optional[str] = (
+        None  # Set this to enable Feishu webhook signature verification
+    )
+    webhook_ip_whitelist: List[str] = (
+        []
+    )  # List of allowed IP addresses for webhook requests
+
     # OIDC Configuration
     oidc_issuer_url: str = "https://sso-test.exodushk.com"
     oidc_client_id: str = "mytest-oidc"

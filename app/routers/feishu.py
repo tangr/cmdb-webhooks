@@ -1,11 +1,15 @@
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Header
 from fastapi.responses import JSONResponse
 from sqlmodel import select, func
 from app.models.feishu_reqlog import FeishuReqLog, FeishuReqLogCreate
-from app.dependencies import SessionDep
+from app.dependencies import SessionDep, get_current_user_any_required, User
 from config.config import settings
 from app.services.webhook_mapping import get_webhook_id_by_name
-from typing import Dict, Any
+from app.utils.webhook_security import (
+    verify_feishu_webhook,
+    verify_webhook_ip_whitelist,
+)
+from typing import Dict, Any, Optional
 import httpx
 import json
 import time
@@ -92,8 +96,22 @@ async def _process_webhook_request(
     webhook_id: str,
     request: Request,
     session: SessionDep,
+    timestamp: Optional[str] = None,
+    nonce: Optional[str] = None,
+    signature: Optional[str] = None,
 ):
     """Internal function to process webhook request"""
+
+    # Store request body for verification
+    request._body = await request.body()
+
+    # Verify IP whitelist if configured
+    if settings.webhook_ip_whitelist:
+        verify_webhook_ip_whitelist(request, settings.webhook_ip_whitelist)
+
+    # Verify Feishu webhook signature if configured
+    if settings.feishu_webhook_secret:
+        verify_feishu_webhook(request, timestamp, nonce, signature)
 
     # Get client IP
     client_ip = request.client.host
@@ -217,9 +235,21 @@ async def feishu_webhook_proxy(
     webhook_id: str,
     request: Request,
     session: SessionDep,
+    x_lark_request_timestamp: Optional[str] = Header(
+        None, alias="X-Lark-Request-Timestamp"
+    ),
+    x_lark_request_nonce: Optional[str] = Header(None, alias="X-Lark-Request-Nonce"),
+    x_lark_signature: Optional[str] = Header(None, alias="X-Lark-Signature"),
 ):
-    """Feishu webhook proxy endpoint using webhook ID"""
-    return await _process_webhook_request(webhook_id, request, session)
+    """Feishu webhook proxy endpoint using webhook ID (with security verification)"""
+    return await _process_webhook_request(
+        webhook_id,
+        request,
+        session,
+        x_lark_request_timestamp,
+        x_lark_request_nonce,
+        x_lark_signature,
+    )
 
 
 @router.post("/webhook/alias/{webhook_name}")
@@ -227,8 +257,13 @@ async def feishu_webhook_alias(
     webhook_name: str,
     request: Request,
     session: SessionDep,
+    x_lark_request_timestamp: Optional[str] = Header(
+        None, alias="X-Lark-Request-Timestamp"
+    ),
+    x_lark_request_nonce: Optional[str] = Header(None, alias="X-Lark-Request-Nonce"),
+    x_lark_signature: Optional[str] = Header(None, alias="X-Lark-Signature"),
 ):
-    """Feishu webhook proxy endpoint using webhook name alias"""
+    """Feishu webhook proxy endpoint using webhook name alias (with security verification)"""
     # Get webhook ID from name mapping
     webhook_id = get_webhook_id_by_name(webhook_name)
     if not webhook_id:
@@ -237,14 +272,25 @@ async def feishu_webhook_alias(
             detail=f"Webhook name '{webhook_name}' not found in configuration",
         )
 
-    return await _process_webhook_request(webhook_id, request, session)
+    return await _process_webhook_request(
+        webhook_id,
+        request,
+        session,
+        x_lark_request_timestamp,
+        x_lark_request_nonce,
+        x_lark_signature,
+    )
 
 
 @router.get("/logs")
 def get_feishu_logs(
-    request: Request, session: SessionDep, skip: int = 0, limit: int = 10
+    request: Request,
+    session: SessionDep,
+    current_user: User = Depends(get_current_user_any_required),
+    skip: int = 0,
+    limit: int = 10,
 ):
-    """Get Feishu webhook logs"""
+    """Get Feishu webhook logs (Requires authentication)"""
     # Get logs with pagination (fetch limit+1 to check if there are more records)
     statement = (
         select(FeishuReqLog)
@@ -304,8 +350,12 @@ def get_feishu_logs(
 
 
 @router.get("/logs/{log_id}")
-def get_feishu_log(log_id: int, session: SessionDep):
-    """Get single Feishu webhook log by ID"""
+def get_feishu_log(
+    log_id: int,
+    session: SessionDep,
+    current_user: User = Depends(get_current_user_any_required),
+):
+    """Get single Feishu webhook log by ID (Requires authentication)"""
     log = session.get(FeishuReqLog, log_id)
     if not log:
         raise HTTPException(status_code=404, detail="Log not found")

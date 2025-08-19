@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Header
 from fastapi.responses import HTMLResponse
 from sqlmodel import select, func, desc
 from app.models.jms_reqlog import (
@@ -18,6 +18,8 @@ from typing import List, Optional
 import time
 from fastapi.templating import Jinja2Templates
 from app.utils.template_filters import time_to_str, time_diff_now
+from app.utils.webhook_security import verify_jms_webhook, verify_webhook_ip_whitelist
+from config.config import settings
 
 templates = Jinja2Templates(directory="templates")
 
@@ -33,12 +35,12 @@ router = APIRouter()
 def read_all_logs(
     session: SessionDep,
     request: Request,
-    current_user: Optional[User] = Depends(get_current_user_flexible),
+    current_user: User = Depends(get_current_user_any_required),
     page: int = 1,
     limit: int = 10,
     show_all: bool = False,
 ):
-    """Get paginated log records (Public endpoint for webhook receiving)"""
+    """Get paginated log records (Requires authentication)"""
     # Calculate skip value based on page number
     skip = (page - 1) * limit
 
@@ -78,8 +80,25 @@ def read_all_logs(
 
 
 @router.post("/", response_model=JMSReqLog)
-def create_log(log: JMSReqLogCreate, session: SessionDep):
-    """Create new log record (Public endpoint for webhook receiving)"""
+async def create_log(
+    log: JMSReqLogCreate,
+    request: Request,
+    session: SessionDep,
+    x_api_key: Optional[str] = Header(None, alias="X-API-Key"),
+    x_jms_signature: Optional[str] = Header(None, alias="X-JMS-Signature"),
+):
+    """Create new log record (Webhook endpoint with security verification)"""
+    # Store request body for signature verification
+    request._body = await request.body()
+
+    # Verify IP whitelist if configured
+    if settings.webhook_ip_whitelist:
+        verify_webhook_ip_whitelist(request, settings.webhook_ip_whitelist)
+
+    # Verify webhook authentication if security is configured
+    if settings.jms_webhook_api_key or settings.jms_webhook_secret:
+        verify_jms_webhook(request, x_api_key, x_jms_signature)
+
     db_log = JMSReqLog(**log.model_dump())
     session.add(db_log)
     session.commit()
@@ -87,22 +106,17 @@ def create_log(log: JMSReqLogCreate, session: SessionDep):
     return db_log
 
 
-# ==================== User-Level Endpoints (Flexible Authentication) ====================
+# ==================== User-Level Endpoints (Authentication Required) ====================
 @router.get("/list", response_model=JMSReqLogListResponse)
 def read_logs_with_pagination(
     session: SessionDep,
-    current_user: Optional[User] = Depends(get_current_user_flexible),
+    current_user: User = Depends(get_current_user_any_required),
     skip: int = 0,
     limit: int = 100,
 ):
-    """Get paginated log records (Supports both JWT and Session auth)"""
-    # Optional authentication - provides more features if authenticated
-    if current_user:
-        # Authenticated users can see more details or have higher limits
-        limit = min(limit, 1000)  # Higher limit for authenticated users
-    else:
-        # Anonymous users have restricted access
-        limit = min(limit, 10)  # Lower limit for anonymous users
+    """Get paginated log records (Requires authentication)"""
+    # Authenticated users can access with reasonable limits
+    limit = min(limit, 1000)  # Limit for authenticated users
 
     statement = (
         select(JMSReqLog).order_by(desc(JMSReqLog.updated_at)).offset(skip).limit(limit)
@@ -111,7 +125,7 @@ def read_logs_with_pagination(
 
     return {
         "logs": logs,
-        "user": current_user.username if current_user else "anonymous",
+        "user": current_user.username,
         "limit": limit,
     }
 
