@@ -1,0 +1,47 @@
+# Development override for docker-compose
+# This file is automatically loaded by docker-compose and provides development-specific configuration
+
+services:
+  webhook-proxy:
+    # Override the command to use reload mode for development
+    command:
+      [
+        "uvicorn",
+        "app.main:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8000",
+        "--reload",
+      ]
+
+    # Mount source code for live reload
+    volumes:
+      - ./app:/app/app:ro
+      - ./config:/app/config:ro
+      - ./templates:/app/templates:ro
+      - ./static:/app/static:ro
+      - logs:/var/log/webhook-proxy
+
+    # Additional environment variables for development
+    environment:
+      - DATABASE_URL=mysql+pymysql://root:rootpass@mysql:3306/webhook_proxy
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_DB=13
+      - LOG_LEVEL=DEBUG
+      - DATABASE_ECHO=true
+      - ENABLE_CONSOLE_LOGGING=true
+      - LOG_TO_FILE=false
+
+  mysql:
+    # Expose MySQL port for external connections during development
+    environment:
+      - MYSQL_ROOT_PASSWORD=rootpass
+      - MYSQL_DATABASE=webhook_proxy
+      - MYSQL_USER=appuser
+      - MYSQL_PASSWORD=apppass
+
+  redis:
+    # Expose Redis port for external connections during development
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
