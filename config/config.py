@@ -27,6 +27,7 @@ class Settings(BaseSettings):
         None  # Set this to enable Feishu webhook signature verification
     )
     webhook_ip_whitelist: List[str] = [
+        "0.0.0.0/0",
         # IP Whitelist for webhook requests (empty list = deny all)
         # Examples:
         # "192.168.1.100",        # Single IP address
