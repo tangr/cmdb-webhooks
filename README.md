@@ -3,7 +3,7 @@ curl -X POST \
   -H "Content-Type: application/json" \
   "http://127.0.0.1:8000/jms_reqlog/" \
   -d '{
-    "jmshost": "127.0.0.1:8000",
+    "host": "127.0.0.1:8000",
     "method": "POST",
     "path": "/api/test",
     "query": "param1=value1&param2=value2",

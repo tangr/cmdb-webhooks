@@ -5,7 +5,7 @@ import time
 
 
 class JMSReqLogBase(SQLModel):
-    jmshost: str
+    host: str
     method: str
     path: str
     query: str
@@ -30,7 +30,7 @@ class JMSReqLogCreate(JMSReqLogBase):
 
 
 class JMSReqLogUpdate(SQLModel):
-    jmshost: Optional[str] = None
+    host: Optional[str] = None
     method: Optional[str] = None
     path: Optional[str] = None
     query: Optional[str] = None
