@@ -91,9 +91,8 @@ async def create_log(
     # Verify IP whitelist (empty list = deny all)
     verify_webhook_ip_whitelist(request, settings.webhook_ip_whitelist)
 
-    # Verify webhook authentication if security is configured
-    if settings.cmdb_webhook_api_key:
-        verify_cmdb_webhook(request, x_api_key)
+    # Verify webhook authentication (skip if no API keys configured)
+    verify_cmdb_webhook(request, x_api_key)
 
     db_log = CmdbReqLog(**log.model_dump())
     session.add(db_log)

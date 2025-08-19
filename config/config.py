@@ -16,12 +16,12 @@ class Settings(BaseSettings):
 
     feishu_webhook_base_url: str = "https://open.feishu.cn/open-apis/bot/v2/hook/"
 
-    # Webhook Security Configuration - API Key based authentication
-    cmdb_webhook_api_key: Optional[str] = (
-        None  # Set this to enable CMDB webhook API key verification
+    # Webhook Security Configuration - API Key based authentication (supports multiple keys for rotation)
+    cmdb_webhook_api_keys: str = (
+        ""  # Comma-separated API keys for CMDB webhook verification (empty = no verification)
     )
-    feishu_webhook_api_key: Optional[str] = (
-        None  # Set this to enable Feishu webhook API key verification
+    feishu_webhook_api_keys: str = (
+        ""  # Comma-separated API keys for Feishu webhook verification (empty = no verification)
     )
     webhook_ip_whitelist: List[str] = [
         "0.0.0.0/0",

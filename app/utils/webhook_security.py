@@ -10,12 +10,19 @@ from app.utils.logger import get_logger
 logger = get_logger(__name__)
 
 
+def get_api_keys_list(keys_str: str) -> List[str]:
+    """Parse comma-separated API keys string into a list"""
+    if not keys_str:
+        return []
+    return [key.strip() for key in keys_str.split(",") if key.strip()]
+
+
 def verify_cmdb_webhook(
     request: Request,
     api_key: Optional[str] = None,
 ) -> bool:
     """
-    Verify CMDB webhook request using API key verification
+    Verify CMDB webhook request using API key verification (supports multiple keys)
 
     Args:
         request: FastAPI request object
@@ -27,22 +34,29 @@ def verify_cmdb_webhook(
     Raises:
         HTTPException: If verification fails
     """
-    # API Key verification
-    if api_key:
-        expected_api_key = getattr(settings, "cmdb_webhook_api_key", None)
-        if expected_api_key and api_key == expected_api_key:
-            logger.debug("CMDB webhook verified via API key")
-            return True
-        else:
-            logger.warning(f"Invalid CMDB API key provided: {api_key[:8]}...")
-            raise HTTPException(status_code=403, detail="Invalid API key")
+    # Get configured API keys
+    configured_keys = get_api_keys_list(settings.cmdb_webhook_api_keys)
 
-    # If no API key provided, reject
-    logger.warning("CMDB webhook request without API key")
-    raise HTTPException(
-        status_code=403,
-        detail="Webhook verification required. Provide X-API-Key header",
-    )
+    # If no keys configured, skip verification
+    if not configured_keys:
+        logger.debug("CMDB webhook verification disabled (no API keys configured)")
+        return True
+
+    # If no API key provided in request, reject
+    if not api_key:
+        logger.warning("CMDB webhook request without API key")
+        raise HTTPException(
+            status_code=403,
+            detail="Webhook verification required. Provide X-API-Key header",
+        )
+
+    # Check if provided key matches any configured key
+    if api_key in configured_keys:
+        logger.debug("CMDB webhook verified via API key")
+        return True
+    else:
+        logger.warning(f"Invalid CMDB API key provided: {api_key[:8]}...")
+        raise HTTPException(status_code=403, detail="Invalid API key")
 
 
 def verify_feishu_webhook(
@@ -50,7 +64,7 @@ def verify_feishu_webhook(
     api_key: Optional[str] = None,
 ) -> bool:
     """
-    Verify Feishu webhook request using API key verification
+    Verify Feishu webhook request using API key verification (supports multiple keys)
 
     Args:
         request: FastAPI request object
@@ -62,22 +76,29 @@ def verify_feishu_webhook(
     Raises:
         HTTPException: If verification fails
     """
-    # API Key verification
-    if api_key:
-        expected_api_key = getattr(settings, "feishu_webhook_api_key", None)
-        if expected_api_key and api_key == expected_api_key:
-            logger.debug("Feishu webhook verified via API key")
-            return True
-        else:
-            logger.warning(f"Invalid Feishu API key provided: {api_key[:8]}...")
-            raise HTTPException(status_code=403, detail="Invalid API key")
+    # Get configured API keys
+    configured_keys = get_api_keys_list(settings.feishu_webhook_api_keys)
 
-    # If no API key provided, reject
-    logger.warning("Feishu webhook request without API key")
-    raise HTTPException(
-        status_code=403,
-        detail="Webhook verification required. Provide X-API-Key header",
-    )
+    # If no keys configured, skip verification
+    if not configured_keys:
+        logger.debug("Feishu webhook verification disabled (no API keys configured)")
+        return True
+
+    # If no API key provided in request, reject
+    if not api_key:
+        logger.warning("Feishu webhook request without API key")
+        raise HTTPException(
+            status_code=403,
+            detail="Webhook verification required. Provide X-API-Key header",
+        )
+
+    # Check if provided key matches any configured key
+    if api_key in configured_keys:
+        logger.debug("Feishu webhook verified via API key")
+        return True
+    else:
+        logger.warning(f"Invalid Feishu API key provided: {api_key[:8]}...")
+        raise HTTPException(status_code=403, detail="Invalid API key")
 
 
 def verify_webhook_ip_whitelist(

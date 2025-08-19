@@ -99,9 +99,8 @@ async def process_webhook_request(
     # Verify IP whitelist (empty list = deny all)
     verify_webhook_ip_whitelist(request, settings.webhook_ip_whitelist)
 
-    # Verify Feishu webhook API key if configured
-    if settings.feishu_webhook_api_key:
-        verify_feishu_webhook(request, api_key)
+    # Verify Feishu webhook API key (skip if no API keys configured)
+    verify_feishu_webhook(request, api_key)
 
     # Get client IP
     client_ip = request.client.host
