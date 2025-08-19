@@ -50,7 +50,7 @@ class Settings(BaseSettings):
     # Enable/disable username/password login form
     enable_username_password_login: bool = True
     # Enable/disable OIDC login button
-    enable_oidc_login: bool = False
+    enable_oidc_login: bool = True
 
     # Redis Configuration for Session Storage
     redis_host: str = "127.0.0.1"
