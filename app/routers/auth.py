@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Response, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Response, Request, Cookie
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -11,11 +11,16 @@ from app.dependencies import (
     get_current_user_jwt,
     get_current_user_session,
     get_current_user_flexible,
+    get_oidc_discovery,
+    verify_oidc_token,
     User,
     ACTIVE_SESSIONS,
     ACCESS_TOKEN_EXPIRE_MINUTES,
 )
 from config.config import settings
+import httpx
+import secrets
+from urllib.parse import urlencode
 
 templates = Jinja2Templates(directory="templates")
 
@@ -233,6 +238,205 @@ async def dashboard_page(
         name="dashboard.html",
         context={"page_name": "Dashboard", "current_user": current_user},
     )
+
+
+# ==================== OIDC Authentication ====================
+@router.get("/oidc/login")
+async def oidc_login(request: Request):
+    """Initiate OIDC login flow"""
+    try:
+        # Get OIDC discovery configuration
+        discovery = await get_oidc_discovery()
+        authorization_endpoint = discovery.get("authorization_endpoint")
+
+        if not authorization_endpoint:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Authorization endpoint not found in OIDC discovery",
+            )
+
+        # Generate state parameter for security
+        state = secrets.token_urlsafe(32)
+
+        # Store state in session or cache (for production, use Redis)
+        # For now, we'll include it in the redirect and validate it in callback
+
+        # Build authorization URL
+        auth_params = {
+            "response_type": "code",
+            "client_id": settings.oidc_client_id,
+            "redirect_uri": settings.oidc_redirect_uri,
+            "scope": settings.oidc_scope,
+            "state": state,
+        }
+
+        auth_url = f"{authorization_endpoint}?{urlencode(auth_params)}"
+
+        # Store state in session for validation (simple in-memory storage for demo)
+        # In production, use proper session storage
+        session_token = secrets.token_urlsafe(32)
+        ACTIVE_SESSIONS[f"oidc_state_{session_token}"] = {
+            "state": state,
+            "expires": datetime.utcnow() + timedelta(minutes=10),
+        }
+
+        response = RedirectResponse(url=auth_url, status_code=302)
+        response.set_cookie(
+            key="oidc_session",
+            value=session_token,
+            max_age=600,  # 10 minutes
+            httponly=True,
+            secure=False,  # Set to True in production with HTTPS
+            samesite="lax",
+        )
+
+        return response
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to initiate OIDC login: {str(e)}",
+        )
+
+
+@router.get("/oidc/callback")
+async def oidc_callback(
+    request: Request,
+    code: str = None,
+    state: str = None,
+    error: str = None,
+    oidc_session: str = Cookie(None),
+):
+    """Handle OIDC callback"""
+    if error:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"OIDC authentication error: {error}",
+        )
+
+    if not code:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Authorization code not provided",
+        )
+
+    if not state:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="State parameter not provided",
+        )
+
+    # Validate state parameter
+    if oidc_session:
+        session_key = f"oidc_state_{oidc_session}"
+        session_data = ACTIVE_SESSIONS.get(session_key)
+        if session_data and session_data.get("state") == state:
+            # Clean up temporary session
+            del ACTIVE_SESSIONS[session_key]
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid state parameter",
+            )
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="OIDC session not found"
+        )
+
+    try:
+        # Get discovery configuration
+        discovery = await get_oidc_discovery()
+        token_endpoint = discovery.get("token_endpoint")
+
+        if not token_endpoint:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Token endpoint not found in OIDC discovery",
+            )
+
+        # Exchange authorization code for tokens
+        token_data = {
+            "grant_type": "authorization_code",
+            "code": code,
+            "redirect_uri": settings.oidc_redirect_uri,
+            "client_id": settings.oidc_client_id,
+            "client_secret": settings.oidc_client_secret,
+        }
+
+        async with httpx.AsyncClient() as client:
+            token_response = await client.post(
+                token_endpoint,
+                data=token_data,
+                headers={"Content-Type": "application/x-www-form-urlencoded"},
+                timeout=10,
+            )
+            token_response.raise_for_status()
+            tokens = token_response.json()
+
+        access_token = tokens.get("access_token")
+        id_token = tokens.get("id_token")
+
+        if not access_token or not id_token:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Tokens not provided by OIDC provider",
+            )
+
+        # Verify ID token and extract user info
+        user_info = await verify_oidc_token(id_token)
+        if not user_info:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid ID token"
+            )
+
+        print(f"OIDC user_info: {user_info}")  # Debug logging
+
+        # Create session for the user
+        session_token = create_session_token()
+        session_expires = datetime.utcnow() + timedelta(hours=24)
+
+        ACTIVE_SESSIONS[session_token] = {
+            "user": {
+                "user_id": user_info["user_id"],
+                "username": user_info["username"],
+                "roles": user_info["roles"],
+            },
+            "expires": session_expires,
+            "auth_method": "oidc",
+            "oidc_access_token": access_token,
+        }
+
+        print(f"Created session: {session_token}")  # Debug logging
+        print(f"Active sessions count: {len(ACTIVE_SESSIONS)}")  # Debug logging
+
+        # Create redirect response
+        response = RedirectResponse(url="/auth/dashboard", status_code=302)
+
+        # Clear OIDC session cookie and set regular session cookie
+        response.delete_cookie(key="oidc_session")
+        response.set_cookie(
+            key="session",
+            value=session_token,
+            max_age=86400,  # 24 hours
+            httponly=True,
+            secure=False,  # Set to True in production with HTTPS
+            samesite="lax",
+        )
+
+        print(f"Set session cookie: {session_token}")  # Debug logging
+
+        return response
+
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Token exchange failed: {e.response.text}",
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"OIDC callback processing failed: {str(e)}",
+        )
 
 
 # Root redirect

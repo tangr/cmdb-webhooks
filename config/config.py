@@ -13,6 +13,13 @@ class Settings(BaseSettings):
 
     feishu_webhook_base_url: str = "https://open.feishu.cn/open-apis/bot/v2/hook/"
 
+    # OIDC Configuration
+    oidc_issuer_url: str = "https://sso-test.exodushk.com"
+    oidc_client_id: str = "mytest-oidc"
+    oidc_client_secret: str = "d5363c0d0bf650873176"
+    oidc_redirect_uri: str = "http://localhost:8000/auth/oidc/callback"
+    oidc_scope: str = "openid profile email"
+
     # Logging configuration
     enable_database_logging: bool = True
     enable_console_logging: bool = False

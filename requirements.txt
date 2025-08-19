@@ -11,3 +11,4 @@ python-jose[cryptography]==3.3.0
 python-multipart==0.0.20
 passlib[bcrypt]==1.7.4
 PyYAML==6.0.2
+authlib==1.6.1
