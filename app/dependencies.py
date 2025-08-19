@@ -111,6 +111,9 @@ async def get_current_user_required(token: str = Depends(oauth2_scheme)) -> User
 
 # ==================== 3. Session Cookie Authentication (Web Users) ====================
 from app.services.redis_session import redis_session_manager
+from app.utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 def create_session_token() -> str:
@@ -120,14 +123,14 @@ def create_session_token() -> str:
 
 async def verify_session(session_token: str) -> Optional[dict]:
     """Verify session token using Redis"""
-    print(f"Verifying session token: {session_token}")  # Debug logging
+    logger.debug(f"Verifying session token: {session_token[:8]}...")
 
     user_data = await redis_session_manager.get_session(session_token)
     if not user_data:
-        print("Session not found in Redis")  # Debug logging
+        logger.debug("Session not found in Redis")
         return None
 
-    print("Session verified successfully")  # Debug logging
+    logger.debug("Session verified successfully")
     return user_data
 
 
@@ -135,15 +138,17 @@ async def get_current_user_session(
     session: Optional[str] = Cookie(None),
 ) -> Optional[User]:
     """Get current user from session cookie (optional)"""
-    print(f"Session cookie received: {session}")  # Debug logging
+    logger.debug(f"Session cookie received: {'***' if session else 'None'}")
     if not session:
-        print("No session cookie found")  # Debug logging
+        logger.debug("No session cookie found")
         return None
 
     user_data = await verify_session(session)
-    print(f"Session data: {user_data}")  # Debug logging
+    logger.debug(
+        "Session data retrieved successfully" if user_data else "No session data found"
+    )
     if not user_data:
-        print("Session verification failed")  # Debug logging
+        logger.debug("Session verification failed")
         return None
 
     return User(
@@ -307,7 +312,9 @@ async def verify_oidc_token(token: str) -> Optional[dict]:
         )
 
         # Debug: Print all available claims
-        print(f"OIDC Claims: {claims}")  # Debug logging
+        logger.debug(
+            f"OIDC Claims received: {list(claims.keys()) if claims else 'None'}"
+        )
 
         # Extract user information - use configured username attribute
         configured_username = claims.get(settings.oidc_username_attribute)
@@ -319,9 +326,9 @@ async def verify_oidc_token(token: str) -> Optional[dict]:
         # Use configured attribute first, then fallback to username, name, email, finally sub
         username = configured_username or username_claim or name or email or sub
 
-        print(
+        logger.debug(
             f"Username selection - {settings.oidc_username_attribute}: {configured_username}, username: {username_claim}, name: {name}, email: {email}, final: {username}"
-        )  # Debug logging
+        )
 
         user_info = {
             "user_id": sub,
@@ -341,7 +348,7 @@ async def verify_oidc_token(token: str) -> Optional[dict]:
         for role, usernames in settings.oidc_role_mapping.items():
             if username in usernames:
                 roles_assigned.add(role)
-                print(
+                logger.info(
                     f"Assigned role '{role}' to user '{username}' via username mapping"
                 )
 
@@ -350,7 +357,7 @@ async def verify_oidc_token(token: str) -> Optional[dict]:
             groups = claims.get("groups", [])
             if isinstance(groups, list) and "admin" in groups:
                 roles_assigned.add("admin")
-                print(f"Assigned role 'admin' to user '{username}' via groups")
+                logger.info(f"Assigned role 'admin' to user '{username}' via groups")
 
         user_info["roles"] = list(roles_assigned)
 

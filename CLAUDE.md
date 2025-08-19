@@ -243,6 +243,37 @@ webhook-proxy/
 
 ## 开发指南
 
+### 日志系统
+
+应用程序使用 Python 标准 logging 模块提供统一的日志管理：
+
+**日志配置:**
+
+- 日志级别可通过 `log_level` 环境变量控制 (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+- 支持控制台和文件输出
+- 文件日志支持自动轮转
+- 可配置日志格式和输出路径
+
+**使用方式:**
+
+```python
+from app.utils.logger import get_logger
+
+logger = get_logger(__name__)
+
+logger.debug("Debug information")    # 开发调试信息
+logger.info("Information message")   # 一般信息记录
+logger.warning("Warning message")    # 警告信息
+logger.error("Error message")        # 错误信息
+logger.critical("Critical message")  # 严重错误
+```
+
+**安全注意事项:**
+
+- 永远不要记录敏感信息 (密码、token、密钥)
+- 对于调试信息，只记录必要的标识符，不记录完整内容
+- 使用适当的日志级别，生产环境通常设置为 INFO 或 WARNING
+
 ### 文件组织
 
 **后端组织：**
@@ -264,6 +295,7 @@ webhook-proxy/
 - 使用 Black 格式化程序确保代码格式一致
 - 遵循 FastAPI 和 SQLModel 最佳实践
 - 在创建、读取和更新模型类之间保持清晰分离
+- config/ 只放配置信息，逻辑代码不要放在 config 下面
 
 ### 数据库
 

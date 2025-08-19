@@ -4,6 +4,9 @@ import secrets
 from datetime import datetime, timedelta
 from typing import Optional, Dict, List
 from config.config import settings
+from app.utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class RedisSessionManager:
@@ -61,7 +64,7 @@ class RedisSessionManager:
             await client.setex(key, expire_time, json.dumps(session_data))
             return True
         except Exception as e:
-            print(f"Error setting session data: {e}")
+            logger.error(f"Error setting session data: {e}")
             return False
 
     async def get_session(self, session_token: str) -> Optional[Dict]:
@@ -76,7 +79,7 @@ class RedisSessionManager:
                 return session_data.get("user")
             return None
         except Exception as e:
-            print(f"Error getting session data: {e}")
+            logger.error(f"Error getting session data: {e}")
             return None
 
     async def delete_session(self, session_token: str) -> bool:
@@ -87,7 +90,7 @@ class RedisSessionManager:
             result = await client.delete(key)
             return result > 0
         except Exception as e:
-            print(f"Error deleting session data: {e}")
+            logger.error(f"Error deleting session data: {e}")
             return False
 
     async def get_all_sessions(self) -> List[Dict]:
@@ -114,7 +117,7 @@ class RedisSessionManager:
                     )
             return sessions
         except Exception as e:
-            print(f"Error getting all sessions: {e}")
+            logger.error(f"Error getting all sessions: {e}")
             return []
 
     async def clear_all_sessions(self) -> int:
@@ -128,7 +131,7 @@ class RedisSessionManager:
                 return result
             return 0
         except Exception as e:
-            print(f"Error clearing all sessions: {e}")
+            logger.error(f"Error clearing all sessions: {e}")
             return 0
 
 

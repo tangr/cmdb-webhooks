@@ -12,6 +12,9 @@ from fastapi.staticfiles import StaticFiles
 async def lifespan(app: FastAPI):
     """Application lifespan events"""
     # Startup
+    from app.utils.logger import setup_logging
+
+    setup_logging()
     init_webhook_mapping()
     yield
     # Shutdown (if needed)

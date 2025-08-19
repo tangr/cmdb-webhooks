@@ -1,6 +1,9 @@
 from typing import Dict, Optional
 import yaml
 from pathlib import Path
+from app.utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 # Global webhook mapping storage
@@ -27,10 +30,10 @@ def load_webhook_mapping() -> Dict[str, str]:
             config = yaml.safe_load(file)
             return config.get("webhooks", {})
     except FileNotFoundError:
-        print(f"Warning: Webhook mapping file not found at {config_path}")
+        logger.warning(f"Webhook mapping file not found at {config_path}")
         return {}
     except yaml.YAMLError as e:
-        print(f"Error parsing webhook mapping YAML: {e}")
+        logger.error(f"Error parsing webhook mapping YAML: {e}")
         return {}
 
 
@@ -38,7 +41,7 @@ def init_webhook_mapping():
     """Initialize webhook mapping on startup"""
     global _webhook_mapping
     _webhook_mapping = load_webhook_mapping()
-    print(f"Loaded {len(_webhook_mapping)} webhook mappings")
+    logger.info(f"Loaded {len(_webhook_mapping)} webhook mappings")
 
 
 def get_webhook_id_by_name(webhook_name: str) -> Optional[str]:

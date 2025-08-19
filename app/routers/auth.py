@@ -27,6 +27,9 @@ templates = Jinja2Templates(directory="templates")
 
 # Import and register custom time filters
 from app.utils.template_filters import time_to_str, time_diff_now
+from app.utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 templates.env.filters["timeToStr"] = time_to_str
 templates.env.filters["timeDiffNow"] = time_diff_now
@@ -399,7 +402,7 @@ async def oidc_callback(
                 status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid ID token"
             )
 
-        print(f"OIDC user_info: {user_info}")  # Debug logging
+        logger.debug(f"OIDC user login: {user_info.get('username', 'unknown')}")
 
         # Create session for the user in Redis
         session_token = create_session_token()
@@ -420,7 +423,9 @@ async def oidc_callback(
                 detail="Failed to create session",
             )
 
-        print(f"Created session: {session_token}")  # Debug logging
+        logger.debug(
+            f"Created session for OIDC user: {user_info.get('username', 'unknown')}"
+        )
 
         # Create redirect response
         response = RedirectResponse(url="/auth/dashboard", status_code=302)
@@ -436,7 +441,9 @@ async def oidc_callback(
             samesite="lax",
         )
 
-        print(f"Set session cookie: {session_token}")  # Debug logging
+        logger.debug(
+            f"Set session cookie for OIDC user: {user_info.get('username', 'unknown')}"
+        )
 
         return response
 
