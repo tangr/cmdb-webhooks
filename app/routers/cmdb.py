@@ -114,7 +114,7 @@ def read_logs_with_pagination(
 ):
     """Get paginated log records (Requires authentication)"""
     # Authenticated users can access with reasonable limits
-    limit = min(limit, 1000)  # Limit for authenticated users
+    limit = min(limit, 1000)  # Protect limit for max records in one page
 
     # Get logs with pagination (fetch limit+1 to check if there are more records)
     statement = (

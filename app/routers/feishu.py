@@ -57,6 +57,8 @@ def get_feishu_logs(
     skip: int = 0,
     limit: int = 10,
 ):
+    limit = min(limit, 1000)  # Protect limit for max records in one page
+
     """Get Feishu webhook logs (Requires authentication)"""
     # Get logs with pagination (fetch limit+1 to check if there are more records)
     statement = (
