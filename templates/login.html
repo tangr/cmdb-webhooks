@@ -13,6 +13,7 @@
             </div>
           </h2>
 
+          {% if enable_username_password_login %}
           <form class="ui large form" id="loginForm">
             <div class="ui stacked segment">
 
@@ -39,17 +40,31 @@
             <div class="ui error message"></div>
 
           </form>
+          {% endif %}
 
+          {% if enable_username_password_login and enable_oidc_login %}
           <div class="ui horizontal divider">
             OR
           </div>
+          {% endif %}
 
+          {% if enable_oidc_login %}
           <div class="ui segment">
             <a href="/auth/oidc/login" class="ui fluid large blue button">
               <i class="sign in icon"></i>
               {{ oidc_login_button_text }}
             </a>
           </div>
+          {% endif %}
+
+          {% if not enable_username_password_login and not enable_oidc_login %}
+          <div class="ui yellow message">
+            <div class="header">
+              No Login Methods Available
+            </div>
+            <p>Both username/password and OIDC login options are disabled. Please contact your administrator.</p>
+          </div>
+          {% endif %}
 
         </div>
       </div>
@@ -59,9 +74,9 @@
     {% include "base_foot.html" %}
   </div>
 
+  {% if enable_username_password_login %}
   <script type="text/javascript">
     $(document).ready(function () {
-
       // Initialize form validation
       $('.ui.form').form({
         fields: {
@@ -112,9 +127,9 @@
             $('.submit.button').removeClass('loading');
           });
       });
-
     });
   </script>
+  {% endif %}
 
 </body>
 

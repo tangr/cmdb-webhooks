@@ -66,6 +66,13 @@ def authenticate_user(username: str, password: str) -> dict:
 @router.post("/token", response_model=Token)
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
     """OAuth2 compatible token endpoint for API access"""
+    # Check if username/password login is enabled
+    if not settings.enable_username_password_login:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Username/password login is disabled",
+        )
+
     user = authenticate_user(form_data.username, form_data.password)
     if not user:
         raise HTTPException(
@@ -93,6 +100,13 @@ async def login_session(
     form_data: OAuth2PasswordRequestForm = Depends(), response: Response = None
 ):
     """Web login endpoint that sets session cookie"""
+    # Check if username/password login is enabled
+    if not settings.enable_username_password_login:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Username/password login is disabled",
+        )
+
     user = authenticate_user(form_data.username, form_data.password)
     if not user:
         raise HTTPException(
@@ -239,6 +253,8 @@ async def login_page(
         context={
             "page_name": "Login",
             "oidc_login_button_text": settings.oidc_login_button_text,
+            "enable_username_password_login": settings.enable_username_password_login,
+            "enable_oidc_login": settings.enable_oidc_login,
         },
     )
 
@@ -263,6 +279,13 @@ async def dashboard_page(
 @router.get("/oidc/login")
 async def oidc_login(request: Request):
     """Initiate OIDC login flow"""
+    # Check if OIDC login is enabled
+    if not settings.enable_oidc_login:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="OIDC login is disabled",
+        )
+
     try:
         # Get OIDC discovery configuration
         discovery = await get_oidc_discovery()
