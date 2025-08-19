@@ -309,18 +309,18 @@ async def verify_oidc_token(token: str) -> Optional[dict]:
         # Debug: Print all available claims
         print(f"OIDC Claims: {claims}")  # Debug logging
 
-        # Extract user information - prioritize preferred_username, then username, then email
-        preferred_username = claims.get("preferred_username")
+        # Extract user information - use configured username attribute
+        configured_username = claims.get(settings.oidc_username_attribute)
         username_claim = claims.get("username")  # Some providers use 'username' instead
         name = claims.get("name")
         email = claims.get("email")
         sub = claims.get("sub")
 
-        # Use preferred_username first, then username, then name, then email, finally sub
-        username = preferred_username or username_claim or name or email or sub
+        # Use configured attribute first, then fallback to username, name, email, finally sub
+        username = configured_username or username_claim or name or email or sub
 
         print(
-            f"Username selection - preferred_username: {preferred_username}, username: {username_claim}, name: {name}, email: {email}, final: {username}"
+            f"Username selection - {settings.oidc_username_attribute}: {configured_username}, username: {username_claim}, name: {name}, email: {email}, final: {username}"
         )  # Debug logging
 
         user_info = {

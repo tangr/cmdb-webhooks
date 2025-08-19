@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     oidc_client_secret: str = "d5363c0d0bf650873176"
     oidc_redirect_uri: str = "http://localhost:8000/auth/oidc/callback"
     oidc_scope: str = "openid profile email"
+    oidc_username_attribute: str = "preferred_username"
 
     # Redis Configuration for Session Storage
     redis_host: str = "127.0.0.1"
