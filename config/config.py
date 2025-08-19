@@ -46,6 +46,12 @@ class Settings(BaseSettings):
     oidc_username_attribute: str = "preferred_username"
     oidc_login_button_text: str = "Sign in with OIDC"
 
+    # Login Options Configuration
+    # Enable/disable username/password login form
+    enable_username_password_login: bool = True
+    # Enable/disable OIDC login button
+    enable_oidc_login: bool = False
+
     # Redis Configuration for Session Storage
     redis_host: str = "127.0.0.1"
     redis_port: int = 6379
