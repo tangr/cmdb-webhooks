@@ -234,7 +234,12 @@ async def login_page(
         return RedirectResponse(url="/auth/dashboard", status_code=302)
 
     return templates.TemplateResponse(
-        request=request, name="login.html", context={"page_name": "Login"}
+        request=request,
+        name="login.html",
+        context={
+            "page_name": "Login",
+            "oidc_login_button_text": settings.oidc_login_button_text,
+        },
     )
 
 
