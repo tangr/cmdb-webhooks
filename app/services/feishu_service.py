@@ -89,11 +89,9 @@ async def process_webhook_request(
     webhook_id: str,
     request: Request,
     session: SessionDep,
-    timestamp: Optional[str] = None,
-    nonce: Optional[str] = None,
-    signature: Optional[str] = None,
+    api_key: Optional[str] = None,
 ):
-    """Process webhook request with security verification and forwarding"""
+    """Process webhook request with API key verification and forwarding"""
 
     # Store request body for verification
     request._body = await request.body()
@@ -101,9 +99,9 @@ async def process_webhook_request(
     # Verify IP whitelist (empty list = deny all)
     verify_webhook_ip_whitelist(request, settings.webhook_ip_whitelist)
 
-    # Verify Feishu webhook signature if configured
-    if settings.feishu_webhook_secret:
-        verify_feishu_webhook(request, timestamp, nonce, signature)
+    # Verify Feishu webhook API key if configured
+    if settings.feishu_webhook_api_key:
+        verify_feishu_webhook(request, api_key)
 
     # Get client IP
     client_ip = request.client.host

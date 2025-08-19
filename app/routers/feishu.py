@@ -14,20 +14,14 @@ async def feishu_webhook_proxy(
     webhook_id: str,
     request: Request,
     session: SessionDep,
-    x_lark_request_timestamp: Optional[str] = Header(
-        None, alias="X-Lark-Request-Timestamp"
-    ),
-    x_lark_request_nonce: Optional[str] = Header(None, alias="X-Lark-Request-Nonce"),
-    x_lark_signature: Optional[str] = Header(None, alias="X-Lark-Signature"),
+    x_api_key: Optional[str] = Header(None, alias="X-API-Key"),
 ):
-    """Feishu webhook proxy endpoint using webhook ID (with security verification)"""
+    """Feishu webhook proxy endpoint using webhook ID (with API key verification)"""
     return await process_webhook_request(
         webhook_id,
         request,
         session,
-        x_lark_request_timestamp,
-        x_lark_request_nonce,
-        x_lark_signature,
+        x_api_key,
     )
 
 
@@ -36,13 +30,9 @@ async def feishu_webhook_alias(
     webhook_name: str,
     request: Request,
     session: SessionDep,
-    x_lark_request_timestamp: Optional[str] = Header(
-        None, alias="X-Lark-Request-Timestamp"
-    ),
-    x_lark_request_nonce: Optional[str] = Header(None, alias="X-Lark-Request-Nonce"),
-    x_lark_signature: Optional[str] = Header(None, alias="X-Lark-Signature"),
+    x_api_key: Optional[str] = Header(None, alias="X-API-Key"),
 ):
-    """Feishu webhook proxy endpoint using webhook name alias (with security verification)"""
+    """Feishu webhook proxy endpoint using webhook name alias (with API key verification)"""
     # Get webhook ID from name mapping
     webhook_id = get_webhook_id_by_name(webhook_name)
     if not webhook_id:
@@ -55,9 +45,7 @@ async def feishu_webhook_alias(
         webhook_id,
         request,
         session,
-        x_lark_request_timestamp,
-        x_lark_request_nonce,
-        x_lark_signature,
+        x_api_key,
     )
 
 

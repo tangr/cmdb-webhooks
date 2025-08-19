@@ -85,18 +85,15 @@ async def create_log(
     request: Request,
     session: SessionDep,
     x_api_key: Optional[str] = Header(None, alias="X-API-Key"),
-    x_cmdb_signature: Optional[str] = Header(None, alias="X-CMDB-Signature"),
 ):
-    """Create new log record (Webhook endpoint with security verification)"""
-    # Store request body for signature verification
-    request._body = await request.body()
+    """Create new log record (Webhook endpoint with API key verification)"""
 
     # Verify IP whitelist (empty list = deny all)
     verify_webhook_ip_whitelist(request, settings.webhook_ip_whitelist)
 
     # Verify webhook authentication if security is configured
-    if settings.cmdb_webhook_api_key or settings.cmdb_webhook_secret:
-        verify_cmdb_webhook(request, x_api_key, x_cmdb_signature)
+    if settings.cmdb_webhook_api_key:
+        verify_cmdb_webhook(request, x_api_key)
 
     db_log = CmdbReqLog(**log.model_dump())
     session.add(db_log)
