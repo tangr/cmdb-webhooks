@@ -50,9 +50,27 @@ class CmdbReqLogRead(CmdbReqLogBase):
     updated_at: int
 
 
+class PaginationUrls(SQLModel):
+    """Model for pagination URLs"""
+
+    current: str
+    prev: Optional[str] = None
+    next: Optional[str] = None
+
+
+class PaginationInfo(SQLModel):
+    """Model for pagination information"""
+
+    per_page: int
+    has_next: bool
+    has_prev: bool
+    urls: PaginationUrls
+
+
 class CmdbReqLogListResponse(SQLModel):
     """Model for paginated log list response"""
 
     logs: List[CmdbReqLog]
     user: str
     limit: int
+    pagination: PaginationInfo
