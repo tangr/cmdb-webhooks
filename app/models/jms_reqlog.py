@@ -4,7 +4,7 @@ from typing import Optional, Dict, Any, List
 import time
 
 
-class JMSReqLogBase(SQLModel):
+class CmdbReqLogBase(SQLModel):
     host: str
     method: str
     path: str
@@ -17,19 +17,19 @@ class JMSReqLogBase(SQLModel):
     output: Optional[str] = None
 
 
-class JMSReqLog(JMSReqLogBase, table=True):
-    __tablename__ = "jms_reqlog"
+class CmdbReqLog(CmdbReqLogBase, table=True):
+    __tablename__ = "cmdb_reqlog"
 
     id: Optional[int] = Field(default=None, primary_key=True)
     created_at: int = Field(default_factory=lambda: int(time.time()))
     updated_at: int = Field(default_factory=lambda: int(time.time()))
 
 
-class JMSReqLogCreate(JMSReqLogBase):
+class CmdbReqLogCreate(CmdbReqLogBase):
     pass
 
 
-class JMSReqLogUpdate(SQLModel):
+class CmdbReqLogUpdate(SQLModel):
     host: Optional[str] = None
     method: Optional[str] = None
     path: Optional[str] = None
@@ -42,7 +42,7 @@ class JMSReqLogUpdate(SQLModel):
     output: Optional[str] = None
 
 
-class JMSReqLogRead(JMSReqLogBase):
+class CmdbReqLogRead(CmdbReqLogBase):
     """Model for API responses"""
 
     id: int
@@ -50,9 +50,9 @@ class JMSReqLogRead(JMSReqLogBase):
     updated_at: int
 
 
-class JMSReqLogListResponse(SQLModel):
+class CmdbReqLogListResponse(SQLModel):
     """Model for paginated log list response"""
 
-    logs: List[JMSReqLog]
+    logs: List[CmdbReqLog]
     user: str
     limit: int

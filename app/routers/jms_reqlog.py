@@ -2,10 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Header
 from fastapi.responses import HTMLResponse
 from sqlmodel import select, func, desc
 from app.models.jms_reqlog import (
-    JMSReqLog,
-    JMSReqLogCreate,
-    JMSReqLogUpdate,
-    JMSReqLogListResponse,
+    CmdbReqLog,
+    CmdbReqLogCreate,
+    CmdbReqLogUpdate,
+    CmdbReqLogListResponse,
 )
 from app.dependencies import (
     SessionDep,
@@ -45,13 +45,13 @@ def read_all_logs(
     skip = (page - 1) * limit
 
     # Build query statement with optional status filter
-    statement = select(JMSReqLog)
+    statement = select(CmdbReqLog)
     if not show_all:
-        statement = statement.where(JMSReqLog.status != 200)
+        statement = statement.where(CmdbReqLog.status != 200)
 
     # Get paginated logs with one extra record to check if there are more pages
     statement = (
-        statement.order_by(desc(JMSReqLog.updated_at)).offset(skip).limit(limit + 1)
+        statement.order_by(desc(CmdbReqLog.updated_at)).offset(skip).limit(limit + 1)
     )
     logs = session.exec(statement).all()
 
@@ -79,9 +79,9 @@ def read_all_logs(
     )
 
 
-@router.post("/", response_model=JMSReqLog)
+@router.post("/", response_model=CmdbReqLog)
 async def create_log(
-    log: JMSReqLogCreate,
+    log: CmdbReqLogCreate,
     request: Request,
     session: SessionDep,
     x_api_key: Optional[str] = Header(None, alias="X-API-Key"),
@@ -99,7 +99,7 @@ async def create_log(
     if settings.jms_webhook_api_key or settings.jms_webhook_secret:
         verify_jms_webhook(request, x_api_key, x_jms_signature)
 
-    db_log = JMSReqLog(**log.model_dump())
+    db_log = CmdbReqLog(**log.model_dump())
     session.add(db_log)
     session.commit()
     session.refresh(db_log)
@@ -107,7 +107,7 @@ async def create_log(
 
 
 # ==================== User-Level Endpoints (Authentication Required) ====================
-@router.get("/list", response_model=JMSReqLogListResponse)
+@router.get("/list", response_model=CmdbReqLogListResponse)
 def read_logs_with_pagination(
     session: SessionDep,
     current_user: User = Depends(get_current_user_any_required),
@@ -119,7 +119,10 @@ def read_logs_with_pagination(
     limit = min(limit, 1000)  # Limit for authenticated users
 
     statement = (
-        select(JMSReqLog).order_by(desc(JMSReqLog.updated_at)).offset(skip).limit(limit)
+        select(CmdbReqLog)
+        .order_by(desc(CmdbReqLog.updated_at))
+        .offset(skip)
+        .limit(limit)
     )
     logs = session.exec(statement).all()
 
@@ -130,29 +133,29 @@ def read_logs_with_pagination(
     }
 
 
-@router.get("/{log_id}", response_model=JMSReqLog)
+@router.get("/{log_id}", response_model=CmdbReqLog)
 def read_log_by_id(
     log_id: int,
     session: SessionDep,
     current_user: User = Depends(get_current_user_any_required),
 ):
     """Get single log record by ID (Requires authentication via JWT or Session)"""
-    log = session.get(JMSReqLog, log_id)
+    log = session.get(CmdbReqLog, log_id)
     if not log:
         raise HTTPException(status_code=404, detail="Log not found")
     return log
 
 
 # ==================== Admin-Level Endpoints (Role-based Access Control) ====================
-@router.put("/{log_id}", response_model=JMSReqLog)
+@router.put("/{log_id}", response_model=CmdbReqLog)
 def update_log(
     log_id: int,
-    update: JMSReqLogUpdate,
+    update: CmdbReqLogUpdate,
     session: SessionDep,
     current_user: User = Depends(require_roles("admin")),
 ):
     """Update log record (Requires admin role)"""
-    log = session.get(JMSReqLog, log_id)
+    log = session.get(CmdbReqLog, log_id)
     if not log:
         raise HTTPException(status_code=404, detail="Log not found")
 
@@ -174,7 +177,7 @@ def delete_log(
     current_user: User = Depends(require_roles("admin")),
 ):
     """Delete log record (Requires admin role)"""
-    log = session.get(JMSReqLog, log_id)
+    log = session.get(CmdbReqLog, log_id)
     if not log:
         raise HTTPException(status_code=404, detail="Log not found")
 

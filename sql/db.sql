@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS `jms_reqlog` (
+CREATE TABLE IF NOT EXISTS `cmdb_reqlog` (
   `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
   `host` varchar(255) NOT NULL,
   `method` varchar(255) NOT NULL,
