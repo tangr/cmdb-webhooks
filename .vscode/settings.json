@@ -47,5 +47,22 @@
     "**/__pycache__": true,
     "**/*.pyc": true,
     "**/*.pyo": true
+  },
+  "files.associations": {
+    "Dockerfile*": "dockerfile",
+    "*.dockerfile": "dockerfile",
+    "docker-compose*.yml": "dockercompose",
+    "docker-compose*.yaml": "dockercompose"
+  },
+  "[dockerfile]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.formatOnSave": true,
+    "editor.insertSpaces": true,
+    "editor.tabSize": 4,
+    "editor.detectIndentation": false,
+    "editor.codeActionsOnSave": {
+      "source.fixAll": "explicit"
+    },
+    "editor.renderWhitespace": "boundary"
   }
 }
