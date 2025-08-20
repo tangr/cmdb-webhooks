@@ -49,7 +49,6 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 
 # Copy application code
 COPY --chown=appuser:appuser . .
-
 # Create log directory (if using file logging)
 RUN mkdir -p /var/log/webhook-proxy && chown -R appuser:appuser /var/log/webhook-proxy
 
