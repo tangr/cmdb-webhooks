@@ -8,7 +8,7 @@ from config.config import get_session, settings
 from typing import Annotated, Optional, Union
 from sqlmodel import Session
 from jose import JWTError, jwt
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import secrets
 import httpx
 from authlib.jose import jwt as authlib_jwt
@@ -38,9 +38,9 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     """Create JWT access token"""
     to_encode = data.copy()
     if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+        expire = datetime.now(timezone.utc) + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=15)
+        expire = datetime.now(timezone.utc) + timedelta(minutes=15)
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
@@ -227,7 +227,7 @@ async def get_oidc_discovery():
     """Get OIDC discovery configuration with caching"""
     global _oidc_discovery_cache, _cache_timestamp
 
-    now = datetime.utcnow().timestamp()
+    now = datetime.now(timezone.utc).timestamp()
     if (
         _oidc_discovery_cache is None
         or _cache_timestamp is None
@@ -256,7 +256,7 @@ async def get_oidc_jwks():
     """Get OIDC JWKS with caching"""
     global _oidc_jwks_cache, _cache_timestamp
 
-    now = datetime.utcnow().timestamp()
+    now = datetime.now(timezone.utc).timestamp()
     if (
         _oidc_jwks_cache is None
         or _cache_timestamp is None

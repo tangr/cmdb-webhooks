@@ -1,7 +1,7 @@
 import redis.asyncio as redis
 import json
 import secrets
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, List
 from config.config import settings
 from app.utils.logger import get_logger
@@ -50,9 +50,9 @@ class RedisSessionManager:
             # Add timestamp for tracking
             session_data = {
                 "user": user_data,
-                "created_at": datetime.utcnow().isoformat(),
+                "created_at": datetime.now(timezone.utc).isoformat(),
                 "expires_at": (
-                    datetime.utcnow()
+                    datetime.now(timezone.utc)
                     + timedelta(
                         seconds=expire_seconds or settings.session_expire_seconds
                     )
