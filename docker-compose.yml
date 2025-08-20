@@ -23,7 +23,7 @@ services:
 
   # MySQL database
   mysql:
-    image: mysql:8.0
+    image: mysql:8.0.42
     environment:
       - MYSQL_ROOT_PASSWORD=rootpass
       - MYSQL_DATABASE=webhook_proxy
@@ -43,7 +43,7 @@ services:
 
   # Redis for session storage
   redis:
-    image: redis:7-alpine
+    image: redis:7.2.10-bookworm
     ports:
       - "6379:6379"
     volumes:
