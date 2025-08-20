@@ -17,7 +17,6 @@ services:
       - ./config:/app/config:ro
       - ./templates:/app/templates:ro
       - ./static:/app/static:ro
-      - ${WEBHOOK_PROXY_DATA_DIR}/webhook-proxy/logs:/var/log/webhook-proxy
 
     # Additional environment variables for development
     environment:

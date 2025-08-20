@@ -64,7 +64,7 @@ class Settings(BaseSettings):
     log_level: str = "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
     log_format: str = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
     log_to_file: bool = False
-    log_file_path: str = "/var/log/webhook-proxy/app.log"
+    # log_file_path: str = "/var/log/webhook-proxy/app.log"
     log_max_bytes: int = 10485760  # 10MB
     log_backup_count: int = 5
     enable_database_logging: bool = True

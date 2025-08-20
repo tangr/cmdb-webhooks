@@ -20,7 +20,6 @@ services:
         condition: service_healthy
     volumes:
       - ./config:/app/config:ro
-      - ${WEBHOOK_PROXY_DATA_DIR}/webhook-proxy/logs:/var/log/webhook-proxy
     restart: unless-stopped
 
   # MySQL database
