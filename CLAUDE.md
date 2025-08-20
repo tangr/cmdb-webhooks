@@ -306,6 +306,7 @@ logger.critical("Critical message")  # 严重错误
 - 在创建、读取和更新模型类之间保持清晰分离
 - config/ 只放配置信息，逻辑代码不要放在 config 下面
 - app/routers/ 接口定义，app/services 功能逻辑，app/models 模型定义
+- main.py 是应用程序的入口点和路由注册，不放复杂的业务逻辑
 
 ### 数据库
 
