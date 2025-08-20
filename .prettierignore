@@ -15,4 +15,3 @@ yarn.lock
 # Ignore artifacts:
 build
 coverage
-

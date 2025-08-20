@@ -51,8 +51,9 @@
   "files.associations": {
     "Dockerfile*": "dockerfile",
     "*.dockerfile": "dockerfile",
-    "docker-compose*.yml": "dockercompose",
-    "docker-compose*.yaml": "dockercompose"
+    "*.yml": "yaml",
+    // "docker-compose*.yml": "dockercompose",
+    // "docker-compose*.yaml": "dockercompose"
   },
   "[dockerfile]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode",
