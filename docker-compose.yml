@@ -5,6 +5,8 @@ services:
     ports:
       - "8000:8000"
     environment:
+      - UVICORN_PORT=8000
+      - UVICORN_HOST=0.0.0.0
       - DATABASE_URL=mysql+pymysql://root:rootpass@mysql:3306/webhook_proxy
       - REDIS_HOST=redis
       - REDIS_PORT=6379
