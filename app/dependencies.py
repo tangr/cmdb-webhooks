@@ -1,4 +1,5 @@
 from fastapi import Header, HTTPException, Depends, status, Cookie
+from fastapi.responses import RedirectResponse
 from fastapi.security import (
     HTTPBearer,
     HTTPAuthorizationCredentials,
@@ -197,6 +198,25 @@ async def get_current_user_any_required(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Authentication required",
         )
+    return user
+
+
+class AuthenticationRequiredException(HTTPException):
+    """Custom exception for authentication required that should redirect to login"""
+
+    def __init__(self):
+        super().__init__(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required - redirect to login",
+        )
+
+
+async def get_current_user_web_required(
+    user: Optional[User] = Depends(get_current_user_flexible),
+) -> User:
+    """Require authentication for web pages - throws custom exception for redirect"""
+    if not user:
+        raise AuthenticationRequiredException()
     return user
 
 

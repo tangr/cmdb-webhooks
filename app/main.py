@@ -1,7 +1,9 @@
 from contextlib import asynccontextmanager
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, Request
+from fastapi.responses import RedirectResponse
 
 from .routers import cmdb, auth, feishu
+from .dependencies import AuthenticationRequiredException
 from config.config import settings
 from .services.webhook_mapping import init_webhook_mapping
 from fastapi.staticfiles import StaticFiles
@@ -20,6 +22,14 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
+
+
+@app.exception_handler(AuthenticationRequiredException)
+async def authentication_exception_handler(
+    request: Request, exc: AuthenticationRequiredException
+):
+    """Handle authentication required exceptions by redirecting to login page"""
+    return RedirectResponse(url="/auth/login-page", status_code=302)
 
 
 app.include_router(auth.router, prefix="/auth", tags=["authentication"])

@@ -13,6 +13,7 @@ from app.dependencies import (
     SessionDep,
     get_current_user_flexible,
     get_current_user_any_required,
+    get_current_user_web_required,
     require_roles,
     User,
 )
@@ -37,7 +38,7 @@ router = APIRouter()
 def read_all_logs(
     session: SessionDep,
     request: Request,
-    current_user: User = Depends(get_current_user_any_required),
+    current_user: User = Depends(get_current_user_web_required),
     page: int = 1,
     limit: int = 10,
     show_all: bool = False,
