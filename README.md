@@ -4,7 +4,7 @@ curl -X POST \
   -H "X-API-Key: QNbl7W9Ez7hVkR44ja93" \
   "http://127.0.0.1:8000/cmdb/" \
   -d '{
-    "host": "127.0.0.1:8000",
+    "host": "http://127.0.0.1:8000",
     "method": "POST",
     "path": "/api/test",
     "query": "param1=value1&param2=value2",
