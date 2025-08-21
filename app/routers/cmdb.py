@@ -19,6 +19,7 @@ from app.dependencies import (
 )
 from typing import List, Optional
 import time
+import json
 from fastapi.templating import Jinja2Templates
 from app.utils.template_filters import time_to_str, time_diff_now
 from app.utils.webhook_security import verify_cmdb_webhook, verify_webhook_ip_whitelist
@@ -84,24 +85,35 @@ def read_all_logs(
 
 @router.post("/", response_model=CmdbReqLog)
 async def create_log(
-    log: CmdbReqLogCreate,
     request: Request,
     session: SessionDep,
     x_api_key: Optional[str] = Header(None, alias="X-API-Key"),
 ):
-    """Create new log record (Webhook endpoint with API key verification)"""
+    """CMDB proxy endpoint - forwards request and logs response (Webhook endpoint with API key verification)"""
 
-    # Verify IP whitelist (empty list = deny all)
-    verify_webhook_ip_whitelist(request, settings.webhook_ip_whitelist)
+    # Read request body
+    body_bytes = await request.body()
+    try:
+        request_data = json.loads(body_bytes.decode("utf-8")) if body_bytes else {}
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="Invalid JSON in request body")
 
-    # Verify webhook authentication (skip if no API keys configured)
-    verify_cmdb_webhook(request, x_api_key)
+    # Process the CMDB proxy request
+    from app.services.cmdb_service import process_cmdb_request
 
-    db_log = CmdbReqLog(**log.model_dump())
-    session.add(db_log)
-    session.commit()
-    session.refresh(db_log)
-    return db_log
+    result = await process_cmdb_request(request_data, request, session, x_api_key)
+
+    # Return the logged entry from database
+    # Get the most recent log entry for this request
+    from sqlmodel import desc
+
+    statement = select(CmdbReqLog).order_by(desc(CmdbReqLog.created_at)).limit(1)
+    latest_log = session.exec(statement).first()
+
+    if not latest_log:
+        raise HTTPException(status_code=500, detail="Failed to retrieve logged request")
+
+    return latest_log
 
 
 # ==================== User-Level Endpoints (Authentication Required) ====================
