@@ -219,6 +219,8 @@ def update_log(
     for key, value in update_data.items():
         setattr(log, key, value)
 
+    # Set author to current logged-in user (browser operation)
+    log.author = current_user.username
     log.updated_at = int(time.time())
     session.add(log)
     session.commit()
