@@ -13,6 +13,8 @@ services:
       - REDIS_DB=13
       - LOG_LEVEL=INFO
       - DATABASE_ECHO=false
+      - ENABLE_USERNAME_PASSWORD_LOGIN=false
+      - ENABLE_OIDC_LOGIN=true
     depends_on:
       mysql:
         condition: service_healthy
