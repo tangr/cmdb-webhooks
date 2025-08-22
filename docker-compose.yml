@@ -1,7 +1,11 @@
 services:
   # Main FastAPI application
   webhook-proxy:
-    build: .
+    build:
+      context: .
+      platforms:
+        - linux/amd64    # Linux x86_64
+        - linux/arm64    # Apple Silicon 和 Linux ARM64
     ports:
       - "8000:8000"
     environment:
@@ -11,6 +15,8 @@ services:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - REDIS_DB=13
+      - REDIS_PASSWORD=""
+      - SESSION_REDIS_KEY_PREFIX="session:"
       - LOG_LEVEL=INFO
       - DATABASE_ECHO=false
       - ENABLE_USERNAME_PASSWORD_LOGIN=false
