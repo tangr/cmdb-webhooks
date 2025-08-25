@@ -34,7 +34,7 @@
 
 ## 项目结构
 
-```
+```text
 webhook-proxy/
 ├── app/                    # 主应用程序目录（后端API）
 │   ├── dependencies.py     # 共享依赖（数据库会话管理、认证）
@@ -197,7 +197,7 @@ webhook-proxy/
 - `GET /feishu/logs` - 获取飞书 Webhook 日志列表
 - `GET /feishu/logs/{log_id}` - 获取特定飞书 Webhook 日志
 
-**其他端点**
+**其他端点:**
 
 - `GET /` - 根路径重定向到登录或仪表板
 - `GET /login` - 重定向到登录页面
@@ -307,9 +307,6 @@ logger.critical("Critical message")  # 严重错误
 - config/ 只放配置信息，逻辑代码不要放在 config 下面
 - app/routers/ 接口定义，app/services 功能逻辑，app/models 模型定义
 - main.py 是应用程序的入口点和路由注册，不放复杂的业务逻辑
-
-### 数据库
-
 - 对所有数据库模型使用 SQLModel
 - 将灵活数据（标头、请求正文）存储为 JSON 列
 - 对时间相关字段使用 Unix 时间戳
