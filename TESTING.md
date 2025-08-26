@@ -1,179 +1,179 @@
-# Testing Guide
+# 测试指南
 
-This document describes how to run and work with the test suite for the webhook-proxy project.
+本文档描述如何运行和使用 webhook-proxy 项目的测试套件。
 
-## Quick Start
+## 快速开始
 
-To run all tests:
+运行所有测试：
 
 ```bash
-# Make the test runner executable (one-time)
+# 使测试运行器可执行（一次性操作）
 chmod +x run_tests.sh
 
-# Run all tests
+# 运行所有测试
 ./run_tests.sh
 ```
 
-## Test Categories
+## 测试类别
 
-The test suite is organized into several categories using pytest markers:
+测试套件使用 pytest 标记组织为几个类别：
 
-- **Unit tests** (`-m unit`): Test individual components in isolation
-- **Integration tests** (`-m integration`): Test API endpoints and component interactions  
-- **Security tests** (`-m security`): Test security and authentication mechanisms
-- **Auth tests** (`-m auth`): Test authentication-specific functionality
-- **Redis tests** (`-m redis`): Test Redis-dependent functionality
+- **单元测试** (`-m unit`): 隔离测试单个组件
+- **集成测试** (`-m integration`): 测试 API 端点和组件交互
+- **安全测试** (`-m security`): 测试安全和认证机制
+- **认证测试** (`-m auth`): 测试特定的认证功能
+- **Redis 测试** (`-m redis`): 测试依赖 Redis 的功能
 
-## Running Specific Test Categories
+## 运行特定测试类别
 
 ```bash
-# Unit tests only
+# 仅单元测试
 pytest tests/ -m unit
 
-# Integration tests only  
+# 仅集成测试
 pytest tests/ -m integration
 
-# Security tests only
+# 仅安全测试
 pytest tests/ -m security
 
-# Auth-related tests
+# 认证相关测试
 pytest tests/ -m auth
 
-# Redis-dependent tests
+# Redis 依赖测试
 pytest tests/ -m redis
 ```
 
-## Running Individual Test Files
+## 运行单个测试文件
 
 ```bash
-# Test specific models
+# 测试特定模型
 pytest tests/test_models/test_cmdb_reqlog.py
 pytest tests/test_models/test_feishu_reqlog.py
 
-# Test specific services
+# 测试特定服务
 pytest tests/test_services/test_redis_session.py
 pytest tests/test_services/test_feishu_service.py
 pytest tests/test_services/test_webhook_mapping.py
 
-# Test API endpoints
+# 测试 API 端点
 pytest tests/test_auth.py
 pytest tests/test_cmdb_integration.py
 pytest tests/test_feishu_integration.py
 
-# Test utilities
+# 测试工具类
 pytest tests/test_utils/test_logger.py
 pytest tests/test_security.py
 ```
 
-## Test Coverage
+## 测试覆盖率
 
-Generate coverage reports:
+生成覆盖率报告：
 
 ```bash
-# Terminal coverage report
+# 终端覆盖率报告
 pytest tests/ --cov=app --cov-report=term-missing
 
-# HTML coverage report (opens in htmlcov/index.html)
+# HTML 覆盖率报告（在 htmlcov/index.html 中打开）
 pytest tests/ --cov=app --cov-report=html
 
-# XML coverage report (for CI/CD)
+# XML 覆盖率报告（用于 CI/CD）
 pytest tests/ --cov=app --cov-report=xml
 ```
 
-## Test Configuration
+## 测试配置
 
-The test suite uses the following configuration files:
+测试套件使用以下配置文件：
 
-- **pytest.ini**: Main pytest configuration with markers, coverage settings
-- **tests/conftest.py**: Shared test fixtures and setup
-- **run_tests.sh**: Test runner script with environment setup
+- **pytest.ini**: 主 pytest 配置，包含标记、覆盖率设置
+- **tests/conftest.py**: 共享测试固件和设置
+- **run_tests.sh**: 测试运行器脚本，包含环境设置
 
-## Test Database
+## 测试数据库
 
-Tests use SQLite in-memory databases by default, configured in `conftest.py`:
+测试默认使用 SQLite 内存数据库，在 `conftest.py` 中配置：
 
-- **Test database URL**: `sqlite:///./test.db`
-- **Redis database**: Uses database 14 (different from production)
-- **Automatic cleanup**: Test data is cleaned up after each test
+- **测试数据库 URL**: `sqlite:///./test.db`
+- **Redis 数据库**: 使用数据库 14（与生产环境不同）
+- **自动清理**: 每次测试后清理测试数据
 
-## Environment Variables
+## 环境变量
 
-The following environment variables affect testing:
+以下环境变量影响测试：
 
-- `TESTING=1`: Set automatically by test runner to enable test mode
-- `PYTHONPATH`: Automatically set to include the project root
+- `TESTING=1`: 测试运行器自动设置以启用测试模式
+- `PYTHONPATH`: 自动设置为包含项目根目录
 
-## Continuous Integration
+## 持续集成
 
-For CI/CD pipelines, use:
+对于 CI/CD 流水线，使用：
 
 ```bash
-# Install dependencies
+# 安装依赖
 pip install -r requirements.txt
 
-# Run tests with XML output
+# 运行测试并生成 XML 输出
 pytest tests/ --cov=app --cov-report=xml --junit-xml=junit.xml
 ```
 
-## Test Structure
+## 测试结构
 
 ```text
 tests/
-├── conftest.py              # Shared fixtures and configuration
-├── test_auth.py            # Authentication API tests (existing)
-├── test_models/            # Model unit tests
+├── conftest.py              # 共享固件和配置
+├── test_auth.py            # 认证 API 测试（现有）
+├── test_models/            # 模型单元测试
 │   ├── test_cmdb_reqlog.py
 │   └── test_feishu_reqlog.py
-├── test_services/          # Service unit tests
+├── test_services/          # 服务单元测试
 │   ├── test_redis_session.py
 │   ├── test_feishu_service.py
 │   └── test_webhook_mapping.py
-├── test_utils/            # Utility unit tests
+├── test_utils/            # 工具类单元测试
 │   └── test_logger.py
-├── test_cmdb_integration.py    # CMDB API integration tests
-├── test_feishu_integration.py  # Feishu API integration tests
-└── test_security.py           # Security and authentication tests
+├── test_cmdb_integration.py    # CMDB API 集成测试
+├── test_feishu_integration.py  # 飞书 API 集成测试
+└── test_security.py           # 安全和认证测试
 ```
 
-## Writing New Tests
+## 编写新测试
 
-### Test File Naming
+### 测试文件命名
 
-- Unit tests: `test_<module_name>.py`
-- Integration tests: `test_<feature>_integration.py`
-- Place in appropriate subdirectory (`test_models/`, `test_services/`, etc.)
+- 单元测试：`test_<module_name>.py`
+- 集成测试：`test_<feature>_integration.py`
+- 放在适当的子目录中（`test_models/`、`test_services/` 等）
 
-### Test Class Naming
+### 测试类命名
 
 ```python
-@pytest.mark.unit  # or @pytest.mark.integration
+@pytest.mark.unit  # 或 @pytest.mark.integration
 class TestModelName:
-    """Test description"""
+    """测试描述"""
     
     def test_specific_functionality(self):
-        """Test specific functionality description"""
+        """测试特定功能描述"""
         pass
 ```
 
-### Using Fixtures
+### 使用固件
 
-Common fixtures available in `conftest.py`:
+`conftest.py` 中可用的常用固件：
 
 ```python
 def test_database_operation(test_session):
-    """Use test database session"""
+    """使用测试数据库会话"""
     pass
 
 def test_api_endpoint(async_client, auth_headers):
-    """Use async HTTP client with authentication"""
+    """使用带认证的异步 HTTP 客户端"""
     pass
 
 def test_with_mock_redis(mock_redis):
-    """Use mocked Redis connection"""
+    """使用模拟的 Redis 连接"""
     pass
 ```
 
-### Marking Tests
+### 标记测试
 
 ```python
 @pytest.mark.unit
@@ -193,145 +193,145 @@ def test_redis_functionality():
     pass
 ```
 
-## Debugging Tests
+## 调试测试
 
-Run tests with increased verbosity and detailed output:
+运行测试时增加详细度和详细输出：
 
 ```bash
-# Verbose output with full tracebacks
+# 详细输出和完整回溯
 pytest tests/ -v --tb=long
 
-# Stop at first failure
+# 在第一次失败时停止
 pytest tests/ -x
 
-# Run specific test with output
+# 运行特定测试并输出
 pytest tests/test_models/test_cmdb_reqlog.py::TestCmdbReqLogModel::test_create_cmdb_reqlog -v -s
 
-# Run with pdb debugger on failure
+# 失败时运行 pdb 调试器
 pytest tests/ --pdb
 ```
 
-## Performance Testing
+## 性能测试
 
-For performance-sensitive tests:
+对于性能敏感的测试：
 
 ```bash
-# Run with timing information
+# 运行并显示时间信息
 pytest tests/ --durations=10
 
-# Profile slow tests
+# 性能分析慢速测试
 pytest tests/ --profile
 ```
 
-## Docker Testing
+## Docker 测试
 
-The project supports running tests in Docker containers for better isolation and consistency across environments.
+项目支持在 Docker 容器中运行测试，以获得更好的隔离性和跨环境一致性。
 
-### Docker Test Setup
+### Docker 测试设置
 
-**Test-specific files:**
+**测试特定文件：**
 
-- `Dockerfile.test` - Specialized Dockerfile for testing
-- `docker-compose.test.yml` - Docker Compose configuration for tests
-- `run_tests_docker.sh` - Docker test runner script
+- `Dockerfile.test` - 专用于测试的 Dockerfile
+- `docker-compose.test.yml` - 测试的 Docker Compose 配置
+- `run_tests_docker.sh` - Docker 测试运行器脚本
 
-### Running Tests in Docker
+### 在 Docker 中运行测试
 
-**Quick start:**
+**快速开始：**
 
 ```bash
-# Make script executable (one-time)
+# 使脚本可执行（一次性操作）
 chmod +x run_tests_docker.sh
 
-# Run all tests in Docker
+# 在 Docker 中运行所有测试
 ./run_tests_docker.sh
 
-# Run specific test categories
+# 运行特定测试类别
 ./run_tests_docker.sh unit
 ./run_tests_docker.sh integration
 ./run_tests_docker.sh security
 ```
 
-**Available Docker commands:**
+**可用的 Docker 命令：**
 
 ```bash
-# All test categories
-./run_tests_docker.sh unit         # Unit tests only
-./run_tests_docker.sh integration  # Integration tests only
-./run_tests_docker.sh security     # Security tests only
-./run_tests_docker.sh auth         # Authentication tests only
-./run_tests_docker.sh redis        # Redis tests only
+# 所有测试类别
+./run_tests_docker.sh unit         # 仅单元测试
+./run_tests_docker.sh integration  # 仅集成测试
+./run_tests_docker.sh security     # 仅安全测试
+./run_tests_docker.sh auth         # 仅认证测试
+./run_tests_docker.sh redis        # 仅 Redis 测试
 
-# Special commands
-./run_tests_docker.sh coverage     # All tests with coverage
-./run_tests_docker.sh shell        # Interactive shell in test container
-./run_tests_docker.sh clean        # Clean up test environment
+# 特殊命令
+./run_tests_docker.sh coverage     # 所有测试及覆盖率
+./run_tests_docker.sh shell        # 测试容器中的交互式 shell
+./run_tests_docker.sh clean        # 清理测试环境
 ```
 
-### Docker Test Environment
+### Docker 测试环境
 
-**Test containers:**
+**测试容器：**
 
-- **test-runner**: Main container running pytest with all dependencies
-- **test-redis**: Redis container for integration tests (optional)
+- **test-runner**: 运行 pytest 及所有依赖的主容器
+- **test-redis**: 集成测试的 Redis 容器（可选）
 
-**Test isolation:**
+**测试隔离：**
 
-- Each test run uses fresh containers
-- SQLite in-memory database for data isolation
-- Separate Redis database (DB 14) for test isolation
-- Automatic cleanup after test completion
+- 每次测试运行使用新鲜的容器
+- SQLite 内存数据库用于数据隔离
+- 单独的 Redis 数据库（DB 14）用于测试隔离
+- 测试完成后自动清理
 
-**Environment variables:**
+**环境变量：**
 
-- `TESTING=1` - Enables test mode
-- `DATABASE_URL=sqlite:///./test.db` - Test database
-- `REDIS_HOST=test-redis` - Test Redis instance
+- `TESTING=1` - 启用测试模式
+- `DATABASE_URL=sqlite:///./test.db` - 测试数据库
+- `REDIS_HOST=test-redis` - 测试 Redis 实例
 
-### Docker Test Results
+### Docker 测试结果
 
-Test results and coverage reports are automatically saved to local directories:
+测试结果和覆盖率报告自动保存到本地目录：
 
 ```bash
-# View test results
-open htmlcov/index.html              # Coverage HTML report
-cat test-results/junit.xml           # JUnit XML report
-cat test-results/coverage.xml        # Coverage XML report
+# 查看测试结果
+open htmlcov/index.html              # 覆盖率 HTML 报告
+cat test-results/junit.xml           # JUnit XML 报告
+cat test-results/coverage.xml        # 覆盖率 XML 报告
 ```
 
-**Result directories:**
+**结果目录：**
 
-- `htmlcov/` - HTML coverage reports
-- `test-results/` - XML reports for CI/CD
+- `htmlcov/` - HTML 覆盖率报告
+- `test-results/` - 用于 CI/CD 的 XML 报告
 
-### Docker Development Workflow
+### Docker 开发工作流
 
-**Development testing:**
+**开发测试：**
 
 ```bash
-# Run tests during development
+# 开发过程中运行测试
 ./run_tests_docker.sh unit
 
-# Debug in container
+# 在容器中调试
 ./run_tests_docker.sh shell
-# Then inside container:
+# 然后在容器内：
 pytest tests/test_models/ -v -s
 ```
 
-**CI/CD integration:**
+**CI/CD 集成：**
 
 ```bash
-# In CI/CD pipeline
+# 在 CI/CD 流水线中
 ./run_tests_docker.sh coverage
 
-# Parse XML results
+# 解析 XML 结果
 cat test-results/junit.xml
 cat test-results/coverage.xml
 ```
 
-### Docker Compose Override
+### Docker Compose 覆盖
 
-For customized test environments, create `docker-compose.test.override.yml`:
+对于自定义测试环境，创建 `docker-compose.test.override.yml`：
 
 ```yaml
 services:
@@ -342,52 +342,52 @@ services:
       - ./custom-config:/app/custom-config
 ```
 
-### Advantages of Docker Testing
+### Docker 测试的优势
 
-**Consistency:**
+**一致性：**
 
-- Same environment across development, CI/CD, and production
-- Eliminates "works on my machine" issues
-- Consistent Python version and dependencies
+- 开发、CI/CD 和生产环境相同
+- 消除"在我机器上可以运行"的问题
+- 一致的 Python 版本和依赖
 
-**Isolation:**
+**隔离性：**
 
-- Complete isolation from host system
-- Clean environment for each test run
-- No interference from host services
+- 与宿主系统完全隔离
+- 每次测试运行的干净环境
+- 不受宿主服务干扰
 
-**Scalability:**
+**可扩展性：**
 
-- Easy to run tests in parallel containers
-- Simple integration with CI/CD systems
-- Consistent test timing and resource usage
+- 易于在并行容器中运行测试
+- 与 CI/CD 系统简单集成
+- 一致的测试时间和资源使用
 
-## Troubleshooting
+## 故障排除
 
-### Common Issues
+### 常见问题
 
-1. **Import errors**: Ensure `PYTHONPATH` includes project root
-2. **Database errors**: Check test database permissions and cleanup
-3. **Redis errors**: Verify Redis connection settings in test configuration
-4. **Async errors**: Use `pytest-asyncio` for async test functions
-5. **Docker errors**: Ensure Docker is running and accessible
+1. **导入错误**: 确保 `PYTHONPATH` 包含项目根目录
+2. **数据库错误**: 检查测试数据库权限和清理
+3. **Redis 错误**: 验证测试配置中的 Redis 连接设置
+4. **异步错误**: 对异步测试函数使用 `pytest-asyncio`
+5. **Docker 错误**: 确保 Docker 正在运行且可访问
 
-### Docker-specific Issues
+### Docker 特定问题
 
-1. **Permission errors**: Check Docker daemon permissions
-2. **Port conflicts**: Ensure test ports (6380) are available
-3. **Build failures**: Clean Docker cache with `./run_tests_docker.sh clean`
-4. **Volume issues**: Check Docker volume permissions
+1. **权限错误**: 检查 Docker 守护进程权限
+2. **端口冲突**: 确保测试端口（6380）可用
+3. **构建失败**: 使用 `./run_tests_docker.sh clean` 清理 Docker 缓存
+4. **卷问题**: 检查 Docker 卷权限
 
-### Test Isolation
+### 测试隔离
 
-If tests are interfering with each other:
+如果测试相互干扰：
 
 ```bash
-# Local testing
-pytest tests/ -n auto  # Requires pytest-xdist
-pytest tests/ --forked  # Requires pytest-forked
+# 本地测试
+pytest tests/ -n auto  # 需要 pytest-xdist
+pytest tests/ --forked  # 需要 pytest-forked
 
-# Docker testing (automatically isolated)
+# Docker 测试（自动隔离）
 ./run_tests_docker.sh unit
 ```
