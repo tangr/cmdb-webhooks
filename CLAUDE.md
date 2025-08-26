@@ -334,6 +334,11 @@ logger.critical("Critical message")  # 严重错误
 - **SQLite** - 测试数据库（内存模式）
 - **Redis Mock** - 模拟 Redis 连接
 
+**测试环境:**
+
+- **本地测试** - 直接在开发环境运行测试
+- **Docker 测试** - 在容器化环境中运行测试（推荐）
+
 ### 测试项目结构
 
 ```text
@@ -353,7 +358,10 @@ tests/
 ├── test_cmdb_integration.py  # CMDB API 集成测试
 ├── test_feishu_integration.py # 飞书 API 集成测试
 ├── test_security.py          # 安全和认证测试
-├── run_tests.sh             # 测试运行脚本
+├── Dockerfile.test          # Docker 测试镜像
+├── docker-compose.test.yml  # Docker Compose 测试配置
+├── run_tests.sh             # 本地测试运行脚本
+├── run_tests_docker.sh      # Docker 测试运行脚本
 └── TESTING.md               # 测试文档
 ```
 
@@ -398,19 +406,40 @@ pytest tests/ -m redis         # 运行 Redis 测试
 - `TESTING=1` - 启用测试模式
 - `PYTHONPATH` - 自动设置项目路径
 
+**Docker 测试环境:**
+
+- **容器隔离**: 每次测试运行都使用全新的容器环境
+- **依赖管理**: 自动启动 Redis 等测试依赖服务
+- **结果持久化**: 测试结果和覆盖率报告保存到本地目录
+- **环境一致性**: 与生产环境使用相同的 Docker 配置
+
 ### 运行测试
 
 **快速开始:**
 
 ```bash
-# 安装依赖
+# 本地环境测试
 pip install -r requirements.txt
-
-# 运行所有测试
 ./run_tests.sh
+
+# Docker 环境测试（推荐）
+./run_tests_docker.sh
 
 # 或使用 pytest 直接运行
 pytest tests/ -v
+```
+
+**Docker 测试命令:**
+```bash
+# 运行所有测试类别
+./run_tests_docker.sh unit         # 单元测试
+./run_tests_docker.sh integration  # 集成测试
+./run_tests_docker.sh security     # 安全测试
+./run_tests_docker.sh coverage     # 完整覆盖率测试
+
+# 调试和开发
+./run_tests_docker.sh shell        # 进入测试容器交互式环境
+./run_tests_docker.sh clean        # 清理测试环境
 ```
 
 **常用测试命令:**
