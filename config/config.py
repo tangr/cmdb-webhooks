@@ -1,4 +1,4 @@
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlmodel import create_engine, Session
 from typing import Generator, Dict, List, Any, Optional
 import redis.asyncio as redis
@@ -102,10 +102,12 @@ class Settings(BaseSettings):
         },
     }
 
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        case_sensitive = False
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="allow",  # Allow extra environment variables
+    )
 
 
 settings = Settings()
