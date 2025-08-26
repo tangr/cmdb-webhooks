@@ -311,6 +311,314 @@ logger.critical("Critical message")  # 严重错误
 - 将灵活数据（标头、请求正文）存储为 JSON 列
 - 对时间相关字段使用 Unix 时间戳
 
+## 测试架构
+
+### 测试工具栈
+
+**测试框架:**
+
+- **pytest** - 主要测试框架，支持丰富的插件生态
+- **pytest-asyncio** - 异步测试支持
+- **pytest-cov** - 测试覆盖率报告
+- **faker** - 测试数据生成
+
+**测试类型:**
+
+- **单元测试** - 测试单个组件的功能
+- **集成测试** - 测试 API 端点和组件交互
+- **安全测试** - 测试认证和安全功能
+
+**模拟和固件:**
+
+- **unittest.mock** - Python 标准模拟库
+- **SQLite** - 测试数据库（内存模式）
+- **Redis Mock** - 模拟 Redis 连接
+
+### 测试项目结构
+
+```text
+tests/
+├── conftest.py                 # 测试配置和共享固件
+├── pytest.ini                 # pytest 配置文件
+├── test_auth.py               # 认证 API 测试
+├── test_models/               # 数据模型单元测试
+│   ├── test_cmdb_reqlog.py   # CMDB 日志模型测试
+│   └── test_feishu_reqlog.py # 飞书日志模型测试
+├── test_services/             # 服务层单元测试
+│   ├── test_redis_session.py # Redis 会话服务测试
+│   ├── test_feishu_service.py # 飞书服务测试
+│   └── test_webhook_mapping.py # Webhook 映射测试
+├── test_utils/               # 工具类测试
+│   └── test_logger.py        # 日志工具测试
+├── test_cmdb_integration.py  # CMDB API 集成测试
+├── test_feishu_integration.py # 飞书 API 集成测试
+├── test_security.py          # 安全和认证测试
+├── run_tests.sh             # 测试运行脚本
+└── TESTING.md               # 测试文档
+```
+
+### 测试类别和标记
+
+应用程序使用 pytest 标记系统组织不同类型的测试：
+
+**测试标记:**
+
+- `@pytest.mark.unit` - 单元测试
+- `@pytest.mark.integration` - 集成测试
+- `@pytest.mark.security` - 安全测试
+- `@pytest.mark.auth` - 认证测试
+- `@pytest.mark.redis` - Redis 相关测试
+
+**运行特定类别的测试:**
+
+```bash
+pytest tests/ -m unit          # 运行单元测试
+pytest tests/ -m integration   # 运行集成测试
+pytest tests/ -m security      # 运行安全测试
+pytest tests/ -m auth          # 运行认证测试
+pytest tests/ -m redis         # 运行 Redis 测试
+```
+
+### 测试环境配置
+
+**测试数据库:**
+
+- 使用 SQLite 内存数据库进行测试隔离
+- 每个测试都有独立的数据库会话
+- 自动清理测试数据，确保测试间无污染
+
+**模拟外部依赖:**
+
+- Redis 连接使用 Mock 对象
+- HTTP 客户端请求使用 Mock 响应
+- 外部 API 调用完全模拟
+
+**环境变量:**
+
+- `TESTING=1` - 启用测试模式
+- `PYTHONPATH` - 自动设置项目路径
+
+### 运行测试
+
+**快速开始:**
+
+```bash
+# 安装依赖
+pip install -r requirements.txt
+
+# 运行所有测试
+./run_tests.sh
+
+# 或使用 pytest 直接运行
+pytest tests/ -v
+```
+
+**常用测试命令:**
+
+```bash
+# 生成覆盖率报告
+pytest tests/ --cov=app --cov-report=html
+
+# 运行特定测试文件
+pytest tests/test_models/test_cmdb_reqlog.py -v
+
+# 运行特定测试方法
+pytest tests/test_models/test_cmdb_reqlog.py::TestCmdbReqLogModel::test_create_cmdb_reqlog -v
+
+# 在失败时停止
+pytest tests/ -x
+
+# 显示详细输出
+pytest tests/ -v -s
+```
+
+**并行测试:**
+
+```bash
+# 使用多进程运行测试（需要 pytest-xdist）
+pytest tests/ -n auto
+```
+
+### 测试覆盖率
+
+**覆盖率目标:**
+
+- 单元测试覆盖率 > 80%
+- 关键业务逻辑覆盖率 > 95%
+- API 端点集成测试全覆盖
+
+**查看覆盖率报告:**
+
+```bash
+# 终端报告
+pytest tests/ --cov=app --cov-report=term-missing
+
+# HTML 报告（生成 htmlcov/index.html）
+pytest tests/ --cov=app --cov-report=html
+
+# XML 报告（用于 CI/CD）
+pytest tests/ --cov=app --cov-report=xml
+```
+
+### 编写测试指南
+
+**测试文件命名:**
+
+- 测试文件：`test_<module_name>.py`
+- 测试类：`class Test<ClassName>:`
+- 测试方法：`def test_<functionality>:`
+
+**测试组织:**
+
+```python
+import pytest
+from unittest.mock import Mock, patch
+
+@pytest.mark.unit
+class TestModelName:
+    """Test description"""
+
+    def test_specific_functionality(self, test_session):
+        """Test specific functionality description"""
+        # Arrange
+        test_data = {...}
+
+        # Act
+        result = function_under_test(test_data)
+
+        # Assert
+        assert result.status == expected_status
+```
+
+**使用固件 (Fixtures):**
+
+```python
+def test_with_database(test_session):
+    """Test using database session"""
+    pass
+
+def test_with_authentication(auth_headers):
+    """Test with authentication headers"""
+    pass
+
+def test_async_endpoint(async_client):
+    """Test async API endpoint"""
+    pass
+```
+
+**模拟外部依赖:**
+
+```python
+@patch('app.services.external_service.make_request')
+def test_external_api_call(mock_request):
+    """Test external API integration"""
+    mock_request.return_value = expected_response
+    result = service_function()
+    assert result == expected_result
+```
+
+### 持续集成测试
+
+**预提交检查:**
+
+```bash
+# 运行测试套件
+./run_tests.sh
+
+# 检查代码格式
+black --check app/ tests/
+
+# 类型检查（如果启用）
+mypy app/
+```
+
+**CI/CD 流水线:**
+
+```yaml
+# GitHub Actions 示例
+- name: Run tests
+  run: |
+    pip install -r requirements.txt
+    pytest tests/ --cov=app --cov-report=xml --junit-xml=junit.xml
+```
+
+### 测试最佳实践
+
+**测试设计原则:**
+
+- **AAA 模式**: Arrange（准备）、Act（执行）、Assert（断言）
+- **测试隔离**: 每个测试都应该独立运行
+- **清晰命名**: 测试名称应该描述测试场景
+- **单一职责**: 每个测试只验证一个功能点
+
+**数据处理:**
+
+- 使用固件提供测试数据
+- 避免硬编码测试值
+- 使用 Faker 生成随机测试数据
+- 清理测试后的数据状态
+
+**异步测试:**
+
+```python
+@pytest.mark.asyncio
+async def test_async_function(async_client):
+    """Test async functionality"""
+    response = await async_client.get("/api/endpoint")
+    assert response.status_code == 200
+```
+
+**错误测试:**
+
+```python
+def test_error_handling():
+    """Test error scenarios"""
+    with pytest.raises(ExpectedException):
+        function_that_should_raise_exception()
+```
+
+**参数化测试:**
+
+```python
+@pytest.mark.parametrize("input_value,expected", [
+    ("valid_input", True),
+    ("invalid_input", False),
+])
+def test_validation(input_value, expected):
+    """Test multiple input scenarios"""
+    assert validate_input(input_value) == expected
+```
+
+### 调试测试
+
+**调试失败的测试:**
+
+```bash
+# 运行到第一个失败就停止
+pytest tests/ -x
+
+# 显示完整的错误追踪
+pytest tests/ --tb=long
+
+# 进入调试模式
+pytest tests/ --pdb
+
+# 显示打印输出
+pytest tests/ -s
+```
+
+**日志调试:**
+
+```python
+import logging
+logging.basicConfig(level=logging.DEBUG)
+
+def test_with_logging():
+    """Test with debug logging"""
+    logger = logging.getLogger(__name__)
+    logger.debug("Debug information for test")
+```
+
 ## 重要说明
 
 ### 代码注释规范
@@ -318,3 +626,9 @@ logger.critical("Critical message")  # 严重错误
 - 所有代码内的注释必须使用英文
 - 项目文档和配置说明可以使用中文
 - 保持代码的国际化兼容性
+
+### 测试注释规范
+
+- 测试方法的文档字符串使用英文
+- 测试描述要清晰说明测试目的
+- 复杂测试逻辑要添加内联注释
