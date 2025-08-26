@@ -1,0 +1,32 @@
+# Test Dockerfile for webhook-proxy project
+FROM python:3.13.7-slim
+
+# Set environment variables for testing
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app \
+    TESTING=1
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    gcc \
+    default-libmysqlclient-dev \
+    pkg-config \
+    sqlite3 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create and set working directory
+WORKDIR /app
+
+# Copy requirements and install dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application code
+COPY . .
+
+# Create directories for test artifacts
+RUN mkdir -p /app/test-results /app/htmlcov
+
+# Run tests by default
+CMD ["python", "-m", "pytest", "tests/", "-v", "--cov=app", "--cov-report=html:htmlcov", "--cov-report=xml:test-results/coverage.xml", "--junit-xml=test-results/junit.xml"]

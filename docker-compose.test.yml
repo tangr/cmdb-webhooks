@@ -1,0 +1,54 @@
+services:
+  # Test runner service
+  test-runner:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    environment:
+      # Test environment variables
+      - TESTING=1
+      - PYTHONPATH=/app
+      - DATABASE_URL=sqlite:///./test.db
+      - DATABASE_ECHO=false
+      - REDIS_HOST=test-redis
+      - REDIS_PORT=6379
+      - REDIS_DB=14  # Different from production
+      - LOG_LEVEL=DEBUG
+      - ENABLE_CONSOLE_LOGGING=false
+      - ENABLE_DATABASE_LOGGING=true
+      # Mock OIDC settings for testing
+      - OIDC_ISSUER_URL=https://test-oidc.example.com
+      - OIDC_CLIENT_ID=test-client
+      - OIDC_CLIENT_SECRET=test-secret
+      - CMDB_WEBHOOK_API_KEYS=test-api-key
+      - FEISHU_WEBHOOK_API_KEYS=
+    volumes:
+      # Mount source code for development
+      - .:/app:ro
+      # Mount test results directory
+      - ./test-results:/app/test-results
+      - ./htmlcov:/app/htmlcov
+    depends_on:
+      test-redis:
+        condition: service_healthy
+    networks:
+      - test-network
+
+  # Redis for integration tests (optional)
+  test-redis:
+    image: redis:7.2.10-alpine
+    ports:
+      - "6380:6379"  # Different port to avoid conflicts
+    environment:
+      - REDIS_PASSWORD=
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - test-network
+
+networks:
+  test-network:
+    driver: bridge
