@@ -1,4 +1,6 @@
-```
+# README
+
+```text
 curl -X POST \
   -H "Content-Type: application/json" \
   -H "X-API-Key: QNbl7W9Ez7hVkR44ja93" \
