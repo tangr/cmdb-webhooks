@@ -21,6 +21,12 @@ coverage.xml
 *.log
 .pytest_cache
 
+# Testing
+htmlcov/
+test-results/
+junit.xml
+*.db
+
 # Virtual environments
 venv/
 ENV/
