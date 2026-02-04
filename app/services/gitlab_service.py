@@ -460,9 +460,10 @@ async def process_gitlab_webhook(
     except json.JSONDecodeError:
         raise HTTPException(status_code=400, detail="Invalid JSON payload")
 
-    # Determine event type from header or payload
-    event_type = gitlab_event or body.get("object_kind", "unknown")
-    event_type = event_type.lower().replace(" ", "_")
+    # Determine event type from payload (object_kind is more reliable than header)
+    # Header format: "Push Hook", "Tag Push Hook", "Merge Request Hook"
+    # Payload format: "push", "tag_push", "merge_request"
+    event_type = body.get("object_kind", "unknown")
 
     # Get project path from payload
     project_path = ""
