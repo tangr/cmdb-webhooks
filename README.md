@@ -34,4 +34,40 @@ curl -X POST \
     "message": "<hr>🔥\n**Value**: A=93, C=1, reducer=93\n**Labels**:\n- *alertname* = test-High CPU usage - Multi-region1\n- *grafana_folder* = Multi-region alerts\n- *instance* = server-08\n- *region* = us-west\n- *service* = db-server-2\n- *severity* = critical\n\n**Links**:  [🔗](https://grafana-test.exodushk.com/alerting/grafana/beuz77ezwfncwb/view?orgId=1)  [🔕](https://grafana-test.exodushk.com/alerting/silence/new?alertmanager=grafana&matcher=__alert_rule_uid__%3Dbeuz77ezwfncwb&matcher=instance%3Dserver-08&matcher=region%3Dus-west&matcher=service%3Ddb-server-2&matcher=severity%3Dcritical&orgId=1)\n"
   }'
 
+
+# GitLab System Hook -> Jenkins Generic Webhook Trigger
+curl -X POST \
+  -H "Content-Type: application/json" \
+  -H "X-Gitlab-Token: your-secret-token" \
+  -H "X-Gitlab-Event: Push Hook" \
+  "http://127.0.0.1:8000/gitlab/webhook" \
+  -d '{
+    "object_kind": "push",
+    "ref": "refs/heads/main",
+    "checkout_sha": "abc123def456",
+    "user_id": 1,
+    "user_name": "Test User",
+    "user_username": "testuser",
+    "user_email": "test@example.com",
+    "project": {
+      "id": 100,
+      "name": "my-project",
+      "path_with_namespace": "mygroup/my-project",
+      "web_url": "https://gitlab.example.com/mygroup/my-project"
+    },
+    "commits": [
+      {
+        "id": "abc123",
+        "message": "First commit message",
+        "author": {"name": "Test User", "email": "test@example.com"}
+      },
+      {
+        "id": "def456",
+        "message": "Second commit message",
+        "author": {"name": "Test User", "email": "test@example.com"}
+      }
+    ],
+    "total_commits_count": 2
+  }'
+
 ```
