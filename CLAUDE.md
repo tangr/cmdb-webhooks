@@ -43,14 +43,17 @@ webhook-proxy/
 │   │   └── admin.py       # 管理员路由和功能
 │   ├── models/            # 数据模型
 │   │   ├── cmdb_reqlog.py  # CMDB请求日志模型
-│   │   └── feishu_reqlog.py # 飞书请求日志模型
+│   │   ├── feishu_reqlog.py # 飞书请求日志模型
+│   │   └── gitlab_reqlog.py # GitLab请求日志模型
 │   ├── routers/           # API路由处理器
 │   │   ├── auth.py        # 认证相关路由（JWT + Session + OIDC）
 │   │   ├── cmdb.py        # CMDB日志路由
-│   │   └── feishu.py      # 飞书Webhook代理路由
+│   │   ├── feishu.py      # 飞书Webhook代理路由
+│   │   └── gitlab.py      # GitLab Webhook代理路由
 │   ├── services/          # 服务层模块
 │   │   ├── cmdb_service.py      # CMDB代理请求处理服务
 │   │   ├── feishu_service.py    # 飞书服务逻辑
+│   │   ├── gitlab_service.py    # GitLab到Jenkins转发服务
 │   │   ├── redis_session.py     # Redis会话管理服务
 │   │   └── webhook_mapping.py   # Webhook映射服务
 │   └── utils/             # 工具模块
@@ -74,7 +77,8 @@ webhook-proxy/
 │       └── markdown-16.1.1/      # Markdown解析库
 ├── config/                # 配置模块
 │   ├── config.py          # Pydantic设置配置
-│   └── webhook_mapping.yaml # Webhook映射配置文件
+│   ├── webhook_mapping.yaml # 飞书Webhook映射配置文件
+│   └── gitlab_jenkins_mapping.yaml # GitLab到Jenkins映射配置文件
 ├── sql/                   # 数据库脚本
 │   └── db.sql            # 数据库初始化脚本
 ├── requirements.txt       # Python依赖包
@@ -126,6 +130,7 @@ webhook-proxy/
 - 主要数据实体包括：
   - `CmdbReqLog`: 存储来自 CMDB 系统的 HTTP 请求/响应数据
   - `FeishuReqLog`: 存储飞书 Webhook 代理的请求/响应数据
+  - `GitlabReqLog`: 存储 GitLab Webhook 到 Jenkins 的请求/响应数据
 - 使用 JSON 列灵活存储标头和正文数据
 - 时间戳存储为 Unix 时间戳
 
@@ -140,6 +145,7 @@ webhook-proxy/
 
 - **CmdbReqLog**: 存储来自 CMDB 系统的 HTTP 请求详细信息（方法、路径、标头、正文、状态等）
 - **FeishuReqLog**: 存储飞书 Webhook 代理请求的详细信息（包括请求和响应数据）
+- **GitlabReqLog**: 存储 GitLab Webhook 请求详细信息（事件类型、项目路径、Jenkins 响应等）
 - **User**: 用户认证和权限管理的用户实体（支持角色基础的访问控制）
 - 所有模型遵循 SQLModel 模式，包含用于创建、更新和读取操作的独立类
 
@@ -168,6 +174,13 @@ webhook-proxy/
 - **WebHookMapping** (`app/services/webhook_mapping.py`):
   - 处理 Webhook 请求的路由和映射逻辑
   - 支持配置文件驱动的映射规则
+
+- **GitlabService** (`app/services/gitlab_service.py`):
+  - 处理 GitLab System Hook 到 Jenkins Generic Webhook Trigger 的转发
+  - 支持 X-Gitlab-Token 验证
+  - 自动预处理 GitLab payload 为标准化字段（Push/Tag Push/Merge Request）
+  - 支持项目路径通配符匹配和字段过滤
+  - 记录请求/响应日志到数据库
 
 ### API 结构
 
@@ -204,6 +217,12 @@ webhook-proxy/
 - `POST /feishu/webhook/alias/{webhook_name}` - 飞书 Webhook 代理端点（按名称别名）
 - `GET /feishu/logs` - 获取飞书 Webhook 日志列表
 - `GET /feishu/logs/{log_id}` - 获取特定飞书 Webhook 日志
+
+**GitLab Webhook 模块 (`/gitlab/*`)**
+
+- `POST /gitlab/webhook` - GitLab System Hook 接收端点，转发到 Jenkins Generic Webhook Trigger
+- `GET /gitlab/logs` - 获取 GitLab Webhook 日志列表（需要认证）
+- `GET /gitlab/logs/{log_id}` - 获取特定 GitLab Webhook 日志（需要认证）
 
 **其他端点:**
 
@@ -279,6 +298,23 @@ webhook-proxy/
 
 - `oidc_role_mapping`: OIDC 用户角色映射（用户名到角色的映射字典）
 - `mock_users`: 模拟用户数据库（用于开发和测试环境）
+
+**GitLab Webhook 配置:**
+
+- `gitlab_webhook_secret_tokens`: GitLab Secret Token（逗号分隔，空值表示不验证）
+- `gitlab_jenkins_base_url`: Jenkins 服务器 URL
+- `gitlab_jenkins_default_token`: 默认 Jenkins 触发 Token
+- `gitlab_enable_push_events`: 启用 Push 事件处理 (默认: true)
+- `gitlab_enable_tag_push_events`: 启用 Tag Push 事件处理 (默认: false，预留)
+- `gitlab_enable_merge_request_events`: 启用 Merge Request 事件处理 (默认: false，预留)
+
+**GitLab-Jenkins 映射配置 (`config/gitlab_jenkins_mapping.yaml`):**
+
+- 支持按项目路径配置 Jenkins 任务映射
+- 支持通配符模式匹配（如 `group/*`）
+- 自动预处理 GitLab payload 为标准化字段
+- 支持 `include_fields` 限制发送的字段
+- 支持 `extra_params` 添加额外静态参数
 
 **日志配置:**
 
