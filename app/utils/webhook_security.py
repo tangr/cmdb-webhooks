@@ -101,6 +101,48 @@ def verify_feishu_webhook(
         raise HTTPException(status_code=403, detail="Invalid API key")
 
 
+def verify_gitlab_webhook(
+    request: Request,
+    gitlab_token: Optional[str] = None,
+) -> bool:
+    """
+    Verify GitLab webhook request using X-Gitlab-Token header (supports multiple tokens)
+
+    Args:
+        request: FastAPI request object
+        gitlab_token: Token from X-Gitlab-Token header
+
+    Returns:
+        bool: True if verification passes
+
+    Raises:
+        HTTPException: If verification fails
+    """
+    # Get configured GitLab secret tokens
+    configured_tokens = get_api_keys_list(settings.gitlab_webhook_secret_tokens)
+
+    # If no tokens configured, skip verification
+    if not configured_tokens:
+        logger.debug("GitLab webhook verification disabled (no tokens configured)")
+        return True
+
+    # If no token provided in request, reject
+    if not gitlab_token:
+        logger.warning("GitLab webhook request without X-Gitlab-Token")
+        raise HTTPException(
+            status_code=403,
+            detail="GitLab webhook verification required. Provide X-Gitlab-Token header",
+        )
+
+    # Check if provided token matches any configured token
+    if gitlab_token in configured_tokens:
+        logger.debug("GitLab webhook verified via X-Gitlab-Token")
+        return True
+    else:
+        logger.warning(f"Invalid GitLab token provided: {gitlab_token[:8]}...")
+        raise HTTPException(status_code=403, detail="Invalid GitLab token")
+
+
 def verify_webhook_ip_whitelist(
     request: Request, allowed_ips: List[str] = None
 ) -> bool:

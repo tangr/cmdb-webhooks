@@ -1,0 +1,41 @@
+# GitLab to Jenkins Generic Webhook Trigger mapping configuration
+# This file maps GitLab project paths to Jenkins job configurations
+
+# Project-specific mappings
+# Key: GitLab project path (supports wildcard patterns)
+# Value: Jenkins job configuration
+mappings:
+  # Example: Exact project path match
+  # "group/project-name":
+  #   jenkins_job: "job-name"
+  #   jenkins_token: "trigger-token"  # Optional, uses default if not set
+  #   field_mapping:
+  #     ref: "ref"
+  #     project_name: "project.name"
+  #     project_path: "project.path_with_namespace"
+  #     commit_sha: "checkout_sha"
+  #     commit_message: "commits[0].message"
+  #     user_name: "user_name"
+  #     user_email: "user_email"
+  #   extra_params:
+  #     custom_param: "value"
+
+  # Example: Wildcard pattern (matches all projects under 'group/')
+  # "group/*":
+  #   jenkins_job: "generic-build"
+  #   jenkins_token: "generic-token"
+  #   field_mapping:
+  #     ref: "ref"
+  #     project_path: "project.path_with_namespace"
+
+# Default configuration (used when no pattern matches)
+# Set enabled: true to forward unmatched projects to a default job
+default:
+  enabled: false
+  jenkins_job: "default-job"
+  jenkins_token: ""
+  field_mapping:
+    ref: "ref"
+    project_path: "project.path_with_namespace"
+    commit_sha: "checkout_sha"
+    user_name: "user_name"
