@@ -559,6 +559,11 @@ async def process_gitlab_webhook(
     extra_params = jenkins_config.get("extra_params", {})
     final_payload.update(extra_params)
 
+    # Debug log the payload to be sent to Jenkins
+    logger.debug(
+        f"Jenkins payload for project '{project_path}': {json.dumps(final_payload, ensure_ascii=False, default=str)}"
+    )
+
     try:
         # Send to Jenkins
         jenkins_result = await send_to_jenkins(
