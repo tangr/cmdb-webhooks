@@ -51,8 +51,9 @@ def init_gitlab_jenkins_mapping():
     """Initialize GitLab-Jenkins mapping on startup"""
     global _gitlab_jenkins_mapping
     _gitlab_jenkins_mapping = load_gitlab_jenkins_mapping()
-    mappings_count = len(_gitlab_jenkins_mapping.get("mappings", {}))
-    logger.info(f"Loaded {mappings_count} GitLab-Jenkins mappings")
+    # Use 'or {}' because YAML returns None when key exists but has no value
+    mappings = _gitlab_jenkins_mapping.get("mappings") or {}
+    logger.info(f"Loaded {len(mappings)} GitLab-Jenkins mappings")
 
 
 def get_jenkins_config(project_path: str) -> Optional[Dict[str, Any]]:
@@ -66,7 +67,8 @@ def get_jenkins_config(project_path: str) -> Optional[Dict[str, Any]]:
     Returns:
         Jenkins configuration dict or None if no match
     """
-    mappings = _gitlab_jenkins_mapping.get("mappings", {})
+    # Use 'or {}' because YAML returns None when key exists but has no value
+    mappings = _gitlab_jenkins_mapping.get("mappings") or {}
 
     # Try exact match first
     if project_path in mappings:
@@ -78,7 +80,7 @@ def get_jenkins_config(project_path: str) -> Optional[Dict[str, Any]]:
             return config
 
     # Use default configuration if enabled
-    default_config = _gitlab_jenkins_mapping.get("default", {})
+    default_config = _gitlab_jenkins_mapping.get("default") or {}
     if default_config.get("enabled", False):
         return default_config
 
