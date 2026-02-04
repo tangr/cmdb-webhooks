@@ -20,22 +20,10 @@ services:
 
     # Additional environment variables for development
     environment:
-      - DATABASE_URL=mysql+pymysql://root:rootpass@mysql:3306/webhook_proxy
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      - REDIS_DB=13
       - LOG_LEVEL=DEBUG
       - DATABASE_ECHO=true
       - ENABLE_CONSOLE_LOGGING=true
       - LOG_TO_FILE=false
-
-  mysql:
-    # Expose MySQL port for external connections during development
-    environment:
-      - MYSQL_ROOT_PASSWORD=rootpass
-      - MYSQL_DATABASE=webhook_proxy
-      - MYSQL_USER=appuser
-      - MYSQL_PASSWORD=apppass
 
   redis:
     # Expose Redis port for external connections during development
