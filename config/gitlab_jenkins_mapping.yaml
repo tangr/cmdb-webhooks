@@ -1,32 +1,104 @@
 # GitLab to Jenkins Generic Webhook Trigger mapping configuration
 # This file maps GitLab project paths to Jenkins job configurations
 
-# Project-specific mappings
-# Key: GitLab project path (supports wildcard patterns)
-# Value: Jenkins job configuration
-mappings:
-  # Example: Exact project path match
-  # "group/project-name":
-  #   jenkins_job: "job-name"
-  #   jenkins_token: "trigger-token"  # Optional, uses default if not set
-  #   field_mapping:
-  #     ref: "ref"
-  #     project_name: "project.name"
-  #     project_path: "project.path_with_namespace"
-  #     commit_sha: "checkout_sha"
-  #     commit_message: "commits[0].message"
-  #     user_name: "user_name"
-  #     user_email: "user_email"
-  #   extra_params:
-  #     custom_param: "value"
+# =============================================================================
+# Predefined Fields (automatically extracted from GitLab payload)
+# =============================================================================
+#
+# Push Event Fields:
+#   - ref                   : Original ref (e.g., refs/heads/main)
+#   - branch                : Branch name extracted from ref
+#   - before                : Commit SHA before push
+#   - after                 : Commit SHA after push
+#   - checkout_sha          : Checkout SHA
+#   - project_id            : Project ID
+#   - project_name          : Project name
+#   - project_path          : Project path with namespace
+#   - project_url           : Project web URL
+#   - user_id               : User ID who triggered the push
+#   - user_name             : User name
+#   - user_username         : User username
+#   - user_email            : User email
+#   - commit_count          : Number of commits in this push
+#   - commits               : Original commits array (all commit objects)
+#   - commit_messages       : Array of all commit messages
+#   - first_commit_message  : First commit message
+#   - last_commit_message   : Last commit message
+#   - first_commit_sha      : First commit SHA
+#   - last_commit_sha       : Last commit SHA
+#
+# Tag Push Event Fields (reserved):
+#   - ref                   : Original ref (e.g., refs/tags/v1.0.0)
+#   - tag_name              : Tag name extracted from ref
+#   - before                : Commit SHA before (0000... for new tag)
+#   - after                 : Commit SHA after (0000... for deleted tag)
+#   - checkout_sha          : Checkout SHA
+#   - project_id            : Project ID
+#   - project_name          : Project name
+#   - project_path          : Project path with namespace
+#   - project_url           : Project web URL
+#   - user_id               : User ID
+#   - user_name             : User name
+#   - user_username         : User username
+#
+# Merge Request Event Fields (reserved):
+#   - mr_id                 : Merge request ID
+#   - mr_iid                : Merge request IID (project-specific)
+#   - mr_title              : Merge request title
+#   - mr_state              : Merge request state (opened, closed, merged)
+#   - mr_action             : Action that triggered the event
+#   - source_branch         : Source branch name
+#   - target_branch         : Target branch name
+#   - source_project_id     : Source project ID
+#   - target_project_id     : Target project ID
+#   - project_id            : Target project ID
+#   - project_name          : Project name
+#   - project_path          : Project path with namespace
+#   - project_url           : Project web URL
+#   - user_id               : User ID
+#   - user_name             : User name
+#   - user_username         : User username
+#
+# =============================================================================
 
-  # Example: Wildcard pattern (matches all projects under 'group/')
-  # "group/*":
-  #   jenkins_job: "generic-build"
-  #   jenkins_token: "generic-token"
-  #   field_mapping:
-  #     ref: "ref"
-  #     project_path: "project.path_with_namespace"
+# Project-specific mappings
+# Key: GitLab project path (supports wildcard patterns like "group/*")
+mappings:
+  # Example 1: Send all predefined fields (default behavior)
+  # "mygroup/myproject":
+  #   jenkins_job: "my-build-job"
+  #   jenkins_token: "my-trigger-token"
+
+  # Example 2: Only send specific fields using include_fields
+  # "mygroup/another-project":
+  #   jenkins_job: "another-job"
+  #   jenkins_token: "another-token"
+  #   include_fields:
+  #     - branch
+  #     - project_path
+  #     - commit_count
+  #     - last_commit_message
+  #     - user_name
+
+  # Example 3: Wildcard pattern (matches all projects under 'devops/')
+  # "devops/*":
+  #   jenkins_job: "devops-generic-build"
+  #   jenkins_token: "devops-token"
+  #   include_fields:
+  #     - branch
+  #     - project_name
+  #     - project_path
+  #     - checkout_sha
+  #   extra_params:
+  #     build_type: "auto"
+
+  # Example 4: Add extra static parameters
+  # "frontend/*":
+  #   jenkins_job: "frontend-build"
+  #   jenkins_token: "frontend-token"
+  #   extra_params:
+  #     environment: "staging"
+  #     notify_slack: "true"
 
 # Default configuration (used when no pattern matches)
 # Set enabled: true to forward unmatched projects to a default job
@@ -34,8 +106,8 @@ default:
   enabled: false
   jenkins_job: "default-job"
   jenkins_token: ""
-  field_mapping:
-    ref: "ref"
-    project_path: "project.path_with_namespace"
-    commit_sha: "checkout_sha"
-    user_name: "user_name"
+  # Optionally limit fields for default handling
+  # include_fields:
+  #   - branch
+  #   - project_path
+  #   - user_name

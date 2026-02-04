@@ -150,6 +150,200 @@ def get_branch_from_ref(ref: str) -> str:
     return ref or ""
 
 
+def preprocess_push_event(payload: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Preprocess GitLab Push event payload into standardized fields.
+
+    Predefined fields:
+        - ref: Original ref (e.g., refs/heads/main)
+        - branch: Branch name extracted from ref
+        - before: Commit SHA before push
+        - after: Commit SHA after push
+        - checkout_sha: Checkout SHA
+        - project_id: Project ID
+        - project_name: Project name
+        - project_path: Project path with namespace
+        - project_url: Project web URL
+        - user_id: User ID who triggered the push
+        - user_name: User name
+        - user_username: User username
+        - user_email: User email
+        - commit_count: Number of commits in this push
+        - commits: Original commits array
+        - commit_messages: Array of all commit messages
+        - first_commit_message: First commit message
+        - last_commit_message: Last commit message
+        - first_commit_sha: First commit SHA
+        - last_commit_sha: Last commit SHA
+    """
+    result = {}
+
+    # Basic ref info
+    ref = payload.get("ref", "")
+    result["ref"] = ref
+    result["branch"] = get_branch_from_ref(ref)
+    result["before"] = payload.get("before", "")
+    result["after"] = payload.get("after", "")
+    result["checkout_sha"] = payload.get("checkout_sha", "")
+
+    # Project info
+    project = payload.get("project", {})
+    result["project_id"] = project.get("id", "")
+    result["project_name"] = project.get("name", "")
+    result["project_path"] = project.get("path_with_namespace", "")
+    result["project_url"] = project.get("web_url", "")
+
+    # User info
+    result["user_id"] = payload.get("user_id", "")
+    result["user_name"] = payload.get("user_name", "")
+    result["user_username"] = payload.get("user_username", "")
+    result["user_email"] = payload.get("user_email", "")
+
+    # Commits info
+    commits = payload.get("commits", [])
+    result["commit_count"] = len(commits)
+    result["commits"] = commits
+
+    # Extract commit messages
+    commit_messages = [c.get("message", "") for c in commits if c.get("message")]
+    result["commit_messages"] = commit_messages
+    result["first_commit_message"] = commit_messages[0] if commit_messages else ""
+    result["last_commit_message"] = commit_messages[-1] if commit_messages else ""
+
+    # Extract commit SHAs
+    commit_shas = [c.get("id", "") for c in commits if c.get("id")]
+    result["first_commit_sha"] = commit_shas[0] if commit_shas else ""
+    result["last_commit_sha"] = commit_shas[-1] if commit_shas else ""
+
+    return result
+
+
+def preprocess_tag_push_event(payload: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Preprocess GitLab Tag Push event payload into standardized fields.
+    Reserved for future support.
+
+    Predefined fields:
+        - ref: Original ref (e.g., refs/tags/v1.0.0)
+        - tag_name: Tag name extracted from ref
+        - before: Commit SHA before (0000... for new tag)
+        - after: Commit SHA after (0000... for deleted tag)
+        - checkout_sha: Checkout SHA
+        - project_id: Project ID
+        - project_name: Project name
+        - project_path: Project path with namespace
+        - project_url: Project web URL
+        - user_id: User ID
+        - user_name: User name
+        - user_username: User username
+    """
+    result = {}
+
+    # Basic ref info
+    ref = payload.get("ref", "")
+    result["ref"] = ref
+    result["tag_name"] = get_branch_from_ref(ref)  # Works for tags too
+    result["before"] = payload.get("before", "")
+    result["after"] = payload.get("after", "")
+    result["checkout_sha"] = payload.get("checkout_sha", "")
+
+    # Project info
+    project = payload.get("project", {})
+    result["project_id"] = project.get("id", "")
+    result["project_name"] = project.get("name", "")
+    result["project_path"] = project.get("path_with_namespace", "")
+    result["project_url"] = project.get("web_url", "")
+
+    # User info
+    result["user_id"] = payload.get("user_id", "")
+    result["user_name"] = payload.get("user_name", "")
+    result["user_username"] = payload.get("user_username", "")
+
+    return result
+
+
+def preprocess_merge_request_event(payload: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Preprocess GitLab Merge Request event payload into standardized fields.
+    Reserved for future support.
+
+    Predefined fields:
+        - mr_id: Merge request ID
+        - mr_iid: Merge request IID (project-specific)
+        - mr_title: Merge request title
+        - mr_state: Merge request state (opened, closed, merged)
+        - mr_action: Action that triggered the event
+        - source_branch: Source branch name
+        - target_branch: Target branch name
+        - source_project_id: Source project ID
+        - target_project_id: Target project ID
+        - project_id: Target project ID
+        - project_name: Project name
+        - project_path: Project path with namespace
+        - project_url: Project web URL
+        - user_id: User ID
+        - user_name: User name
+        - user_username: User username
+    """
+    result = {}
+
+    # MR info from object_attributes
+    obj_attrs = payload.get("object_attributes", {})
+    result["mr_id"] = obj_attrs.get("id", "")
+    result["mr_iid"] = obj_attrs.get("iid", "")
+    result["mr_title"] = obj_attrs.get("title", "")
+    result["mr_state"] = obj_attrs.get("state", "")
+    result["mr_action"] = obj_attrs.get("action", "")
+    result["source_branch"] = obj_attrs.get("source_branch", "")
+    result["target_branch"] = obj_attrs.get("target_branch", "")
+    result["source_project_id"] = obj_attrs.get("source_project_id", "")
+    result["target_project_id"] = obj_attrs.get("target_project_id", "")
+
+    # Project info
+    project = payload.get("project", {})
+    result["project_id"] = project.get("id", "")
+    result["project_name"] = project.get("name", "")
+    result["project_path"] = project.get("path_with_namespace", "")
+    result["project_url"] = project.get("web_url", "")
+
+    # User info
+    user = payload.get("user", {})
+    result["user_id"] = user.get("id", "")
+    result["user_name"] = user.get("name", "")
+    result["user_username"] = user.get("username", "")
+
+    return result
+
+
+def preprocess_gitlab_payload(
+    event_type: str, payload: Dict[str, Any]
+) -> Dict[str, Any]:
+    """
+    Preprocess GitLab payload based on event type.
+
+    Args:
+        event_type: GitLab event type (push, tag_push, merge_request)
+        payload: Original GitLab payload
+
+    Returns:
+        Preprocessed payload with standardized fields
+    """
+    if event_type == "push":
+        return preprocess_push_event(payload)
+    elif event_type == "tag_push":
+        return preprocess_tag_push_event(payload)
+    elif event_type == "merge_request":
+        return preprocess_merge_request_event(payload)
+    else:
+        # For unknown event types, return minimal info
+        project = payload.get("project", {})
+        return {
+            "event_type": event_type,
+            "project_path": project.get("path_with_namespace", ""),
+            "project_name": project.get("name", ""),
+        }
+
+
 def log_gitlab_request(session: SessionDep, log_entry: GitlabReqLogCreate):
     """Log GitLab request to database based on configuration"""
 
@@ -344,17 +538,23 @@ async def process_gitlab_webhook(
     )
     log_entry.jenkins_job = jenkins_job
 
-    # Extract fields according to mapping
-    field_mapping = jenkins_config.get("field_mapping", {})
-    extracted_payload = extract_fields(body, field_mapping)
+    # Preprocess payload to get standardized fields
+    preprocessed_payload = preprocess_gitlab_payload(event_type, body)
 
-    # Add extra params if configured
+    # Check if we should use include_fields or send all preprocessed fields
+    include_fields = jenkins_config.get("include_fields", None)
+    if include_fields:
+        # Only include specified fields from preprocessed payload
+        final_payload = {
+            k: v for k, v in preprocessed_payload.items() if k in include_fields
+        }
+    else:
+        # Send all preprocessed fields (default behavior)
+        final_payload = preprocessed_payload
+
+    # Add extra params if configured (these override preprocessed fields)
     extra_params = jenkins_config.get("extra_params", {})
-    extracted_payload.update(extra_params)
-
-    # Add branch name (extracted from ref)
-    if "ref" in extracted_payload:
-        extracted_payload["branch"] = get_branch_from_ref(extracted_payload["ref"])
+    final_payload.update(extra_params)
 
     try:
         # Send to Jenkins
@@ -362,7 +562,7 @@ async def process_gitlab_webhook(
             jenkins_base_url,
             jenkins_job,
             jenkins_token,
-            extracted_payload,
+            final_payload,
         )
 
         log_entry.status = jenkins_result["status_code"]
