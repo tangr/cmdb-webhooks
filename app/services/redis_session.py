@@ -19,9 +19,6 @@ class RedisSessionManager:
     def _get_pool(self) -> redis.ConnectionPool:
         """Get or create Redis connection pool"""
         if self._pool is None:
-            logger.debug(
-                f"Creating Redis connection pool for host: {settings.redis_host}, port: {settings.redis_port}, db: {settings.redis_db}, password: {'****' if settings.redis_password else '(none)'}"
-            )
             self._pool = redis.ConnectionPool(
                 host=settings.redis_host,
                 port=settings.redis_port,
