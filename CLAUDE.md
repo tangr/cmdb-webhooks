@@ -49,6 +49,7 @@ webhook-proxy/
 │   │   ├── cmdb.py        # CMDB日志路由
 │   │   └── feishu.py      # 飞书Webhook代理路由
 │   ├── services/          # 服务层模块
+│   │   ├── cmdb_service.py      # CMDB代理请求处理服务
 │   │   ├── feishu_service.py    # 飞书服务逻辑
 │   │   ├── redis_session.py     # Redis会话管理服务
 │   │   └── webhook_mapping.py   # Webhook映射服务
@@ -57,14 +58,14 @@ webhook-proxy/
 │       ├── template_filters.py  # Jinja2模板过滤器
 │       └── webhook_security.py  # Webhook安全验证
 ├── templates/             # HTML模板文件（前端页面）
-│   ├── alert/             # 警告/通知模板目录
 │   ├── base_head.html     # 基础模板头部
 │   ├── base_foot.html     # 基础模板底部
 │   ├── base_menu.html     # 基础模板菜单
 │   ├── dashboard.html     # 用户仪表板页面
 │   ├── login.html         # 登录页面
-│   └── cmdb/              # CMDB相关模板
-│       └── show.html      # 显示页面模板
+│   ├── cmdb/              # CMDB相关模板
+│   │   └── show.html      # 显示页面模板
+│   └── feishu/            # 飞书相关模板目录
 ├── static/                # 静态资源目录（前端资源）
 │   └── plugin/            # 前端插件库
 │       ├── fomantic-ui-2.9.4/    # UI框架
@@ -151,6 +152,13 @@ webhook-proxy/
   - 自动处理会话过期和清理
   - 包含管理员功能（查看所有会话、批量清理）
 
+- **CmdbService** (`app/services/cmdb_service.py`):
+
+  - 处理 CMDB 代理请求的核心业务逻辑
+  - 支持 API Key 验证和 IP 白名单校验
+  - 转发 HTTP 请求到目标服务器（支持 GET/POST/PUT/DELETE/PATCH）
+  - 记录请求/响应日志到数据库
+
 - **FeishuService** (`app/services/feishu_service.py`):
 
   - 处理飞书 Webhook 代理请求的核心业务逻辑
@@ -235,11 +243,26 @@ webhook-proxy/
 - 从`.env`文件加载设置
 - 默认 MySQL 连接：`mysql+pymysql://root:mypassword@127.0.0.1/test2`
 
+**Webhook 安全配置:**
+
+- `cmdb_webhook_api_keys`: CMDB Webhook API Keys（逗号分隔，空值表示不验证）
+- `feishu_webhook_api_keys`: 飞书 Webhook API Keys（逗号分隔，空值表示不验证）
+- `webhook_ip_whitelist`: Webhook 请求 IP 白名单（支持单 IP 和 CIDR 格式）
+
+**登录选项配置:**
+
+- `enable_username_password_login`: 启用/禁用用户名密码登录 (默认: true)
+- `enable_oidc_login`: 启用/禁用 OIDC 登录 (默认: true)
+
 **Redis 配置 (会话管理):**
 
 - `redis_host`: Redis 服务器地址 (默认: 127.0.0.1)
 - `redis_port`: Redis 端口 (默认: 6379)
 - `redis_db`: Redis 数据库索引 (默认: 13)
+- `redis_password`: Redis 密码 (默认: 空)
+- `redis_max_connections`: 最大连接数 (默认: 10)
+- `redis_decode_responses`: 自动解码响应 (默认: true)
+- `session_redis_key_prefix`: 会话 Key 前缀 (默认: "session:")
 - `session_expire_seconds`: 会话过期时间 (默认: 86400 秒/24 小时)
 
 **OIDC 配置 (单点登录):**
@@ -249,6 +272,23 @@ webhook-proxy/
 - `oidc_client_secret`: OIDC 客户端密钥
 - `oidc_redirect_uri`: OIDC 回调地址
 - `oidc_scope`: OIDC 授权范围 (默认: "openid profile email")
+- `oidc_username_attribute`: 用户名属性字段 (默认: "preferred_username")
+- `oidc_login_button_text`: OIDC 登录按钮文本 (默认: "Sign in with OIDC")
+
+**角色映射配置:**
+
+- `oidc_role_mapping`: OIDC 用户角色映射（用户名到角色的映射字典）
+- `mock_users`: 模拟用户数据库（用于开发和测试环境）
+
+**日志配置:**
+
+- `log_level`: 日志级别 (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+- `log_format`: 日志格式字符串
+- `log_to_file`: 是否输出到文件 (默认: false)
+- `log_max_bytes`: 日志文件最大字节数 (默认: 10MB)
+- `log_backup_count`: 日志文件备份数量 (默认: 5)
+- `enable_database_logging`: 启用数据库日志记录 (默认: true)
+- `enable_console_logging`: 启用控制台日志输出 (默认: false)
 
 ## 开发指南
 
@@ -352,7 +392,8 @@ tests/
 ├── test_services/             # 服务层单元测试
 │   ├── test_redis_session.py # Redis 会话服务测试
 │   ├── test_feishu_service.py # 飞书服务测试
-│   └── test_webhook_mapping.py # Webhook 映射测试
+│   ├── test_webhook_mapping.py # Webhook 映射测试
+│   └── test_login_config.py  # 登录配置测试
 ├── test_utils/               # 工具类测试
 │   └── test_logger.py        # 日志工具测试
 ├── test_cmdb_integration.py  # CMDB API 集成测试
