@@ -163,7 +163,7 @@ async def process_webhook_request(
 
             try:
                 response_body = response.json()
-            except:
+            except Exception:
                 response_body = {"raw": response.text}
 
             # Update log entry with response data
