@@ -15,7 +15,7 @@ services:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - REDIS_DB=13
-      - REDIS_PASSWORD=""
+      - REDIS_PASSWORD=
       - SESSION_REDIS_KEY_PREFIX="session:"
       - LOG_LEVEL=INFO
       - DATABASE_ECHO=false
