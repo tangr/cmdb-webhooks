@@ -590,13 +590,13 @@ async def process_gitlab_webhook(
         if not check_commit_title_keywords(commit_title, keywords_config):
             log_entry.status = 200
             log_entry.error_message = (
-                f"Skipped: commit_title '{commit_title}' does not match keywords"
+                f"Skipped: commit_title: '{commit_title}' does not match keywords"
             )
             log_gitlab_request(session, log_entry)
             return JSONResponse(
                 content={
                     "status": "skipped",
-                    "message": f"commit_title does not match configured keywords",
+                    "message": f"commit_title: '{commit_title}' does not match configured keywords",
                     "commit_title": commit_title,
                     "project_path": project_path,
                 },
