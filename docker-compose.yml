@@ -18,6 +18,8 @@ services:
       - REDIS_PASSWORD=
       - SESSION_REDIS_KEY_PREFIX="session:"
       - LOG_LEVEL=INFO
+      - LOG_TO_FILE=false
+      - ENABLE_CONSOLE_LOGGING=true
       - DATABASE_ECHO=false
       - ENABLE_DATABASE_LOGGING=false
       - ENABLE_USERNAME_PASSWORD_LOGIN=false
