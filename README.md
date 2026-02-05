@@ -97,7 +97,7 @@ curl -X POST \
     {
       "id": "2325693d3c8c6f367b179f97d7d8e4ad821b54e1",
       "message": "update a7\n",
-      "title": "update a7",
+      "title": "build:yes update a7",
       "timestamp": "2026-02-04T10:08:41+08:00",
       "url": "https://git.yax.tech/exodus-server/contract/-/commit/2325693d3c8c6f367b179f97d7d8e4ad821b54e1",
       "author": {
