@@ -168,6 +168,9 @@ def preprocess_push_event(payload: Dict[str, Any]) -> Dict[str, Any]:
         - user_username: User username
         - first_commit_message: First commit message
         - last_commit_message: Last commit message
+        - commit_title: Last commit title (first line of message)
+        - first_commit_title: First commit title
+        - last_commit_title: Last commit title
         - first_commit_sha: First commit SHA
         - last_commit_sha: Last commit SHA
     """
@@ -201,6 +204,12 @@ def preprocess_push_event(payload: Dict[str, Any]) -> Dict[str, Any]:
     result["commit_message"] = commit_messages[-1] if commit_messages else ""
     result["first_commit_message"] = commit_messages[0] if commit_messages else ""
     result["last_commit_message"] = commit_messages[-1] if commit_messages else ""
+
+    # Extract commit titles
+    commit_titles = [c.get("title", "") for c in commits if c.get("title")]
+    result["commit_title"] = commit_titles[-1] if commit_titles else ""
+    result["first_commit_title"] = commit_titles[0] if commit_titles else ""
+    result["last_commit_title"] = commit_titles[-1] if commit_titles else ""
 
     # Extract commit SHAs
     commit_shas = [c.get("id", "") for c in commits if c.get("id")]
