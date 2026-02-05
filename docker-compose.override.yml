@@ -20,8 +20,9 @@ services:
 
     # Additional environment variables for development
     environment:
-      - LOG_LEVEL=DEBUG
+      - LOG_LEVEL=INFO
       - DATABASE_ECHO=true
+      - ENABLE_DATABASE_LOGGING=true
       - ENABLE_CONSOLE_LOGGING=true
       - LOG_TO_FILE=false
 

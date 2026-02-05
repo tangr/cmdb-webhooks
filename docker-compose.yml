@@ -19,6 +19,7 @@ services:
       - SESSION_REDIS_KEY_PREFIX="session:"
       - LOG_LEVEL=INFO
       - DATABASE_ECHO=false
+      - ENABLE_DATABASE_LOGGING=false
       - ENABLE_USERNAME_PASSWORD_LOGIN=false
       - ENABLE_OIDC_LOGIN=true
     depends_on:
