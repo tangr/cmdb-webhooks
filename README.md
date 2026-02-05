@@ -42,32 +42,91 @@ curl -X POST \
   -H "X-Gitlab-Event: Push Hook" \
   "http://127.0.0.1:8000/gitlab/webhook" \
   -d '{
-    "object_kind": "push",
-    "ref": "refs/heads/main",
-    "checkout_sha": "abc123def456",
-    "user_id": 1,
-    "user_name": "Test User",
-    "user_username": "testuser",
-    "user_email": "test@example.com",
-    "project": {
-      "id": 100,
-      "name": "my-project",
-      "path_with_namespace": "mygroup/my-project",
-      "web_url": "https://gitlab.example.com/mygroup/my-project"
-    },
-    "commits": [
-      {
-        "id": "abc123",
-        "message": "First commit message",
-        "author": {"name": "Test User", "email": "test@example.com"}
+  "object_kind": "push",
+  "event_name": "push",
+  "before": "84ee80ae38d5813cc1c02a0d6436edc73971fabf",
+  "after": "2325693d3c8c6f367b179f97d7d8e4ad821b54e1",
+  "ref": "refs/heads/tangshoubinbranch",
+  "checkout_sha": "2325693d3c8c6f367b179f97d7d8e4ad821b54e1",
+  "message": null,
+  "user_id": 20,
+  "user_name": "ShouBin Tang",
+  "user_username": "tangshoubin",
+  "user_email": null,
+  "user_avatar": null,
+  "project_id": 74,
+  "project": {
+    "id": 74,
+    "name": "contract",
+    "description": null,
+    "web_url": "https://git.yax.tech/exodus-server/contract",
+    "avatar_url": null,
+    "git_ssh_url": "git@git.yax.tech:exodus-server/contract.git",
+    "git_http_url": "https://git.yax.tech/exodus-server/contract.git",
+    "namespace": "exodus-server",
+    "visibility_level": 0,
+    "path_with_namespace": "exodus-server/contract",
+    "default_branch": "master",
+    "ci_config_path": null,
+    "homepage": "https://git.yax.tech/exodus-server/contract",
+    "url": "git@git.yax.tech:exodus-server/contract.git",
+    "ssh_url": "git@git.yax.tech:exodus-server/contract.git",
+    "http_url": "https://git.yax.tech/exodus-server/contract.git"
+  },
+  "commits": [
+    {
+      "id": "e05fc04a989adccfe27d373b980469a0b8841169",
+      "message": "update a6\n",
+      "title": "update a6",
+      "timestamp": "2026-02-04T10:08:28+08:00",
+      "url": "https://git.yax.tech/exodus-server/contract/-/commit/e05fc04a989adccfe27d373b980469a0b8841169",
+      "author": {
+        "name": "tangshoubin",
+        "email": "[REDACTED]"
       },
-      {
-        "id": "def456",
-        "message": "Second commit message",
-        "author": {"name": "Test User", "email": "test@example.com"}
-      }
-    ],
-    "total_commits_count": 2
-  }'
+      "added": [
+
+      ],
+      "modified": [
+        "test1.txt"
+      ],
+      "removed": [
+
+      ]
+    },
+    {
+      "id": "2325693d3c8c6f367b179f97d7d8e4ad821b54e1",
+      "message": "update a7\n",
+      "title": "update a7",
+      "timestamp": "2026-02-04T10:08:41+08:00",
+      "url": "https://git.yax.tech/exodus-server/contract/-/commit/2325693d3c8c6f367b179f97d7d8e4ad821b54e1",
+      "author": {
+        "name": "tangshoubin",
+        "email": "[REDACTED]"
+      },
+      "added": [
+
+      ],
+      "modified": [
+        "test1.txt"
+      ],
+      "removed": [
+
+      ]
+    }
+  ],
+  "total_commits_count": 2,
+  "push_options": {
+  },
+  "repository": {
+    "name": "contract",
+    "url": "git@git.yax.tech:exodus-server/contract.git",
+    "description": null,
+    "homepage": "https://git.yax.tech/exodus-server/contract",
+    "git_http_url": "https://git.yax.tech/exodus-server/contract.git",
+    "git_ssh_url": "git@git.yax.tech:exodus-server/contract.git",
+    "visibility_level": 0
+  }
+}'
 
 ```
