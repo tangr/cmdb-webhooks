@@ -6,22 +6,18 @@
 # =============================================================================
 #
 # Push Event Fields:
+#   - event_name            : Event name (push)
+#   - git_http_url          : Git HTTP clone URL
+#   - git_ssh_url           : Git SSH clone URL
 #   - ref                   : Original ref (e.g., refs/heads/main)
 #   - branch                : Branch name extracted from ref
-#   - before                : Commit SHA before push
-#   - after                 : Commit SHA after push
+#   - commit_sha            : Latest commit SHA (after)
+#   - commit_title          : Last commit title (first line of message)
+#   - commit_message        : Last commit message
 #   - checkout_sha          : Checkout SHA
-#   - project_id            : Project ID
-#   - project_name          : Project name
-#   - project_path          : Project path with namespace
-#   - project_url           : Project web URL
-#   - user_id               : User ID who triggered the push
-#   - user_name             : User name
 #   - user_username         : User username
-#   - user_email            : User email
-#   - commit_count          : Number of commits in this push
-#   - commits               : Original commits array (all commit objects)
-#   - commit_messages       : Array of all commit messages
+#   - first_commit_title    : First commit title
+#   - last_commit_title     : Last commit title
 #   - first_commit_message  : First commit message
 #   - last_commit_message   : Last commit message
 #   - first_commit_sha      : First commit SHA
@@ -82,10 +78,10 @@ mappings:
   #   jenkins_token: "another-token"
   #   include_fields:
   #     - branch
-  #     - project_path
-  #     - commit_count
+  #     - commit_sha
+  #     - commit_title
   #     - last_commit_message
-  #     - user_name
+  #     - user_username
 
   # Example 3: Wildcard pattern (matches all projects under 'devops/')
   # "devops/*":
@@ -93,8 +89,8 @@ mappings:
   #   jenkins_token: "devops-token"
   #   include_fields:
   #     - branch
-  #     - project_name
-  #     - project_path
+  #     - git_http_url
+  #     - commit_sha
   #     - checkout_sha
   #   extra_params:
   #     build_type: "auto"
@@ -107,6 +103,33 @@ mappings:
   #     environment: "staging"
   #     notify_slack: "true"
 
+  # Example 5: Filter by commit_title keywords (simple list, case-insensitive)
+  # "backend/*":
+  #   jenkins_job: "backend-build"
+  #   jenkins_token: "backend-token"
+  #   commit_title_keywords:
+  #     - "build:yes"
+  #     - "[deploy]"
+  #     - "[ci]"
+
+  # Example 6: Filter by commit_title keywords (with case-sensitive option)
+  # "release/*":
+  #   jenkins_job: "release-build"
+  #   jenkins_token: "release-token"
+  #   commit_title_keywords:
+  #     keywords:
+  #       - "RELEASE"
+  #       - "DEPLOY"
+  #     case_sensitive: true
+
+  # Example 7: Match all projects with keyword filter
+  # "*":
+  #   jenkins_job: "generic-build"
+  #   jenkins_token: "generic-token"
+  #   commit_title_keywords:
+  #     - "[jenkins]"
+  #     - "build:yes"
+
 # Default configuration (used when no pattern matches)
 # Set enabled: true to forward unmatched projects to a default job
 default:
@@ -116,5 +139,10 @@ default:
   # Optionally limit fields for default handling
   # include_fields:
   #   - branch
-  #   - project_path
-  #   - user_name
+  #   - git_http_url
+  #   - commit_sha
+  #   - user_username
+  # Optionally filter by commit_title keywords
+  # commit_title_keywords:
+  #   - "[build]"
+  #   - "[ci]"

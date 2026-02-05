@@ -152,6 +152,44 @@ def get_branch_from_ref(ref: str) -> str:
     return ref or ""
 
 
+def check_commit_title_keywords(
+    commit_title: str, keywords_config: Any, case_sensitive: bool = False
+) -> bool:
+    """
+    Check if commit title contains any of the specified keywords.
+
+    Args:
+        commit_title: The commit title to check
+        keywords_config: List of keywords or dict with 'keywords' and 'case_sensitive'
+        case_sensitive: Default case sensitivity (can be overridden by config)
+
+    Returns:
+        True if any keyword is found in commit_title, False otherwise
+    """
+    # Parse keywords config
+    keywords = []
+    if isinstance(keywords_config, list):
+        keywords = keywords_config
+    elif isinstance(keywords_config, dict):
+        keywords = keywords_config.get("keywords", [])
+        case_sensitive = keywords_config.get("case_sensitive", case_sensitive)
+
+    # No keywords configured means allow all
+    if not keywords:
+        return True
+
+    # No commit title to match against
+    if not commit_title:
+        return False
+
+    # Check for keyword matches
+    if case_sensitive:
+        return any(keyword in commit_title for keyword in keywords)
+    else:
+        commit_title_lower = commit_title.lower()
+        return any(keyword.lower() in commit_title_lower for keyword in keywords)
+
+
 def preprocess_push_event(payload: Dict[str, Any]) -> Dict[str, Any]:
     """
     Preprocess GitLab Push event payload into standardized fields.
@@ -544,6 +582,26 @@ async def process_gitlab_webhook(
 
     # Preprocess payload to get standardized fields
     preprocessed_payload = preprocess_gitlab_payload(event_type, body)
+
+    # Check commit_title_keywords filter
+    keywords_config = jenkins_config.get("commit_title_keywords", None)
+    if keywords_config:
+        commit_title = preprocessed_payload.get("commit_title", "")
+        if not check_commit_title_keywords(commit_title, keywords_config):
+            log_entry.status = 200
+            log_entry.error_message = (
+                f"Skipped: commit_title '{commit_title}' does not match keywords"
+            )
+            log_gitlab_request(session, log_entry)
+            return JSONResponse(
+                content={
+                    "status": "skipped",
+                    "message": f"commit_title does not match configured keywords",
+                    "commit_title": commit_title,
+                    "project_path": project_path,
+                },
+                status_code=200,
+            )
 
     # Check if we should use include_fields or send all preprocessed fields
     include_fields = jenkins_config.get("include_fields", None)
