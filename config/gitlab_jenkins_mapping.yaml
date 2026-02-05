@@ -67,6 +67,9 @@ mappings:
   "mygroup/my-project":
     jenkins_job: "my-build-job"
     jenkins_token: "your-jenkins-token"
+  "exodus-server/contract":
+    jenkins_job: "my-build-job"
+    jenkins_token: "your-jenkins-token"
 
   # Example 1: Send all predefined fields (default behavior)
   # "mygroup/myproject":
