@@ -157,22 +157,15 @@ def preprocess_push_event(payload: Dict[str, Any]) -> Dict[str, Any]:
     Preprocess GitLab Push event payload into standardized fields.
 
     Predefined fields:
+        - event_name: Event name (push)
+        - git_http_url: Git HTTP clone URL
+        - git_ssh_url: Git SSH clone URL
         - ref: Original ref (e.g., refs/heads/main)
         - branch: Branch name extracted from ref
-        - before: Commit SHA before push
-        - after: Commit SHA after push
+        - commit_sha: Latest commit SHA (after)
+        - commit_message: Last commit message
         - checkout_sha: Checkout SHA
-        - project_id: Project ID
-        - project_name: Project name
-        - project_path: Project path with namespace
-        - project_url: Project web URL
-        - user_id: User ID who triggered the push
-        - user_name: User name
         - user_username: User username
-        - user_email: User email
-        - commit_count: Number of commits in this push
-        - commits: Original commits array
-        - commit_messages: Array of all commit messages
         - first_commit_message: First commit message
         - last_commit_message: Last commit message
         - first_commit_sha: First commit SHA
@@ -180,35 +173,32 @@ def preprocess_push_event(payload: Dict[str, Any]) -> Dict[str, Any]:
     """
     result = {}
 
+    # Event name
+    result["event_name"] = "push"
+
+    # Project info - git URLs
+    project = payload.get("project", {})
+    result["git_http_url"] = project.get("http_url", "") or project.get("git_http_url", "")
+    result["git_ssh_url"] = project.get("ssh_url", "") or project.get("git_ssh_url", "")
+
     # Basic ref info
     ref = payload.get("ref", "")
     result["ref"] = ref
     result["branch"] = get_branch_from_ref(ref)
-    result["before"] = payload.get("before", "")
-    result["after"] = payload.get("after", "")
+
+    # Commit SHA (use after as the latest commit)
+    result["commit_sha"] = payload.get("after", "") or payload.get("checkout_sha", "")
     result["checkout_sha"] = payload.get("checkout_sha", "")
 
-    # Project info
-    project = payload.get("project", {})
-    result["project_id"] = project.get("id", "")
-    result["project_name"] = project.get("name", "")
-    result["project_path"] = project.get("path_with_namespace", "")
-    result["project_url"] = project.get("web_url", "")
-
     # User info
-    result["user_id"] = payload.get("user_id", "")
-    result["user_name"] = payload.get("user_name", "")
     result["user_username"] = payload.get("user_username", "")
-    result["user_email"] = payload.get("user_email", "")
 
     # Commits info
     commits = payload.get("commits", [])
-    result["commit_count"] = len(commits)
-    result["commits"] = commits
 
     # Extract commit messages
     commit_messages = [c.get("message", "") for c in commits if c.get("message")]
-    result["commit_messages"] = commit_messages
+    result["commit_message"] = commit_messages[-1] if commit_messages else ""
     result["first_commit_message"] = commit_messages[0] if commit_messages else ""
     result["last_commit_message"] = commit_messages[-1] if commit_messages else ""
 
