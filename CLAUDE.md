@@ -302,16 +302,17 @@ webhook-proxy/
 **GitLab Webhook 配置:**
 
 - `gitlab_webhook_secret_tokens`: GitLab Secret Token（逗号分隔，空值表示不验证）
-- `gitlab_jenkins_base_url`: Jenkins 服务器 URL
-- `gitlab_jenkins_default_token`: 默认 Jenkins 触发 Token
 - `gitlab_enable_push_events`: 启用 Push 事件处理 (默认: true)
 - `gitlab_enable_tag_push_events`: 启用 Tag Push 事件处理 (默认: false，预留)
 - `gitlab_enable_merge_request_events`: 启用 Merge Request 事件处理 (默认: false，预留)
 
 **GitLab-Jenkins 映射配置 (`config/gitlab_jenkins_mapping.yaml`):**
 
+- `jenkins_base_url`: Jenkins 服务器 URL（全局配置）
+- `jenkins_default_token`: 默认 Jenkins 触发 Token（映射中未配置 token 时使用）
 - 支持按项目路径配置 Jenkins 任务映射
 - 支持通配符模式匹配（如 `group/*`）
+- 映射中可覆盖 `jenkins_base_url` 和 `jenkins_token`（指向不同 Jenkins 服务器）
 - 自动预处理 GitLab payload 为标准化字段
 - 支持 `include_fields` 限制发送的字段
 - 支持 `extra_params` 添加额外静态参数

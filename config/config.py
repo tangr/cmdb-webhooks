@@ -106,10 +106,6 @@ class Settings(BaseSettings):
     gitlab_webhook_secret_tokens: str = (
         ""  # Comma-separated GitLab secret tokens (empty = no verification)
     )
-    gitlab_jenkins_base_url: str = (
-        "https://jenkins-dev1.exodushk.com"  # Jenkins base URL (e.g., http://jenkins.example.com)
-    )
-    gitlab_jenkins_default_token: str = ""  # Default Jenkins trigger token
 
     # GitLab Event Support Configuration
     gitlab_enable_push_events: bool = True

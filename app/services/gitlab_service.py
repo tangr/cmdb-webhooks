@@ -56,6 +56,16 @@ def init_gitlab_jenkins_mapping():
     logger.info(f"Loaded {len(mappings)} GitLab-Jenkins mappings")
 
 
+def get_jenkins_base_url() -> str:
+    """Get Jenkins base URL from YAML configuration"""
+    return _gitlab_jenkins_mapping.get("jenkins_base_url", "")
+
+
+def get_jenkins_default_token() -> str:
+    """Get Jenkins default token from YAML configuration"""
+    return _gitlab_jenkins_mapping.get("jenkins_default_token", "")
+
+
 def get_jenkins_config(project_path: str) -> Optional[Dict[str, Any]]:
     """
     Get Jenkins configuration for a GitLab project path.
@@ -563,22 +573,21 @@ async def process_gitlab_webhook(
             status_code=200,
         )
 
+    # Get Jenkins job, base URL, and token (mapping config can override global config)
+    jenkins_job = jenkins_config.get("jenkins_job", "")
+    jenkins_base_url = jenkins_config.get("jenkins_base_url") or get_jenkins_base_url()
+    jenkins_token = jenkins_config.get("jenkins_token") or get_jenkins_default_token()
+    log_entry.jenkins_job = jenkins_job
+
     # Check Jenkins base URL configuration
-    jenkins_base_url = settings.gitlab_jenkins_base_url
     if not jenkins_base_url:
         log_entry.status = 500
         log_entry.error_message = "Jenkins base URL not configured"
         log_gitlab_request(session, log_entry)
         raise HTTPException(
-            status_code=500, detail="Jenkins base URL not configured in settings"
+            status_code=500,
+            detail="Jenkins base URL not configured in gitlab_jenkins_mapping.yaml",
         )
-
-    # Get Jenkins job and token
-    jenkins_job = jenkins_config.get("jenkins_job", "")
-    jenkins_token = jenkins_config.get(
-        "jenkins_token", settings.gitlab_jenkins_default_token
-    )
-    log_entry.jenkins_job = jenkins_job
 
     # Preprocess payload to get standardized fields
     preprocessed_payload = preprocess_gitlab_payload(event_type, body)

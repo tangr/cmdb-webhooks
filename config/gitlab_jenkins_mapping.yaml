@@ -2,6 +2,12 @@
 # This file maps GitLab project paths to Jenkins job configurations
 
 # =============================================================================
+# Global Jenkins Configuration
+# =============================================================================
+jenkins_base_url: "https://jenkins-dev1.exodushk.com"  # Jenkins server URL
+jenkins_default_token: ""  # Default trigger token (used when mapping has no token)
+
+# =============================================================================
 # Predefined Fields (automatically extracted from GitLab payload)
 # =============================================================================
 #
@@ -134,6 +140,12 @@ mappings:
   #   commit_title_keywords:
   #     - "[jenkins]"
   #     - "build:yes"
+
+  # Example 8: Override jenkins_base_url for specific project (use different Jenkins server)
+  # "special-team/*":
+  #   jenkins_base_url: "https://jenkins-prod.example.com"  # Override global jenkins_base_url
+  #   jenkins_job: "special-build"
+  #   jenkins_token: "special-token"
 
 # Default configuration (used when no pattern matches)
 # Set enabled: true to forward unmatched projects to a default job
