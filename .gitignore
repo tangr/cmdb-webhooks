@@ -5,6 +5,8 @@ __pycache__/
 
 .claude/settings.local.json*
 
+.*password
+
 # C extensions
 *.so
 
