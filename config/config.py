@@ -19,8 +19,8 @@ class Settings(BaseSettings):
     cmdb_webhook_api_keys: str = (
         "QNbl7W9Ez7hVkR44ja93"  # Comma-separated API keys for CMDB webhook verification (empty = no verification)
     )
-    feishu_webhook_api_keys: str = (
-        ""  # Comma-separated API keys for Feishu webhook verification (empty = no verification)
+    feishu_bot_webhook_api_keys: str = (
+        ""  # Comma-separated API keys for Feishu Bot webhook verification (empty = no verification)
     )
     webhook_ip_whitelist: List[str] = [
         "0.0.0.0/0",

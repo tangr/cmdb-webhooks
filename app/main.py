@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 from fastapi import Depends, FastAPI, Request
 from fastapi.responses import RedirectResponse
 
-from .routers import cmdb, auth, feishu, gitlab
+from .routers import cmdb, auth, feishu_bot, gitlab
 from .dependencies import AuthenticationRequiredException
 from config.config import settings
 from .services.webhook_mapping import init_webhook_mapping
@@ -36,7 +36,7 @@ async def authentication_exception_handler(
 
 app.include_router(auth.router, prefix="/auth", tags=["authentication"])
 app.include_router(cmdb.router, prefix="/cmdb", tags=["cmdb"])
-app.include_router(feishu.router, prefix="/feishu", tags=["feishu"])
+app.include_router(feishu_bot.router, prefix="/feishu-bot", tags=["feishu-bot"])
 app.include_router(gitlab.router, prefix="/gitlab", tags=["gitlab"])
 
 app.mount("/static", StaticFiles(directory="static"), name="static")

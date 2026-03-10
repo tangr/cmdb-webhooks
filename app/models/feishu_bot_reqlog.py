@@ -4,7 +4,7 @@ from typing import Optional, Dict, Any
 import time
 
 
-class FeishuReqLogBase(SQLModel):
+class FeishuBotReqLogBase(SQLModel):
     webhook_id: str
     method: str
     path: str
@@ -22,19 +22,19 @@ class FeishuReqLogBase(SQLModel):
     error_message: Optional[str] = None
 
 
-class FeishuReqLog(FeishuReqLogBase, table=True):
-    __tablename__ = "feishu_reqlog"
+class FeishuBotReqLog(FeishuBotReqLogBase, table=True):
+    __tablename__ = "feishu_bot_reqlog"
 
     id: Optional[int] = Field(default=None, primary_key=True)
     created_at: int = Field(default_factory=lambda: int(time.time()))
     updated_at: int = Field(default_factory=lambda: int(time.time()))
 
 
-class FeishuReqLogCreate(FeishuReqLogBase):
+class FeishuBotReqLogCreate(FeishuBotReqLogBase):
     pass
 
 
-class FeishuReqLogUpdate(SQLModel):
+class FeishuBotReqLogUpdate(SQLModel):
     webhook_id: Optional[str] = None
     method: Optional[str] = None
     path: Optional[str] = None
@@ -48,7 +48,7 @@ class FeishuReqLogUpdate(SQLModel):
     error_message: Optional[str] = None
 
 
-class FeishuReqLogRead(FeishuReqLogBase):
+class FeishuBotReqLogRead(FeishuBotReqLogBase):
     """Model for API responses"""
 
     id: int

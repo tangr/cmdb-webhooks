@@ -1,22 +1,22 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, Header
 from sqlmodel import select
-from app.models.feishu_reqlog import FeishuReqLog
+from app.models.feishu_bot_reqlog import FeishuBotReqLog
 from app.dependencies import SessionDep, get_current_user_any_required, User
 from app.services.webhook_mapping import get_webhook_id_by_name
-from app.services.feishu_service import process_webhook_request
+from app.services.feishu_bot_service import process_webhook_request
 from typing import Optional
 
 router = APIRouter()
 
 
 @router.post("/webhook/proxy/{webhook_id}")
-async def feishu_webhook_proxy(
+async def feishu_bot_webhook_proxy(
     webhook_id: str,
     request: Request,
     session: SessionDep,
     x_api_key: Optional[str] = Header(None, alias="X-API-Key"),
 ):
-    """Feishu webhook proxy endpoint using webhook ID (with API key verification)"""
+    """Feishu Bot webhook proxy endpoint using webhook ID (with API key verification)"""
     return await process_webhook_request(
         webhook_id,
         request,
@@ -26,13 +26,13 @@ async def feishu_webhook_proxy(
 
 
 @router.post("/webhook/alias/{webhook_name}")
-async def feishu_webhook_alias(
+async def feishu_bot_webhook_alias(
     webhook_name: str,
     request: Request,
     session: SessionDep,
     x_api_key: Optional[str] = Header(None, alias="X-API-Key"),
 ):
-    """Feishu webhook proxy endpoint using webhook name alias (with API key verification)"""
+    """Feishu Bot webhook proxy endpoint using webhook name alias (with API key verification)"""
     # Get webhook ID from name mapping
     webhook_id = get_webhook_id_by_name(webhook_name)
     if not webhook_id:
@@ -50,7 +50,7 @@ async def feishu_webhook_alias(
 
 
 @router.get("/logs")
-def get_feishu_logs(
+def get_feishu_bot_logs(
     request: Request,
     session: SessionDep,
     current_user: User = Depends(get_current_user_any_required),
@@ -59,13 +59,13 @@ def get_feishu_logs(
 ):
     limit = min(limit, 1000)  # Protect limit for max records in one page
 
-    """Get Feishu webhook logs (Requires authentication)"""
+    """Get Feishu Bot webhook logs (Requires authentication)"""
     # Get logs with pagination (fetch limit+1 to check if there are more records)
     statement = (
-        select(FeishuReqLog)
+        select(FeishuBotReqLog)
         .offset(skip)
         .limit(limit + 1)
-        .order_by(FeishuReqLog.updated_at.desc())
+        .order_by(FeishuBotReqLog.updated_at.desc())
     )
     logs = session.exec(statement).all()
 
@@ -119,13 +119,13 @@ def get_feishu_logs(
 
 
 @router.get("/logs/{log_id}")
-def get_feishu_log(
+def get_feishu_bot_log(
     log_id: int,
     session: SessionDep,
     current_user: User = Depends(get_current_user_any_required),
 ):
-    """Get single Feishu webhook log by ID (Requires authentication)"""
-    log = session.get(FeishuReqLog, log_id)
+    """Get single Feishu Bot webhook log by ID (Requires authentication)"""
+    log = session.get(FeishuBotReqLog, log_id)
     if not log:
         raise HTTPException(status_code=404, detail="Log not found")
     return log

@@ -48,17 +48,17 @@ pytest tests/ -m redis
 ```bash
 # 测试特定模型
 pytest tests/test_models/test_cmdb_reqlog.py
-pytest tests/test_models/test_feishu_reqlog.py
+pytest tests/test_models/test_feishu_bot_reqlog.py
 
 # 测试特定服务
 pytest tests/test_services/test_redis_session.py
-pytest tests/test_services/test_feishu_service.py
+pytest tests/test_services/test_feishu_bot_service.py
 pytest tests/test_services/test_webhook_mapping.py
 
 # 测试 API 端点
 pytest tests/test_auth.py
 pytest tests/test_cmdb_integration.py
-pytest tests/test_feishu_integration.py
+pytest tests/test_feishu_bot_integration.py
 
 # 测试工具类
 pytest tests/test_utils/test_logger.py
@@ -123,15 +123,15 @@ tests/
 ├── test_auth.py            # 认证 API 测试（现有）
 ├── test_models/            # 模型单元测试
 │   ├── test_cmdb_reqlog.py
-│   └── test_feishu_reqlog.py
+│   └── test__feishu_bot_reqlog.py
 ├── test_services/          # 服务单元测试
 │   ├── test_redis_session.py
-│   ├── test_feishu_service.py
+│   ├── test_feishu_bot_service.py
 │   └── test_webhook_mapping.py
 ├── test_utils/            # 工具类单元测试
 │   └── test_logger.py
 ├── test_cmdb_integration.py    # CMDB API 集成测试
-├── test_feishu_integration.py  # 飞书 API 集成测试
+├── test_feishu_bot_integration.py  # 飞书 API 集成测试
 └── test_security.py           # 安全和认证测试
 ```
 

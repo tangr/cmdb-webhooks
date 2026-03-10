@@ -4,25 +4,25 @@ from unittest.mock import Mock, AsyncMock, patch
 from fastapi import Request, HTTPException
 from httpx import TimeoutException, RequestError, Response
 
-from app.services.feishu_service import (
-    log_feishu_request,
+from app.services.feishu_bot_service import (
+    log_feishu_bot_request,
     convert_grafana_to_feishu,
     is_grafana_alert,
     process_webhook_request,
 )
-from app.models.feishu_reqlog import FeishuReqLogCreate
+from app.models.feishu_bot_reqlog import FeishuBotReqLogCreate
 
 
 @pytest.mark.unit
-class TestFeishuService:
-    """Test Feishu service functionality"""
+class TestFeishuBotService:
+    """Test Feishu Bot service functionality"""
 
     @pytest.fixture
     def mock_request(self):
         """Create mock FastAPI request"""
         request = Mock(spec=Request)
         request.method = "POST"
-        request.url.path = "/feishu/webhook/proxy/test123"
+        request.url.path = "/feishu-bot/webhook/proxy/test123"
         request.url.query = "source=alertmanager"
         request.headers = {
             "Content-Type": "application/json",
@@ -51,10 +51,10 @@ class TestFeishuService:
     @pytest.fixture
     def sample_log_entry(self):
         """Sample log entry for testing"""
-        return FeishuReqLogCreate(
+        return FeishuBotReqLogCreate(
             webhook_id="test123",
             method="POST",
-            path="/feishu/webhook/proxy/test123",
+            path="/feishu-bot/webhook/proxy/test123",
             query="source=alertmanager",
             headers={"Content-Type": "application/json"},
             body={"status": "firing", "title": "Test Alert"},
@@ -64,7 +64,7 @@ class TestFeishuService:
             response_body={"code": 0, "msg": "success"},
         )
 
-    def test_convert_grafana_to_feishu_firing(self):
+    def test_convert_grafana_to_feishu_bot_firing(self):
         """Test converting Grafana firing alert to Feishu format"""
         grafana_payload = {
             "status": "firing",
@@ -85,7 +85,7 @@ class TestFeishuService:
             == "CPU usage is above 80% on server-01"
         )
 
-    def test_convert_grafana_to_feishu_resolved(self):
+    def test_convert_grafana_to_feishu_bot_resolved(self):
         """Test converting Grafana resolved alert to Feishu format"""
         grafana_payload = {
             "status": "resolved",
@@ -100,7 +100,7 @@ class TestFeishuService:
             result["card"]["header"]["title"]["content"] == "CPU Usage Alert Resolved"
         )
 
-    def test_convert_grafana_to_feishu_unknown(self):
+    def test_convert_grafana_to_feishu_bot_unknown(self):
         """Test converting Grafana unknown status to Feishu format"""
         grafana_payload = {
             "status": "pending",
@@ -112,7 +112,7 @@ class TestFeishuService:
 
         assert result["card"]["header"]["template"] == "blue"
 
-    def test_convert_grafana_to_feishu_minimal(self):
+    def test_convert_grafana_to_feishu_bot_minimal(self):
         """Test converting minimal Grafana payload"""
         grafana_payload = {}
 
@@ -154,15 +154,15 @@ class TestFeishuService:
 
     @patch("config.config.settings.enable_console_logging", True)
     @patch("config.config.settings.enable_database_logging", True)
-    def test_log_feishu_request_success(self, mock_session, sample_log_entry):
+    def test_log_feishu_bot_request_success(self, mock_session, sample_log_entry):
         """Test successful logging to both console and database"""
-        with patch("app.services.feishu_service.logger") as mock_logger:
-            log_feishu_request(mock_session, sample_log_entry)
+        with patch("app.services.feishu_bot_service.logger") as mock_logger:
+            log_feishu_bot_request(mock_session, sample_log_entry)
 
             # Check console logging
             mock_logger.info.assert_called_once()
             log_message = mock_logger.info.call_args[0][0]
-            assert "Feishu Webhook" in log_message
+            assert "Feishu Bot Webhook" in log_message
             assert "ID: test123" in log_message
             assert "Status: 200" in log_message
 
@@ -172,10 +172,10 @@ class TestFeishuService:
 
     @patch("config.config.settings.enable_console_logging", True)
     @patch("config.config.settings.enable_database_logging", False)
-    def test_log_feishu_request_console_only(self, mock_session, sample_log_entry):
+    def test_log_feishu_bot_request_console_only(self, mock_session, sample_log_entry):
         """Test logging to console only"""
-        with patch("app.services.feishu_service.logger") as mock_logger:
-            log_feishu_request(mock_session, sample_log_entry)
+        with patch("app.services.feishu_bot_service.logger") as mock_logger:
+            log_feishu_bot_request(mock_session, sample_log_entry)
 
             # Check console logging
             mock_logger.info.assert_called_once()
@@ -186,10 +186,10 @@ class TestFeishuService:
 
     @patch("config.config.settings.enable_console_logging", False)
     @patch("config.config.settings.enable_database_logging", True)
-    def test_log_feishu_request_database_only(self, mock_session, sample_log_entry):
+    def test_log_feishu_bot_request_database_only(self, mock_session, sample_log_entry):
         """Test logging to database only"""
-        with patch("app.services.feishu_service.logger") as mock_logger:
-            log_feishu_request(mock_session, sample_log_entry)
+        with patch("app.services.feishu_bot_service.logger") as mock_logger:
+            log_feishu_bot_request(mock_session, sample_log_entry)
 
             # Check console logging is skipped
             mock_logger.info.assert_not_called()
@@ -201,12 +201,12 @@ class TestFeishuService:
 
     @patch("config.config.settings.enable_console_logging", True)
     @patch("config.config.settings.enable_database_logging", True)
-    def test_log_feishu_request_with_error(self, mock_session):
+    def test_log_feishu_bot_request_with_error(self, mock_session):
         """Test logging with error message"""
-        log_entry = FeishuReqLogCreate(
+        log_entry = FeishuBotReqLogCreate(
             webhook_id="error_test",
             method="POST",
-            path="/feishu/error",
+            path="/feishu-bot/error",
             query="",
             headers={},
             body={},
@@ -215,8 +215,8 @@ class TestFeishuService:
             error_message="Connection timeout",
         )
 
-        with patch("app.services.feishu_service.logger") as mock_logger:
-            log_feishu_request(mock_session, log_entry)
+        with patch("app.services.feishu_bot_service.logger") as mock_logger:
+            log_feishu_bot_request(mock_session, log_entry)
 
             # Check error logging
             mock_logger.error.assert_called_once()
@@ -225,12 +225,14 @@ class TestFeishuService:
 
     @patch("config.config.settings.enable_console_logging", True)
     @patch("config.config.settings.enable_database_logging", True)
-    def test_log_feishu_request_database_error(self, mock_session, sample_log_entry):
+    def test_log_feishu_bot_request_database_error(
+        self, mock_session, sample_log_entry
+    ):
         """Test handling database logging error"""
         mock_session.commit.side_effect = Exception("Database connection error")
 
-        with patch("app.services.feishu_service.logger") as mock_logger:
-            log_feishu_request(mock_session, sample_log_entry)
+        with patch("app.services.feishu_bot_service.logger") as mock_logger:
+            log_feishu_bot_request(mock_session, sample_log_entry)
 
             # Check that database error is logged
             assert mock_logger.error.call_count == 1
@@ -238,9 +240,9 @@ class TestFeishuService:
             assert "Failed to save log to database" in error_message
 
     @pytest.mark.asyncio
-    @patch("app.services.feishu_service.verify_webhook_ip_whitelist")
-    @patch("app.services.feishu_service.verify_feishu_webhook")
-    @patch("app.services.feishu_service.log_feishu_request")
+    @patch("app.services.feishu_bot_service.verify_webhook_ip_whitelist")
+    @patch("app.services.feishu_bot_service.verify_feishu_bot_webhook")
+    @patch("app.services.feishu_bot_service.log_feishu_bot_request")
     @patch(
         "config.config.settings.feishu_webhook_base_url",
         "https://open.feishu.cn/open-apis/bot/v2/hook/",
@@ -285,9 +287,9 @@ class TestFeishuService:
             assert result.status_code == 200
 
     @pytest.mark.asyncio
-    @patch("app.services.feishu_service.verify_webhook_ip_whitelist")
-    @patch("app.services.feishu_service.verify_feishu_webhook")
-    @patch("app.services.feishu_service.log_feishu_request")
+    @patch("app.services.feishu_bot_service.verify_webhook_ip_whitelist")
+    @patch("app.services.feishu_bot_service.verify_feishu_bot_webhook")
+    @patch("app.services.feishu_bot_service.log_feishu_bot_request")
     async def test_process_webhook_request_grafana_conversion(
         self, mock_log, mock_verify_feishu, mock_verify_ip, mock_session
     ):
@@ -295,7 +297,7 @@ class TestFeishuService:
         # Create request with Grafana alert
         request = Mock(spec=Request)
         request.method = "POST"
-        request.url.path = "/feishu/webhook/proxy/test123"
+        request.url.path = "/feishu-bot/webhook/proxy/test123"
         request.url.query = ""
         request.headers = {"Content-Type": "application/json"}
         request.client.host = "127.0.0.1"
@@ -328,9 +330,9 @@ class TestFeishuService:
             assert sent_payload["card"]["header"]["title"]["content"] == "CPU Alert"
 
     @pytest.mark.asyncio
-    @patch("app.services.feishu_service.verify_webhook_ip_whitelist")
-    @patch("app.services.feishu_service.verify_feishu_webhook")
-    @patch("app.services.feishu_service.log_feishu_request")
+    @patch("app.services.feishu_bot_service.verify_webhook_ip_whitelist")
+    @patch("app.services.feishu_bot_service.verify_feishu_bot_webhook")
+    @patch("app.services.feishu_bot_service.log_feishu_bot_request")
     async def test_process_webhook_request_timeout(
         self, mock_log, mock_verify_feishu, mock_verify_ip, mock_request, mock_session
     ):
@@ -352,9 +354,9 @@ class TestFeishuService:
             mock_log.assert_called_once()
 
     @pytest.mark.asyncio
-    @patch("app.services.feishu_service.verify_webhook_ip_whitelist")
-    @patch("app.services.feishu_service.verify_feishu_webhook")
-    @patch("app.services.feishu_service.log_feishu_request")
+    @patch("app.services.feishu_bot_service.verify_webhook_ip_whitelist")
+    @patch("app.services.feishu_bot_service.verify_feishu_bot_webhook")
+    @patch("app.services.feishu_bot_service.log_feishu_bot_request")
     async def test_process_webhook_request_connection_error(
         self, mock_log, mock_verify_feishu, mock_verify_ip, mock_request, mock_session
     ):
@@ -371,9 +373,9 @@ class TestFeishuService:
             assert "Failed to connect" in str(exc_info.value.detail)
 
     @pytest.mark.asyncio
-    @patch("app.services.feishu_service.verify_webhook_ip_whitelist")
-    @patch("app.services.feishu_service.verify_feishu_webhook")
-    @patch("app.services.feishu_service.log_feishu_request")
+    @patch("app.services.feishu_bot_service.verify_webhook_ip_whitelist")
+    @patch("app.services.feishu_bot_service.verify_feishu_bot_webhook")
+    @patch("app.services.feishu_bot_service.log_feishu_bot_request")
     async def test_process_webhook_request_general_error(
         self, mock_log, mock_verify_feishu, mock_verify_ip, mock_request, mock_session
     ):
@@ -390,16 +392,16 @@ class TestFeishuService:
             assert "Internal server error" in str(exc_info.value.detail)
 
     @pytest.mark.asyncio
-    @patch("app.services.feishu_service.verify_webhook_ip_whitelist")
-    @patch("app.services.feishu_service.verify_feishu_webhook")
-    @patch("app.services.feishu_service.log_feishu_request")
+    @patch("app.services.feishu_bot_service.verify_webhook_ip_whitelist")
+    @patch("app.services.feishu_bot_service.verify_feishu_bot_webhook")
+    @patch("app.services.feishu_bot_service.log_feishu_bot_request")
     async def test_process_webhook_request_x_real_ip(
         self, mock_log, mock_verify_feishu, mock_verify_ip, mock_session
     ):
         """Test client IP extraction from X-Real-IP header"""
         request = Mock(spec=Request)
         request.method = "POST"
-        request.url.path = "/feishu/test"
+        request.url.path = "/feishu-bot/test"
         request.url.query = ""
         request.headers = {"X-Real-IP": "203.0.113.100"}
         request.client.host = "10.0.0.1"
@@ -427,16 +429,16 @@ class TestFeishuService:
             assert log_call_args.clientip == "203.0.113.100"
 
     @pytest.mark.asyncio
-    @patch("app.services.feishu_service.verify_webhook_ip_whitelist")
-    @patch("app.services.feishu_service.verify_feishu_webhook")
-    @patch("app.services.feishu_service.log_feishu_request")
+    @patch("app.services.feishu_bot_service.verify_webhook_ip_whitelist")
+    @patch("app.services.feishu_bot_service.verify_feishu_bot_webhook")
+    @patch("app.services.feishu_bot_service.log_feishu_bot_request")
     async def test_process_webhook_request_invalid_json(
         self, mock_log, mock_verify_feishu, mock_verify_ip, mock_session
     ):
         """Test webhook processing with invalid JSON body"""
         request = Mock(spec=Request)
         request.method = "POST"
-        request.url.path = "/feishu/test"
+        request.url.path = "/feishu-bot/test"
         request.url.query = ""
         request.headers = {}
         request.client.host = "127.0.0.1"

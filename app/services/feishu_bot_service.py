@@ -1,10 +1,10 @@
 from fastapi import HTTPException, Request
 from fastapi.responses import JSONResponse
-from app.models.feishu_reqlog import FeishuReqLog, FeishuReqLogCreate
+from app.models.feishu_bot_reqlog import FeishuBotReqLog, FeishuBotReqLogCreate
 from app.dependencies import SessionDep
 from config.config import settings
 from app.utils.webhook_security import (
-    verify_feishu_webhook,
+    verify_feishu_bot_webhook,
     verify_webhook_ip_whitelist,
 )
 from typing import Dict, Any, Optional
@@ -15,13 +15,13 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def log_feishu_request(session: SessionDep, log_entry: FeishuReqLogCreate):
-    """Log feishu request to database and/or console based on configuration"""
+def log_feishu_bot_request(session: SessionDep, log_entry: FeishuBotReqLogCreate):
+    """Log feishu bot request to database and/or console based on configuration"""
 
     # Console logging
     if settings.enable_console_logging:
         log_message = (
-            f"Feishu Webhook - "
+            f"Feishu Bot Webhook - "
             f"ID: {log_entry.webhook_id}, "
             f"Method: {log_entry.method}, "
             f"Path: {log_entry.path}, "
@@ -38,7 +38,7 @@ def log_feishu_request(session: SessionDep, log_entry: FeishuReqLogCreate):
     # Database logging
     if settings.enable_database_logging:
         try:
-            db_log = FeishuReqLog(**log_entry.model_dump())
+            db_log = FeishuBotReqLog(**log_entry.model_dump())
             session.add(db_log)
             session.commit()
         except Exception as e:
@@ -99,8 +99,8 @@ async def process_webhook_request(
     # Verify IP whitelist (empty list = deny all)
     verify_webhook_ip_whitelist(request, settings.webhook_ip_whitelist)
 
-    # Verify Feishu webhook API key (skip if no API keys configured)
-    verify_feishu_webhook(request, api_key)
+    # Verify Feishu Bot webhook API key (skip if no API keys configured)
+    verify_feishu_bot_webhook(request, api_key)
 
     # Get client IP
     client_ip = request.client.host
@@ -131,7 +131,7 @@ async def process_webhook_request(
     feishu_url = f"{settings.feishu_webhook_base_url}{webhook_id}"
 
     # Initialize log entry with original body for logging
-    log_entry = FeishuReqLogCreate(
+    log_entry = FeishuBotReqLogCreate(
         webhook_id=webhook_id,
         method=method,
         path=path,
@@ -172,7 +172,7 @@ async def process_webhook_request(
             log_entry.response_body = response_body
 
             # Save log based on configuration
-            log_feishu_request(session, log_entry)
+            log_feishu_bot_request(session, log_entry)
 
             # Return Feishu response to client
             return JSONResponse(
@@ -192,7 +192,7 @@ async def process_webhook_request(
         log_entry.error_message = error_msg
 
         # Save error log based on configuration
-        log_feishu_request(session, log_entry)
+        log_feishu_bot_request(session, log_entry)
 
         raise HTTPException(status_code=504, detail=error_msg)
 
@@ -203,7 +203,7 @@ async def process_webhook_request(
         log_entry.error_message = error_msg
 
         # Save error log based on configuration
-        log_feishu_request(session, log_entry)
+        log_feishu_bot_request(session, log_entry)
 
         raise HTTPException(status_code=502, detail=error_msg)
 
@@ -214,6 +214,6 @@ async def process_webhook_request(
         log_entry.error_message = error_msg
 
         # Save error log based on configuration
-        log_feishu_request(session, log_entry)
+        log_feishu_bot_request(session, log_entry)
 
         raise HTTPException(status_code=500, detail=error_msg)

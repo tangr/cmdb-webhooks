@@ -27,7 +27,7 @@ curl -X POST \
 
 curl -X POST \
   -H "Content-Type: application/json" \
-  "http://127.0.0.1:8000/feishu/webhook/alias/tang-mytest-bot" \
+  "http://127.0.0.1:8000/feishu-bot/webhook/alias/tang-mytest-bot" \
   -d '{
     "status": "firing",
     "title": "[🔥:1] test-High CPU usage - Multi-region1 Multi-region alerts (server-08 us-west db-server-2 critical)",

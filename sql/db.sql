@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS `cmdb_reqlog` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=10000 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE IF NOT EXISTS `feishu_reqlog` (
+CREATE TABLE IF NOT EXISTS `feishu_bot_reqlog` (
   `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
   `webhook_id` varchar(255) NOT NULL,
   `method` varchar(255) NOT NULL,

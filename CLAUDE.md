@@ -43,7 +43,7 @@ webhook-proxy/
 │   │   └── admin.py       # 管理员路由和功能
 │   ├── models/            # 数据模型
 │   │   ├── cmdb_reqlog.py  # CMDB请求日志模型
-│   │   ├── feishu_reqlog.py # 飞书请求日志模型
+│   │   ├── feishu_bot_reqlog.py # 飞书请求日志模型
 │   │   └── gitlab_reqlog.py # GitLab请求日志模型
 │   ├── routers/           # API路由处理器
 │   │   ├── auth.py        # 认证相关路由（JWT + Session + OIDC）
@@ -52,7 +52,7 @@ webhook-proxy/
 │   │   └── gitlab.py      # GitLab Webhook代理路由
 │   ├── services/          # 服务层模块
 │   │   ├── cmdb_service.py      # CMDB代理请求处理服务
-│   │   ├── feishu_service.py    # 飞书服务逻辑
+│   │   ├── feishu_bot_service.py    # 飞书服务逻辑
 │   │   ├── gitlab_service.py    # GitLab到Jenkins转发服务
 │   │   ├── redis_session.py     # Redis会话管理服务
 │   │   └── webhook_mapping.py   # Webhook映射服务
@@ -165,7 +165,7 @@ webhook-proxy/
   - 转发 HTTP 请求到目标服务器（支持 GET/POST/PUT/DELETE/PATCH）
   - 记录请求/响应日志到数据库
 
-- **FeishuService** (`app/services/feishu_service.py`):
+- **FeishuService** (`app/services/feishu_bot_service.py`):
 
   - 处理飞书 Webhook 代理请求的核心业务逻辑
   - 包含安全验证和请求转发功能
@@ -265,7 +265,7 @@ webhook-proxy/
 **Webhook 安全配置:**
 
 - `cmdb_webhook_api_keys`: CMDB Webhook API Keys（逗号分隔，空值表示不验证）
-- `feishu_webhook_api_keys`: 飞书 Webhook API Keys（逗号分隔，空值表示不验证）
+- `feishu_bot_webhook_api_keys`: 飞书 Webhook API Keys（逗号分隔，空值表示不验证）
 - `webhook_ip_whitelist`: Webhook 请求 IP 白名单（支持单 IP 和 CIDR 格式）
 
 **登录选项配置:**
@@ -425,16 +425,16 @@ tests/
 ├── test_auth.py               # 认证 API 测试
 ├── test_models/               # 数据模型单元测试
 │   ├── test_cmdb_reqlog.py   # CMDB 日志模型测试
-│   └── test_feishu_reqlog.py # 飞书日志模型测试
+│   └── test_feishu_bot_reqlog.py # 飞书日志模型测试
 ├── test_services/             # 服务层单元测试
 │   ├── test_redis_session.py # Redis 会话服务测试
-│   ├── test_feishu_service.py # 飞书服务测试
+│   ├── test_feishu_bot_service.py # 飞书服务测试
 │   ├── test_webhook_mapping.py # Webhook 映射测试
 │   └── test_login_config.py  # 登录配置测试
 ├── test_utils/               # 工具类测试
 │   └── test_logger.py        # 日志工具测试
 ├── test_cmdb_integration.py  # CMDB API 集成测试
-├── test_feishu_integration.py # 飞书 API 集成测试
+├── test_feishu_bot_integration.py # 飞书 API 集成测试
 ├── test_security.py          # 安全和认证测试
 ├── Dockerfile.test          # Docker 测试镜像
 ├── docker-compose.test.yml  # Docker Compose 测试配置

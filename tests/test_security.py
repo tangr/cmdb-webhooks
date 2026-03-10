@@ -4,7 +4,7 @@ from fastapi import Request, HTTPException
 
 from app.utils.webhook_security import (
     verify_cmdb_webhook,
-    verify_feishu_webhook,
+    verify_feishu_bot_webhook,
     verify_webhook_ip_whitelist,
 )
 
@@ -73,37 +73,37 @@ class TestWebhookSecurity:
 
             assert exc_info.value.status_code == 403
 
-    def test_verify_feishu_webhook_valid_api_key(self, mock_request):
-        """Test Feishu webhook verification with valid API key"""
+    def test_verify_feishu_bot_webhook_valid_api_key(self, mock_request):
+        """Test Feishu Bot webhook verification with valid API key"""
         mock_request.headers = {"X-API-Key": "valid-feishu-key"}
 
         with patch(
-            "config.config.settings.feishu_webhook_api_keys",
+            "config.config.settings.feishu_bot_webhook_api_keys",
             "valid-feishu-key,another-key",
         ):
             # Should not raise any exception
-            verify_feishu_webhook(mock_request, "valid-feishu-key")
+            verify_feishu_bot_webhook(mock_request, "valid-feishu-key")
 
-    def test_verify_feishu_webhook_invalid_api_key(self, mock_request):
-        """Test Feishu webhook verification with invalid API key"""
+    def test_verify_feishu_bot_webhook_invalid_api_key(self, mock_request):
+        """Test Feishu Bot webhook verification with invalid API key"""
         mock_request.headers = {"X-API-Key": "invalid-key"}
 
         with patch(
-            "config.config.settings.feishu_webhook_api_keys", "valid-key1,valid-key2"
+            "config.config.settings.feishu_bot_webhook_api_keys", "valid-key1,valid-key2"
         ):
             with pytest.raises(HTTPException) as exc_info:
-                verify_feishu_webhook(mock_request, "invalid-key")
+                verify_feishu_bot_webhook(mock_request, "invalid-key")
 
             assert exc_info.value.status_code == 403
             assert "Invalid API key" in str(exc_info.value.detail)
 
-    def test_verify_feishu_webhook_no_keys_configured(self, mock_request):
-        """Test Feishu webhook verification when no API keys are configured"""
+    def test_verify_feishu_bot_webhook_no_keys_configured(self, mock_request):
+        """Test Feishu Bot webhook verification when no API keys are configured"""
         mock_request.headers = {}
 
-        with patch("config.config.settings.feishu_webhook_api_keys", ""):
+        with patch("config.config.settings.feishu_bot_webhook_api_keys", ""):
             # Should not raise any exception when no keys are configured
-            verify_feishu_webhook(mock_request, None)
+            verify_feishu_bot_webhook(mock_request, None)
 
     def test_verify_webhook_ip_whitelist_allowed_single_ip(self, mock_request):
         """Test IP whitelist verification with allowed single IP"""
@@ -232,9 +232,9 @@ class TestWebhookSecurity:
         special_key = "key-with_special.chars@123!"
         mock_request.headers = {"X-API-Key": special_key}
 
-        with patch("config.config.settings.feishu_webhook_api_keys", special_key):
+        with patch("config.config.settings.feishu_bot_webhook_api_keys", special_key):
             # Should handle special characters in API keys
-            verify_feishu_webhook(mock_request, special_key)
+            verify_feishu_bot_webhook(mock_request, special_key)
 
     def test_multiple_api_keys_configuration(self, mock_request):
         """Test API key verification with multiple configured keys"""
