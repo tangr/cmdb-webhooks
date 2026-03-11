@@ -1,5 +1,6 @@
 from typing import Dict, Any, Optional, List
 from pathlib import Path
+from urllib.parse import quote
 import yaml
 import httpx
 import base64
@@ -179,7 +180,9 @@ async def fetch_artifacts(
 
     # Build Harbor API URL
     # Harbor API v2.0: /api/v2.0/projects/{project_name}/repositories/{repository_name}/artifacts
-    api_url = f"{base_url}/api/v2.0/projects/{project}/repositories/{repo}/artifacts"
+    # Repository name must be URL encoded (e.g., "qa/ipip-service" -> "qa%2Fipip-service")
+    repo_encoded = quote(repo, safe="")
+    api_url = f"{base_url}/api/v2.0/projects/{project}/repositories/{repo_encoded}/artifacts"
 
     # Query parameters
     params = {
