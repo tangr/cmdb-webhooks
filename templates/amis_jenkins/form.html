@@ -13,7 +13,8 @@
   <link rel="stylesheet" href="/static/plugin/amis-6.13.0/iconfont.css" />
 
   <style>
-    html, body {
+    html,
+    body {
       height: 100%;
       margin: 0;
       padding: 0;
@@ -83,68 +84,69 @@
       let amis = amisRequire('amis/embed');
 
       // Form schema from backend
-      let schema = {{ form_schema | safe }};
+      let schema = {{ form_schema | safe
+    }};
 
-      // Embed Amis form
-      let amisInstance = amis.embed(
-        '#amis-root',
-        schema,
-        {
-          // Initial data (if any)
-          data: {}
-        },
-        {
-          // Amis environment config
-          theme: 'cxd',  // Use cxd theme (default modern theme)
-          locale: 'zh-CN',
+    // Embed Amis form
+    let amisInstance = amis.embed(
+      '#amis-root',
+      schema,
+      {
+        // Initial data (if any)
+        data: {}
+      },
+      {
+        // Amis environment config
+        theme: 'cxd',  // Use cxd theme (default modern theme)
+        locale: 'zh-CN',
 
-          // Custom fetcher to handle authentication
-          fetcher: ({
-            url,
-            method,
-            data,
-            config,
-            headers
-          }) => {
-            config = config || {};
-            config.headers = config.headers || headers || {};
-            config.withCredentials = true;  // Send cookies for session auth
+        // Custom fetcher to handle authentication
+        fetcher: ({
+          url,
+          method,
+          data,
+          config,
+          headers
+        }) => {
+          config = config || {};
+          config.headers = config.headers || headers || {};
+          config.withCredentials = true;  // Send cookies for session auth
 
-            if (method === 'get' || method === 'GET') {
-              return axios.get(url, config);
-            } else if (method === 'post' || method === 'POST') {
-              return axios.post(url, data, config);
-            } else if (method === 'put' || method === 'PUT') {
-              return axios.put(url, data, config);
-            } else if (method === 'delete' || method === 'DELETE') {
-              return axios.delete(url, config);
-            }
-
-            return axios(config);
-          },
-
-          // Notification handler
-          notify: (type, msg) => {
-            if (type === 'error') {
-              console.error('[Amis Error]', msg);
-              alert('Error: ' + msg);
-            } else if (type === 'success') {
-              console.log('[Amis Success]', msg);
-            }
-          },
-
-          // Alert handler
-          alert: (msg) => {
-            alert(msg);
-          },
-
-          // Confirm handler
-          confirm: (msg) => {
-            return confirm(msg);
+          if (method === 'get' || method === 'GET') {
+            return axios.get(url, config);
+          } else if (method === 'post' || method === 'POST') {
+            return axios.post(url, data, config);
+          } else if (method === 'put' || method === 'PUT') {
+            return axios.put(url, data, config);
+          } else if (method === 'delete' || method === 'DELETE') {
+            return axios.delete(url, config);
           }
+
+          return axios(config);
+        },
+
+        // Notification handler
+        notify: (type, msg) => {
+          if (type === 'error') {
+            console.error('[Amis Error]', msg);
+            alert('Error: ' + msg);
+          } else if (type === 'success') {
+            console.log('[Amis Success]', msg);
+          }
+        },
+
+        // Alert handler
+        alert: (msg) => {
+          alert(msg);
+        },
+
+        // Confirm handler
+        confirm: (msg) => {
+          return confirm(msg);
         }
-      );
-    })();
+      }
+    );
+    }) ();
   </script>
 
 </body>
