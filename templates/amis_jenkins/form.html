@@ -55,6 +55,14 @@
       height: calc(100vh - 50px);
       overflow: auto;
     }
+
+    .loading-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 200px;
+      color: #666;
+    }
   </style>
 </head>
 
@@ -73,80 +81,81 @@
   </div>
 
   <!-- Amis Container -->
-  <div id="amis-root"></div>
+  <div id="amis-root">
+    <div class="loading-container">Loading form...</div>
+  </div>
+
+  <!-- Store form_id in data attribute -->
+  <div id="form-config" data-form-id="{{ form_id }}" style="display: none;"></div>
 
   <!-- Amis SDK JS -->
   <script src="/static/plugin/amis-6.13.0/sdk.js"></script>
 
   <script type="text/javascript">
     (function () {
-      // Get Amis embed function
-      let amis = amisRequire('amis/embed');
+      var formId = document.getElementById("form-config").dataset.formId;
+      var amis = amisRequire("amis/embed");
 
-      // Form schema from backend
-      let schema = {{ form_schema | safe
-    }};
-
-    // Embed Amis form
-    let amisInstance = amis.embed(
-      '#amis-root',
-      schema,
-      {
-        // Initial data (if any)
-        data: {}
-      },
-      {
-        // Amis environment config
-        theme: 'cxd',  // Use cxd theme (default modern theme)
-        locale: 'zh-CN',
-
-        // Custom fetcher to handle authentication
-        fetcher: ({
-          url,
-          method,
-          data,
-          config,
-          headers
-        }) => {
-          config = config || {};
-          config.headers = config.headers || headers || {};
-          config.withCredentials = true;  // Send cookies for session auth
-
-          if (method === 'get' || method === 'GET') {
-            return axios.get(url, config);
-          } else if (method === 'post' || method === 'POST') {
-            return axios.post(url, data, config);
-          } else if (method === 'put' || method === 'PUT') {
-            return axios.put(url, data, config);
-          } else if (method === 'delete' || method === 'DELETE') {
-            return axios.delete(url, config);
+      // Fetch schema from API
+      fetch("/amis-jenkins/api/schema/" + formId, {
+        credentials: "include"
+      })
+        .then(function (response) {
+          return response.json();
+        })
+        .then(function (result) {
+          if (result.status !== 0) {
+            document.getElementById("amis-root").innerHTML =
+              '<div class="loading-container">Error: ' + result.msg + "</div>";
+            return;
           }
 
-          return axios(config);
-        },
+          var schema = result.data;
 
-        // Notification handler
-        notify: (type, msg) => {
-          if (type === 'error') {
-            console.error('[Amis Error]', msg);
-            alert('Error: ' + msg);
-          } else if (type === 'success') {
-            console.log('[Amis Success]', msg);
-          }
-        },
+          // Embed Amis form
+          amis.embed(
+            "#amis-root",
+            schema,
+            { data: {} },
+            {
+              theme: "cxd",
+              locale: "zh-CN",
+              fetcher: function (options) {
+                var config = options.config || {};
+                config.headers = config.headers || options.headers || {};
+                config.withCredentials = true;
 
-        // Alert handler
-        alert: (msg) => {
-          alert(msg);
-        },
-
-        // Confirm handler
-        confirm: (msg) => {
-          return confirm(msg);
-        }
-      }
-    );
-    }) ();
+                if (options.method === "get" || options.method === "GET") {
+                  return axios.get(options.url, config);
+                } else if (options.method === "post" || options.method === "POST") {
+                  return axios.post(options.url, options.data, config);
+                } else if (options.method === "put" || options.method === "PUT") {
+                  return axios.put(options.url, options.data, config);
+                } else if (options.method === "delete" || options.method === "DELETE") {
+                  return axios.delete(options.url, config);
+                }
+                return axios(config);
+              },
+              notify: function (type, msg) {
+                if (type === "error") {
+                  console.error("[Amis Error]", msg);
+                  alert("Error: " + msg);
+                }
+              },
+              alert: function (msg) {
+                alert(msg);
+              },
+              confirm: function (msg) {
+                return confirm(msg);
+              }
+            }
+          );
+        })
+        .catch(function (error) {
+          document.getElementById("amis-root").innerHTML =
+            '<div class="loading-container">Failed to load form: ' + error.message + "</div>";
+        });
+    })();
   </script>
 
 </body>
