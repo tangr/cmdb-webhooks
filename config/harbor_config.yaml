@@ -9,13 +9,14 @@
 
 instances:
   prod:
-    base_url: "https://harbor-prod.example.com"
+    base_url: "https://registry2.test.exodushk.com"
     # Robot account token format: robot$<robot_name>:<secret>
     # Create robot account in Harbor: Administration -> Robot Accounts
-    robot_token: "robot$myrobot:xxxxxxxxxxxxxxxxxxxx"
+    # robot$test1
+    robot_token: "fzPYKcLCACoyhvUgWxogXgUd7d6ynTzF"
 
   dev:
-    base_url: "https://harbor-dev.example.com"
+    base_url: "https://registry.test.exodushk.com"
     robot_token: "robot$myrobot:xxxxxxxxxxxxxxxxxxxx"
 
 # Example with custom timeout
