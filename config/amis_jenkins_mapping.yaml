@@ -1,0 +1,142 @@
+# Amis Jenkins Form to Jenkins Job Mapping Configuration
+# This file defines Amis forms and their corresponding Jenkins job configurations
+
+# =============================================================================
+# Global Jenkins Configuration
+# =============================================================================
+jenkins_base_url: "https://jenkins.example.com"  # Jenkins server URL
+jenkins_default_token: ""  # Default trigger token for Generic Webhook Trigger
+jenkins_default_user: ""   # Default Jenkins user for Remote API
+jenkins_default_api_token: ""  # Default Jenkins API token for Remote API
+
+# =============================================================================
+# Form Definitions
+# =============================================================================
+# Each form has:
+#   - title: Display name of the form
+#   - description: Brief description of what the form does
+#   - jenkins_job: Jenkins job path (e.g., "folder/job-name")
+#   - trigger_type: "generic_webhook" or "remote_api"
+#   - jenkins_token: Token for Generic Webhook Trigger (optional, uses default)
+#   - jenkins_user: Jenkins user for Remote API (optional, uses default)
+#   - jenkins_api_token: Jenkins API token for Remote API (optional, uses default)
+#   - jenkins_base_url: Override global Jenkins URL (optional)
+#   - schema: Amis form schema (JSON/YAML format)
+#
+# =============================================================================
+
+forms:
+  # Example 1: Deploy Application (Generic Webhook Trigger)
+  deploy-app:
+    title: "Deploy Application"
+    description: "Deploy application to specified environment"
+    jenkins_job: "deploy/app-deploy"
+    trigger_type: "generic_webhook"
+    jenkins_token: "deploy-token"
+    schema:
+      type: "page"
+      title: "Deploy Application"
+      body:
+        type: "form"
+        api:
+          method: "post"
+          url: "/amis-jenkins/api/submit/deploy-app"
+        body:
+          - type: "input-text"
+            name: "branch"
+            label: "Branch Name"
+            required: true
+            placeholder: "e.g., main, develop, feature/xxx"
+          - type: "select"
+            name: "environment"
+            label: "Deploy Environment"
+            required: true
+            options:
+              - label: "Development"
+                value: "dev"
+              - label: "Staging"
+                value: "staging"
+              - label: "Production"
+                value: "prod"
+          - type: "input-text"
+            name: "version"
+            label: "Version Tag"
+            placeholder: "Optional, e.g., v1.0.0"
+
+  # Example 2: Build Docker Image (Remote API)
+  build-image:
+    title: "Build Docker Image"
+    description: "Build and push Docker image to registry"
+    jenkins_job: "pipelines/build-image"
+    trigger_type: "remote_api"
+    # Optional: override global Jenkins config for this form
+    # jenkins_base_url: "https://jenkins-prod.example.com"
+    # jenkins_user: "admin"
+    # jenkins_api_token: "your-api-token"
+    schema:
+      type: "page"
+      title: "Build Docker Image"
+      body:
+        type: "form"
+        api:
+          method: "post"
+          url: "/amis-jenkins/api/submit/build-image"
+        body:
+          - type: "input-text"
+            name: "image_name"
+            label: "Image Name"
+            required: true
+            placeholder: "e.g., myapp"
+          - type: "input-text"
+            name: "tag"
+            label: "Image Tag"
+            value: "latest"
+            required: true
+          - type: "input-text"
+            name: "git_repo"
+            label: "Git Repository URL"
+            required: true
+            placeholder: "e.g., https://github.com/org/repo.git"
+          - type: "input-text"
+            name: "git_branch"
+            label: "Git Branch"
+            value: "main"
+          - type: "textarea"
+            name: "build_args"
+            label: "Build Arguments"
+            placeholder: "Optional, one per line (KEY=VALUE)"
+
+  # Example 3: Run Tests (Generic Webhook with multiple options)
+  # run-tests:
+  #   title: "Run Tests"
+  #   description: "Execute test suite on specified branch"
+  #   jenkins_job: "ci/run-tests"
+  #   trigger_type: "generic_webhook"
+  #   jenkins_token: "test-token"
+  #   schema:
+  #     type: "page"
+  #     title: "Run Tests"
+  #     body:
+  #       type: "form"
+  #       api:
+  #         method: "post"
+  #         url: "/amis-jenkins/api/submit/run-tests"
+  #       body:
+  #         - type: "input-text"
+  #           name: "branch"
+  #           label: "Branch Name"
+  #           required: true
+  #         - type: "checkboxes"
+  #           name: "test_types"
+  #           label: "Test Types"
+  #           options:
+  #             - label: "Unit Tests"
+  #               value: "unit"
+  #             - label: "Integration Tests"
+  #               value: "integration"
+  #             - label: "E2E Tests"
+  #               value: "e2e"
+  #         - type: "switch"
+  #           name: "verbose"
+  #           label: "Verbose Output"
+  #           value: false

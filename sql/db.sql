@@ -53,3 +53,23 @@ CREATE TABLE IF NOT EXISTS `gitlab_hook_reqlog` (
   INDEX `idx_project_path` (`project_path`),
   INDEX `idx_created_at` (`created_at`)
 ) ENGINE=InnoDB AUTO_INCREMENT=10000 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `amis_jenkins_reqlog` (
+  `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `form_id` varchar(100) NOT NULL COMMENT 'Amis form identifier',
+  `form_title` varchar(255) NOT NULL COMMENT 'Form display title',
+  `trigger_type` varchar(50) NOT NULL COMMENT 'Trigger type: generic_webhook or remote_api',
+  `jenkins_job` varchar(255) NOT NULL COMMENT 'Target Jenkins job name',
+  `request_params` JSON NOT NULL COMMENT 'User submitted form parameters',
+  `clientip` varchar(45) NOT NULL,
+  `username` varchar(255) NOT NULL COMMENT 'Submitting user',
+  `status` int(11) UNSIGNED NOT NULL,
+  `jenkins_response` JSON DEFAULT NULL COMMENT 'Response from Jenkins',
+  `error_message` longtext DEFAULT NULL,
+  `created_at` bigint(10) UNSIGNED NOT NULL,
+  `updated_at` bigint(10) UNSIGNED NOT NULL,
+  PRIMARY KEY (`id`),
+  INDEX `idx_form_id` (`form_id`),
+  INDEX `idx_username` (`username`),
+  INDEX `idx_created_at` (`created_at`)
+) ENGINE=InnoDB AUTO_INCREMENT=10000 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

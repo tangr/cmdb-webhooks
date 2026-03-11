@@ -1,0 +1,102 @@
+{% include "base_head.html" %}
+
+<body>
+  <div class="wrapper">
+    <div class="ui container maincontainer">
+
+      {% include "base_menu.html" %}
+
+      <div class="ui breadcrumb">
+        <a class="section" href="/dashboard">Dashboard</a>
+        <div class="divider"> / </div>
+        <div class="active section">Amis Jenkins Forms</div>
+      </div>
+
+      <!-- Page Header -->
+      <div class="ui segment">
+        <h3 class="ui header">
+          <i class="wpforms icon"></i>
+          <div class="content">
+            Amis Jenkins Forms
+            <div class="sub header">Select a form to trigger Jenkins build</div>
+          </div>
+        </h3>
+      </div>
+
+      <!-- Forms List -->
+      {% if forms %}
+      <div class="ui three stackable cards">
+        {% for form in forms %}
+        <div class="ui card">
+          <div class="content">
+            <div class="header">
+              <i class="file alternate outline icon"></i>
+              {{ form.title }}
+            </div>
+            <div class="meta">
+              <span class="right floated">
+                {% if form.trigger_type == 'generic_webhook' %}
+                <span class="ui tiny teal label">Generic Webhook</span>
+                {% else %}
+                <span class="ui tiny blue label">Remote API</span>
+                {% endif %}
+              </span>
+            </div>
+            <div class="description">
+              <p>{{ form.description or 'No description available' }}</p>
+            </div>
+          </div>
+          <div class="extra content">
+            <span class="left floated">
+              <i class="cog icon"></i>
+              {{ form.jenkins_job }}
+            </span>
+          </div>
+          <div class="ui bottom attached button" onclick="window.location.href='/amis-jenkins/forms/{{ form.form_id }}'">
+            <i class="play icon"></i>
+            Open Form
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="ui placeholder segment">
+        <div class="ui icon header">
+          <i class="file outline icon"></i>
+          No forms configured
+        </div>
+        <p>Please configure forms in <code>config/amis_jenkins_mapping.yaml</code></p>
+      </div>
+      {% endif %}
+
+    </div>
+
+    {% include "base_foot.html" %}
+  </div>
+
+  <script type="text/javascript">
+    $(document).ready(function () {
+      $('.ui.dropdown').dropdown();
+    });
+
+    function logout() {
+      fetch('/auth/logout', {
+        method: 'POST'
+      })
+        .then(response => {
+          if (response.ok) {
+            window.location.href = '/login';
+          } else {
+            console.error('Logout failed');
+          }
+        })
+        .catch(error => {
+          console.error('Logout error:', error);
+          window.location.href = '/login';
+        });
+    }
+  </script>
+
+</body>
+
+</html>
