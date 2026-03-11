@@ -144,6 +144,7 @@ forms:
   deploy-test1:
     title: "Deploy test1"
     description: "Deploy test1 for development"
+    jenkins_base_url: "https://jenkins-dev1.exodushk.com"
     jenkins_job: "deploy/deploy-test1"
     trigger_type: "generic_webhook"
     jenkins_token: "deploy-token"
