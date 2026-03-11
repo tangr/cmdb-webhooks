@@ -52,12 +52,14 @@ webhook-proxy/
 │   │   ├── cmdb_trigger.py        # CMDB Trigger日志路由
 │   │   ├── feishu_bot.py      # 飞书机器人Webhook代理路由
 │   │   ├── gitlab_hook.py      # GitLab Hook Webhook代理路由
-│   │   └── amis_jenkins.py    # Amis Jenkins表单代理路由
+│   │   ├── amis_jenkins.py    # Amis Jenkins表单代理路由
+│   │   └── harbor_artifacts.py # Harbor镜像Artifacts查询路由
 │   ├── services/          # 服务层模块
 │   │   ├── cmdb_trigger_service.py      # CMDB Trigger代理请求处理服务
 │   │   ├── feishu_bot_service.py    # 飞书机器人服务逻辑
 │   │   ├── gitlab_hook_service.py    # GitLab Hook到Jenkins转发服务
 │   │   ├── amis_jenkins_service.py  # Amis Jenkins表单到Jenkins转发服务
+│   │   ├── harbor_artifacts_service.py # Harbor镜像Artifacts查询服务
 │   │   ├── redis_session.py     # Redis会话管理服务
 │   │   └── webhook_mapping.py   # Webhook映射服务
 │   └── utils/             # 工具模块
@@ -87,7 +89,8 @@ webhook-proxy/
 │   ├── config.py          # Pydantic设置配置
 │   ├── webhook_mapping.yaml # 飞书Webhook映射配置文件
 │   ├── gitlab_jenkins_mapping.yaml # GitLab到Jenkins映射配置文件
-│   └── amis_jenkins_mapping.yaml # Amis表单到Jenkins映射配置文件
+│   ├── amis_jenkins_mapping.yaml # Amis表单到Jenkins映射配置文件
+│   └── harbor_config.yaml # Harbor多实例配置文件
 ├── sql/                   # 数据库脚本
 │   └── db.sql            # 数据库初始化脚本
 ├── requirements.txt       # Python依赖包
@@ -106,6 +109,7 @@ webhook-proxy/
 - **用户认证系统**: 支持 JWT、Session 和 OIDC 三种认证方式的多层次权限管理
 - **Web 管理界面**: 提供直观的 Web 界面进行日志查看和系统管理
 - **Amis Jenkins 表单代理**: 使用百度 Amis 低代码框架构建参数化表单 UI，替代 Jenkins 原生 parameters，支持动态表单渲染和 Jenkins 构建触发
+- **Harbor 镜像查询服务**: 代理 Harbor Registry API，获取镜像 Artifacts 列表，为 Amis Select 组件提供数据源，支持多 Harbor 实例
 
 应用程序采用前后端分离的架构，后端提供 RESTful API，前端提供 Web 界面，具有清晰的关注点分离。
 
@@ -202,6 +206,14 @@ webhook-proxy/
   - 支持表单级别覆盖全局 Jenkins 配置
   - 记录请求/响应日志到数据库
 
+- **HarborArtifactsService** (`app/services/harbor_artifacts_service.py`):
+  - 代理 Harbor Registry API 获取镜像 Artifacts 列表
+  - 支持多 Harbor 实例配置（通过 YAML 配置文件）
+  - 使用 Robot Account Token 进行 Harbor API 认证
+  - 自动格式化返回数据为 Amis Select 组件所需格式
+  - 支持分页查询和按推送时间排序
+  - 处理带/不带 Tag 的 Artifacts（无 Tag 时显示 Digest）
+
 ### API 结构
 
 应用程序提供多个功能模块的 API 端点：
@@ -253,6 +265,13 @@ webhook-proxy/
 - `POST /amis-jenkins/api/submit/{form_id}` - 提交表单到 Jenkins（API，需要认证）
 - `GET /amis-jenkins/logs` - 获取 Amis Jenkins 日志列表（需要认证）
 - `GET /amis-jenkins/logs/{log_id}` - 获取特定 Amis Jenkins 日志（需要认证）
+
+**Harbor Artifacts 模块 (`/harbor-artifacts/*`)**
+
+- `GET /harbor-artifacts` - 获取镜像 Artifacts 列表（需要认证）
+  - Query 参数：`instance`（Harbor 实例 ID）、`project`（项目名）、`repo`（仓库路径）、`page`、`page_size`
+  - 返回 Amis Select 兼容格式：`{status, msg, data: {options: [{label, value}], hasMore, page, pageSize}}`
+- `GET /harbor-artifacts/instances` - 列出可用的 Harbor 实例（需要认证）
 
 **其他端点:**
 
@@ -373,6 +392,28 @@ webhook-proxy/
   - `jenkins_api_token`: 表单级别的 Jenkins API Token（可选，覆盖全局配置）
   - `jenkins_base_url`: 表单级别的 Jenkins URL（可选，覆盖全局配置）
   - `schema`: Amis 表单 Schema（JSON/YAML 格式）
+
+**Harbor 配置 (`config/harbor_config.yaml`):**
+
+- `instances`: Harbor 实例配置（支持多实例）
+  - 每个实例包含：
+    - `base_url`: Harbor 服务器 URL
+    - `robot_token`: Robot Account Token（格式：`robot$name:secret`）
+    - `timeout`: 请求超时时间（可选，覆盖默认值）
+- `default_instance`: 默认 Harbor 实例 ID（未指定 instance 参数时使用）
+- `default_page_size`: 默认每页数量（默认: 50）
+- `max_page_size`: 最大每页数量（默认: 100）
+- `default_timeout`: 默认请求超时秒数（默认: 30）
+
+**Amis Select 组件配置示例:**
+
+```yaml
+- type: "select"
+  name: "image_tag"
+  label: "Image Tag"
+  required: true
+  source: "/harbor-artifacts?instance=prod&project=${project}&repo=${service}"
+```
 
 ## 开发指南
 
