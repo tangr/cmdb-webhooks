@@ -1,15 +1,15 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, Header
 from sqlmodel import select
-from app.models.gitlab_reqlog import GitlabReqLog
+from app.models.gitlab_hook_reqlog import GitlabHookReqLog
 from app.dependencies import SessionDep, get_current_user_any_required, User
-from app.services.gitlab_service import process_gitlab_webhook
+from app.services.gitlab_hook_service import process_gitlab_hook_webhook
 from typing import Optional
 
 router = APIRouter()
 
 
 @router.post("/webhook")
-async def gitlab_webhook(
+async def gitlab_hook_webhook(
     request: Request,
     session: SessionDep,
     x_gitlab_token: Optional[str] = Header(None, alias="X-Gitlab-Token"),
@@ -25,13 +25,13 @@ async def gitlab_webhook(
         X-Gitlab-Event: GitLab event type (e.g., "Push Hook", "Tag Push Hook")
 
     Currently supported events:
-        - Push events (gitlab_enable_push_events)
+        - Push events (gitlab_hook_enable_push_events)
 
     Reserved for future support:
-        - Tag Push events (gitlab_enable_tag_push_events)
-        - Merge Request events (gitlab_enable_merge_request_events)
+        - Tag Push events (gitlab_hook_enable_tag_push_events)
+        - Merge Request events (gitlab_hook_enable_merge_request_events)
     """
-    return await process_gitlab_webhook(
+    return await process_gitlab_hook_webhook(
         request,
         session,
         x_gitlab_token,
@@ -40,22 +40,22 @@ async def gitlab_webhook(
 
 
 @router.get("/logs")
-def get_gitlab_logs(
+def get_gitlab_hook_logs(
     request: Request,
     session: SessionDep,
     current_user: User = Depends(get_current_user_any_required),
     skip: int = 0,
     limit: int = 10,
 ):
-    """Get GitLab webhook logs (Requires authentication)"""
+    """Get GitLab Hook webhook logs (Requires authentication)"""
     limit = min(limit, 1000)  # Protect limit for max records in one page
 
     # Get logs with pagination (fetch limit+1 to check if there are more records)
     statement = (
-        select(GitlabReqLog)
+        select(GitlabHookReqLog)
         .offset(skip)
         .limit(limit + 1)
-        .order_by(GitlabReqLog.updated_at.desc())
+        .order_by(GitlabHookReqLog.updated_at.desc())
     )
     logs = session.exec(statement).all()
 
@@ -107,13 +107,13 @@ def get_gitlab_logs(
 
 
 @router.get("/logs/{log_id}")
-def get_gitlab_log(
+def get_gitlab_hook_log(
     log_id: int,
     session: SessionDep,
     current_user: User = Depends(get_current_user_any_required),
 ):
-    """Get single GitLab webhook log by ID (Requires authentication)"""
-    log = session.get(GitlabReqLog, log_id)
+    """Get single GitLab Hook webhook log by ID (Requires authentication)"""
+    log = session.get(GitlabHookReqLog, log_id)
     if not log:
         raise HTTPException(status_code=404, detail="Log not found")
     return log

@@ -1,10 +1,10 @@
 from fastapi import HTTPException, Request
 from fastapi.responses import JSONResponse
-from app.models.gitlab_reqlog import GitlabReqLog, GitlabReqLogCreate
+from app.models.gitlab_hook_reqlog import GitlabHookReqLog, GitlabHookReqLogCreate
 from app.dependencies import SessionDep
 from config.config import settings
 from app.utils.webhook_security import (
-    verify_gitlab_webhook,
+    verify_gitlab_hook_webhook,
     verify_webhook_ip_whitelist,
 )
 from typing import Dict, Any, Optional, List
@@ -395,13 +395,13 @@ def preprocess_gitlab_payload(
         }
 
 
-def log_gitlab_request(session: SessionDep, log_entry: GitlabReqLogCreate):
-    """Log GitLab request to database based on configuration"""
+def log_gitlab_hook_request(session: SessionDep, log_entry: GitlabHookReqLogCreate):
+    """Log GitLab Hook request to database based on configuration"""
 
     # Console logging
     if settings.enable_console_logging:
         log_message = (
-            f"GitLab Webhook - "
+            f"GitLab Hook Webhook - "
             f"Event: {log_entry.event_type}, "
             f"Project: {log_entry.project_path}, "
             f"Status: {log_entry.status}, "
@@ -417,12 +417,12 @@ def log_gitlab_request(session: SessionDep, log_entry: GitlabReqLogCreate):
     # Database logging
     if settings.enable_database_logging:
         try:
-            db_log = GitlabReqLog(**log_entry.model_dump())
+            db_log = GitlabHookReqLog(**log_entry.model_dump())
             session.add(db_log)
             session.commit()
         except Exception as e:
             if settings.enable_console_logging:
-                logger.error(f"Failed to save GitLab log to database: {str(e)}")
+                logger.error(f"Failed to save GitLab Hook log to database: {str(e)}")
 
 
 async def send_to_jenkins(
@@ -466,7 +466,7 @@ async def send_to_jenkins(
         }
 
 
-async def process_gitlab_webhook(
+async def process_gitlab_hook_webhook(
     request: Request,
     session: SessionDep,
     gitlab_token: Optional[str] = None,
@@ -488,7 +488,7 @@ async def process_gitlab_webhook(
     verify_webhook_ip_whitelist(request, settings.webhook_ip_whitelist)
 
     # Verify GitLab token
-    verify_gitlab_webhook(request, gitlab_token)
+    verify_gitlab_hook_webhook(request, gitlab_token)
 
     # Get client IP
     client_ip = request.client.host
@@ -522,7 +522,7 @@ async def process_gitlab_webhook(
         project_path = body["path_with_namespace"]
 
     # Initialize log entry
-    log_entry = GitlabReqLogCreate(
+    log_entry = GitlabHookReqLogCreate(
         event_type=event_type,
         project_path=project_path,
         method=method,
@@ -538,17 +538,20 @@ async def process_gitlab_webhook(
 
     # Check if event type is enabled
     event_enabled = False
-    if event_type == "push" and settings.gitlab_enable_push_events:
+    if event_type == "push" and settings.gitlab_hook_enable_push_events:
         event_enabled = True
-    elif event_type == "tag_push" and settings.gitlab_enable_tag_push_events:
+    elif event_type == "tag_push" and settings.gitlab_hook_enable_tag_push_events:
         event_enabled = True
-    elif event_type == "merge_request" and settings.gitlab_enable_merge_request_events:
+    elif (
+        event_type == "merge_request"
+        and settings.gitlab_hook_enable_merge_request_events
+    ):
         event_enabled = True
 
     if not event_enabled:
         log_entry.status = 200
         log_entry.error_message = f"Event type '{event_type}' is not enabled"
-        log_gitlab_request(session, log_entry)
+        log_gitlab_hook_request(session, log_entry)
         return JSONResponse(
             content={
                 "status": "skipped",
@@ -564,7 +567,7 @@ async def process_gitlab_webhook(
         log_entry.error_message = (
             f"No Jenkins mapping found for project: {project_path}"
         )
-        log_gitlab_request(session, log_entry)
+        log_gitlab_hook_request(session, log_entry)
         return JSONResponse(
             content={
                 "status": "skipped",
@@ -583,7 +586,7 @@ async def process_gitlab_webhook(
     if not jenkins_base_url:
         log_entry.status = 500
         log_entry.error_message = "Jenkins base URL not configured"
-        log_gitlab_request(session, log_entry)
+        log_gitlab_hook_request(session, log_entry)
         raise HTTPException(
             status_code=500,
             detail="Jenkins base URL not configured in gitlab_jenkins_mapping.yaml",
@@ -601,7 +604,7 @@ async def process_gitlab_webhook(
             log_entry.error_message = (
                 f"Skipped: commit_title: '{commit_title}' does not match keywords"
             )
-            log_gitlab_request(session, log_entry)
+            log_gitlab_hook_request(session, log_entry)
             return JSONResponse(
                 content={
                     "status": "skipped",
@@ -645,7 +648,7 @@ async def process_gitlab_webhook(
         log_entry.jenkins_response = jenkins_result["body"]
 
         # Log request
-        log_gitlab_request(session, log_entry)
+        log_gitlab_hook_request(session, log_entry)
 
         return JSONResponse(
             content={
@@ -662,19 +665,19 @@ async def process_gitlab_webhook(
         error_msg = "Request to Jenkins timed out"
         log_entry.status = 504
         log_entry.error_message = error_msg
-        log_gitlab_request(session, log_entry)
+        log_gitlab_hook_request(session, log_entry)
         raise HTTPException(status_code=504, detail=error_msg)
 
     except httpx.RequestError as e:
         error_msg = f"Failed to connect to Jenkins: {str(e)}"
         log_entry.status = 502
         log_entry.error_message = error_msg
-        log_gitlab_request(session, log_entry)
+        log_gitlab_hook_request(session, log_entry)
         raise HTTPException(status_code=502, detail=error_msg)
 
     except Exception as e:
         error_msg = f"Internal server error: {str(e)}"
         log_entry.status = 500
         log_entry.error_message = error_msg
-        log_gitlab_request(session, log_entry)
+        log_gitlab_hook_request(session, log_entry)
         raise HTTPException(status_code=500, detail=error_msg)

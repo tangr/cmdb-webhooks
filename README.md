@@ -40,7 +40,7 @@ curl -X POST \
   -H "Content-Type: application/json" \
   -H "X-Gitlab-Token: your-secret-token" \
   -H "X-Gitlab-Event: Push Hook" \
-  "http://127.0.0.1:8000/gitlab/webhook" \
+  "http://127.0.0.1:8000/gitlab-hook/webhook" \
   -d '{
   "object_kind": "push",
   "event_name": "push",

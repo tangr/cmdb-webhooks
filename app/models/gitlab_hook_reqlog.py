@@ -4,7 +4,7 @@ from typing import Optional, Dict, Any
 import time
 
 
-class GitlabReqLogBase(SQLModel):
+class GitlabHookReqLogBase(SQLModel):
     event_type: str  # push, tag_push, merge_request
     project_path: str
     method: str
@@ -20,19 +20,19 @@ class GitlabReqLogBase(SQLModel):
     error_message: Optional[str] = None
 
 
-class GitlabReqLog(GitlabReqLogBase, table=True):
-    __tablename__ = "gitlab_reqlog"
+class GitlabHookReqLog(GitlabHookReqLogBase, table=True):
+    __tablename__ = "gitlab_hook_reqlog"
 
     id: Optional[int] = Field(default=None, primary_key=True)
     created_at: int = Field(default_factory=lambda: int(time.time()))
     updated_at: int = Field(default_factory=lambda: int(time.time()))
 
 
-class GitlabReqLogCreate(GitlabReqLogBase):
+class GitlabHookReqLogCreate(GitlabHookReqLogBase):
     pass
 
 
-class GitlabReqLogUpdate(SQLModel):
+class GitlabHookReqLogUpdate(SQLModel):
     event_type: Optional[str] = None
     project_path: Optional[str] = None
     method: Optional[str] = None
@@ -46,7 +46,7 @@ class GitlabReqLogUpdate(SQLModel):
     error_message: Optional[str] = None
 
 
-class GitlabReqLogRead(GitlabReqLogBase):
+class GitlabHookReqLogRead(GitlabHookReqLogBase):
     """Model for API responses"""
 
     id: int

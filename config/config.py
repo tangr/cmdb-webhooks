@@ -102,15 +102,15 @@ class Settings(BaseSettings):
         },
     }
 
-    # GitLab Webhook Configuration
-    gitlab_webhook_secret_tokens: str = (
+    # GitLab Hook Webhook Configuration
+    gitlab_hook_webhook_secret_tokens: str = (
         ""  # Comma-separated GitLab secret tokens (empty = no verification)
     )
 
-    # GitLab Event Support Configuration
-    gitlab_enable_push_events: bool = True
-    gitlab_enable_tag_push_events: bool = False  # Reserved for future support
-    gitlab_enable_merge_request_events: bool = False  # Reserved for future support
+    # GitLab Hook Event Support Configuration
+    gitlab_hook_enable_push_events: bool = True
+    gitlab_hook_enable_tag_push_events: bool = False  # Reserved for future support
+    gitlab_hook_enable_merge_request_events: bool = False  # Reserved for future support
 
     model_config = SettingsConfigDict(
         env_file=".env",
