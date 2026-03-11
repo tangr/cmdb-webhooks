@@ -44,7 +44,7 @@ webhook-proxy/
 │   ├── models/            # 数据模型
 │   │   ├── cmdb_reqlog.py  # CMDB请求日志模型
 │   │   ├── feishu_bot_reqlog.py # 飞书请求日志模型
-│   │   └── gitlab_reqlog.py # GitLab请求日志模型
+│   │   └── gitlab_hook_reqlog.py # GitLab请求日志模型
 │   ├── routers/           # API路由处理器
 │   │   ├── auth.py        # 认证相关路由（JWT + Session + OIDC）
 │   │   ├── cmdb.py        # CMDB日志路由
@@ -53,7 +53,7 @@ webhook-proxy/
 │   ├── services/          # 服务层模块
 │   │   ├── cmdb_service.py      # CMDB代理请求处理服务
 │   │   ├── feishu_bot_service.py    # 飞书服务逻辑
-│   │   ├── gitlab_service.py    # GitLab到Jenkins转发服务
+│   │   ├── gitlab_hook_service.py    # GitLab到Jenkins转发服务
 │   │   ├── redis_session.py     # Redis会话管理服务
 │   │   └── webhook_mapping.py   # Webhook映射服务
 │   └── utils/             # 工具模块
@@ -175,7 +175,7 @@ webhook-proxy/
   - 处理 Webhook 请求的路由和映射逻辑
   - 支持配置文件驱动的映射规则
 
-- **GitlabService** (`app/services/gitlab_service.py`):
+- **GitlabService** (`app/services/gitlab_hook_service.py`):
   - 处理 GitLab System Hook 到 Jenkins Generic Webhook Trigger 的转发
   - 支持 X-Gitlab-Token 验证
   - 自动预处理 GitLab payload 为标准化字段（Push/Tag Push/Merge Request）
@@ -301,10 +301,10 @@ webhook-proxy/
 
 **GitLab Webhook 配置:**
 
-- `gitlab_webhook_secret_tokens`: GitLab Secret Token（逗号分隔，空值表示不验证）
-- `gitlab_enable_push_events`: 启用 Push 事件处理 (默认: true)
-- `gitlab_enable_tag_push_events`: 启用 Tag Push 事件处理 (默认: false，预留)
-- `gitlab_enable_merge_request_events`: 启用 Merge Request 事件处理 (默认: false，预留)
+- `gitlab_hook_webhook_secret_tokens`: GitLab Secret Token（逗号分隔，空值表示不验证）
+- `gitlab_hook_enable_push_events`: 启用 Push 事件处理 (默认: true)
+- `gitlab_hook_enable_tag_push_events`: 启用 Tag Push 事件处理 (默认: false，预留)
+- `gitlab_hook_enable_merge_request_events`: 启用 Merge Request 事件处理 (默认: false，预留)
 
 **GitLab-Jenkins 映射配置 (`config/gitlab_jenkins_mapping.yaml`):**
 
