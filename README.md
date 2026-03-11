@@ -129,4 +129,7 @@ curl -X POST \
   }
 }'
 
+
+curl http://localhost:8000/harbor-artifacts?instance=prod&project=ams&repo=qa/ipip-service
+
 ```
