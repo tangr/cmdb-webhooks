@@ -4,7 +4,7 @@ from typing import Optional, Dict, Any, List
 import time
 
 
-class CmdbReqLogBase(SQLModel):
+class CmdbTriggerReqLogBase(SQLModel):
     host: str
     method: str
     path: str
@@ -17,19 +17,19 @@ class CmdbReqLogBase(SQLModel):
     output: Optional[str] = None
 
 
-class CmdbReqLog(CmdbReqLogBase, table=True):
-    __tablename__ = "cmdb_reqlog"
+class CmdbTriggerReqLog(CmdbTriggerReqLogBase, table=True):
+    __tablename__ = "cmdb_trigger_reqlog"
 
     id: Optional[int] = Field(default=None, primary_key=True)
     created_at: int = Field(default_factory=lambda: int(time.time()))
     updated_at: int = Field(default_factory=lambda: int(time.time()))
 
 
-class CmdbReqLogCreate(CmdbReqLogBase):
+class CmdbTriggerReqLogCreate(CmdbTriggerReqLogBase):
     pass
 
 
-class CmdbReqLogUpdate(SQLModel):
+class CmdbTriggerReqLogUpdate(SQLModel):
     host: Optional[str] = None
     method: Optional[str] = None
     path: Optional[str] = None
@@ -42,7 +42,7 @@ class CmdbReqLogUpdate(SQLModel):
     output: Optional[str] = None
 
 
-class CmdbReqLogRead(CmdbReqLogBase):
+class CmdbTriggerReqLogRead(CmdbTriggerReqLogBase):
     """Model for API responses"""
 
     id: int
@@ -67,10 +67,10 @@ class PaginationInfo(SQLModel):
     urls: PaginationUrls
 
 
-class CmdbReqLogListResponse(SQLModel):
+class CmdbTriggerReqLogListResponse(SQLModel):
     """Model for paginated log list response"""
 
-    logs: List[CmdbReqLog]
+    logs: List[CmdbTriggerReqLog]
     user: str
     limit: int
     pagination: PaginationInfo
