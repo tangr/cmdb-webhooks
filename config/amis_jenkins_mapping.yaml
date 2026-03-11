@@ -187,10 +187,27 @@ forms:
                 value: "txg"
                 visibleOn: "data.project == 'exodus' || data.project == 'wallet'"
           - type: "select"
+            name: "service"
+            label: "Deploy Service"
+            required: true
+            options:
+              - label: "dev/account-server"
+                value: "dev/account-server"
+                visibleOn: "data.project == 'exodus' || data.project == 'wallet'"
+              - label: "exodus/dev/risk-engine-api"
+                value: "exodus/dev/risk-engine-api"
+                visibleOn: "data.project == 'exodus' || data.project == 'wallet'"
+          - type: "select"
             name: "image_tag"
             label: "Image Tag"
             placeholder: "Optional, e.g., v1.0.0"
             required: true
+            source:
+              url: "/harbor-artifacts?instance=prod&project=${project}&repo=${service}"
+              sendOn: "data.project && data.service"
+            initFetchOn: "this.project && this.service"
+            resetValue: ""
+            clearable: true
           - type: "input-text"
             name: "comment"
             label: "Comment"
