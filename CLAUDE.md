@@ -19,6 +19,7 @@
 - **jQuery 3.1.1** - JavaScript 库，用于 DOM 操作和事件处理
 - **DOMPurify 2.4.0** - XSS 防护的 DOM 净化库
 - **Marked 16.1.1** - Markdown 解析和渲染库
+- **Amis 6.13.0** - 百度低代码前端框架，用于动态表单渲染
 
 ### 数据库
 
@@ -44,16 +45,19 @@ webhook-proxy/
 │   ├── models/            # 数据模型
 │   │   ├── cmdb_trigger_reqlog.py  # CMDB Trigger请求日志模型
 │   │   ├── feishu_bot_reqlog.py # 飞书机器人请求日志模型
-│   │   └── gitlab_hook_reqlog.py # GitLab Hook请求日志模型
+│   │   ├── gitlab_hook_reqlog.py # GitLab Hook请求日志模型
+│   │   └── amis_jenkins_reqlog.py # Amis Jenkins请求日志模型
 │   ├── routers/           # API路由处理器
 │   │   ├── auth.py        # 认证相关路由（JWT + Session + OIDC）
 │   │   ├── cmdb_trigger.py        # CMDB Trigger日志路由
 │   │   ├── feishu_bot.py      # 飞书机器人Webhook代理路由
-│   │   └── gitlab_hook.py      # GitLab Hook Webhook代理路由
+│   │   ├── gitlab_hook.py      # GitLab Hook Webhook代理路由
+│   │   └── amis_jenkins.py    # Amis Jenkins表单代理路由
 │   ├── services/          # 服务层模块
 │   │   ├── cmdb_trigger_service.py      # CMDB Trigger代理请求处理服务
 │   │   ├── feishu_bot_service.py    # 飞书机器人服务逻辑
 │   │   ├── gitlab_hook_service.py    # GitLab Hook到Jenkins转发服务
+│   │   ├── amis_jenkins_service.py  # Amis Jenkins表单到Jenkins转发服务
 │   │   ├── redis_session.py     # Redis会话管理服务
 │   │   └── webhook_mapping.py   # Webhook映射服务
 │   └── utils/             # 工具模块
@@ -68,17 +72,22 @@ webhook-proxy/
 │   ├── login.html         # 登录页面
 │   ├── cmdb/              # CMDB相关模板
 │   │   └── show.html      # 显示页面模板
-│   └── feishu/            # 飞书相关模板目录
+│   ├── feishu/            # 飞书相关模板目录
+│   └── amis_jenkins/      # Amis Jenkins相关模板
+│       ├── forms.html     # 表单列表页面
+│       └── form.html      # Amis表单渲染页面
 ├── static/                # 静态资源目录（前端资源）
 │   └── plugin/            # 前端插件库
 │       ├── fomantic-ui-2.9.4/    # UI框架
 │       ├── jquery-3.1.1/         # jQuery库
 │       ├── dompurify-2.4.0/      # DOM净化库
-│       └── markdown-16.1.1/      # Markdown解析库
+│       ├── markdown-16.1.1/      # Markdown解析库
+│       └── amis-6.13.0/          # Amis低代码框架
 ├── config/                # 配置模块
 │   ├── config.py          # Pydantic设置配置
 │   ├── webhook_mapping.yaml # 飞书Webhook映射配置文件
-│   └── gitlab_jenkins_mapping.yaml # GitLab到Jenkins映射配置文件
+│   ├── gitlab_jenkins_mapping.yaml # GitLab到Jenkins映射配置文件
+│   └── amis_jenkins_mapping.yaml # Amis表单到Jenkins映射配置文件
 ├── sql/                   # 数据库脚本
 │   └── db.sql            # 数据库初始化脚本
 ├── requirements.txt       # Python依赖包
@@ -96,6 +105,7 @@ webhook-proxy/
 - **请求日志记录**: 记录和管理来自 CMDB Trigger、飞书机器人和 GitLab Hook 等系统的 HTTP 请求/响应数据
 - **用户认证系统**: 支持 JWT、Session 和 OIDC 三种认证方式的多层次权限管理
 - **Web 管理界面**: 提供直观的 Web 界面进行日志查看和系统管理
+- **Amis Jenkins 表单代理**: 使用百度 Amis 低代码框架构建参数化表单 UI，替代 Jenkins 原生 parameters，支持动态表单渲染和 Jenkins 构建触发
 
 应用程序采用前后端分离的架构，后端提供 RESTful API，前端提供 Web 界面，具有清晰的关注点分离。
 
@@ -131,6 +141,7 @@ webhook-proxy/
   - `CmdbTriggerReqLog`: 存储来自 CMDB Trigger 系统的 HTTP 请求/响应数据
   - `FeishuBotReqLog`: 存储飞书机器人 Webhook 代理的请求/响应数据
   - `GitlabHookReqLog`: 存储 GitLab Hook Webhook 到 Jenkins 的请求/响应数据
+  - `AmisJenkinsReqLog`: 存储 Amis 表单提交到 Jenkins 的请求/响应数据
 - 使用 JSON 列灵活存储标头和正文数据
 - 时间戳存储为 Unix 时间戳
 
@@ -146,6 +157,7 @@ webhook-proxy/
 - **CmdbTriggerReqLog**: 存储来自 CMDB Trigger 系统的 HTTP 请求详细信息（方法、路径、标头、正文、状态等）
 - **FeishuBotReqLog**: 存储飞书机器人 Webhook 代理请求的详细信息（包括请求和响应数据）
 - **GitlabHookReqLog**: 存储 GitLab Hook Webhook 请求详细信息（事件类型、项目路径、Jenkins 响应等）
+- **AmisJenkinsReqLog**: 存储 Amis 表单提交到 Jenkins 的请求详细信息（表单 ID、触发类型、用户名、Jenkins 响应等）
 - **User**: 用户认证和权限管理的用户实体（支持角色基础的访问控制）
 - 所有模型遵循 SQLModel 模式，包含用于创建、更新和读取操作的独立类
 
@@ -181,6 +193,13 @@ webhook-proxy/
   - 支持 X-Gitlab-Token 验证
   - 自动预处理 GitLab payload 为标准化字段（Push/Tag Push/Merge Request）
   - 支持项目路径通配符匹配和字段过滤
+  - 记录请求/响应日志到数据库
+
+- **AmisJenkinsService** (`app/services/amis_jenkins_service.py`):
+  - 处理 Amis 表单提交到 Jenkins 的转发
+  - 支持两种 Jenkins 触发方式：Generic Webhook Trigger 和 Remote API (buildWithParameters)
+  - 从 YAML 配置文件加载表单定义和 Jenkins 映射
+  - 支持表单级别覆盖全局 Jenkins 配置
   - 记录请求/响应日志到数据库
 
 ### API 结构
@@ -224,6 +243,16 @@ webhook-proxy/
 - `POST /gitlab-hook/webhook` - GitLab System Hook 接收端点，转发到 Jenkins Generic Webhook Trigger
 - `GET /gitlab-hook/logs` - 获取 GitLab Hook Webhook 日志列表（需要认证）
 - `GET /gitlab-hook/logs/{log_id}` - 获取特定 GitLab Hook Webhook 日志（需要认证）
+
+**Amis Jenkins 表单模块 (`/amis-jenkins/*`)**
+
+- `GET /amis-jenkins/forms` - 表单列表页面（HTML，需要认证）
+- `GET /amis-jenkins/forms/{form_id}` - Amis 表单渲染页面（HTML，需要认证）
+- `GET /amis-jenkins/api/forms` - 获取所有表单列表（API，需要认证）
+- `GET /amis-jenkins/api/schema/{form_id}` - 获取表单 Amis Schema（API，需要认证）
+- `POST /amis-jenkins/api/submit/{form_id}` - 提交表单到 Jenkins（API，需要认证）
+- `GET /amis-jenkins/logs` - 获取 Amis Jenkins 日志列表（需要认证）
+- `GET /amis-jenkins/logs/{log_id}` - 获取特定 Amis Jenkins 日志（需要认证）
 
 **其他端点:**
 
@@ -327,6 +356,23 @@ webhook-proxy/
 - `log_backup_count`: 日志文件备份数量 (默认: 5)
 - `enable_database_logging`: 启用数据库日志记录 (默认: true)
 - `enable_console_logging`: 启用控制台日志输出 (默认: false)
+
+**Amis-Jenkins 映射配置 (`config/amis_jenkins_mapping.yaml`):**
+
+- `jenkins_base_url`: Jenkins 服务器 URL（全局配置）
+- `jenkins_default_token`: 默认 Jenkins Generic Webhook 触发 Token
+- `jenkins_default_user`: 默认 Jenkins 用户名（用于 Remote API）
+- `jenkins_default_api_token`: 默认 Jenkins API Token（用于 Remote API）
+- 支持多个表单定义，每个表单包含：
+  - `title`: 表单显示标题
+  - `description`: 表单描述
+  - `jenkins_job`: Jenkins 任务路径
+  - `trigger_type`: 触发类型 (`generic_webhook` 或 `remote_api`)
+  - `jenkins_token`: 表单级别的 Jenkins Token（可选，覆盖全局配置）
+  - `jenkins_user`: 表单级别的 Jenkins 用户（可选，覆盖全局配置）
+  - `jenkins_api_token`: 表单级别的 Jenkins API Token（可选，覆盖全局配置）
+  - `jenkins_base_url`: 表单级别的 Jenkins URL（可选，覆盖全局配置）
+  - `schema`: Amis 表单 Schema（JSON/YAML 格式）
 
 ## 开发指南
 
