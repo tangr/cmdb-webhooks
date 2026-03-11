@@ -145,9 +145,9 @@ forms:
     title: "Deploy test1"
     description: "Deploy test1 for development"
     jenkins_base_url: "https://jenkins-dev1.exodushk.com"
-    jenkins_job: "deploy/deploy-test1"
+    jenkins_job: "deploy/deploy-test1pipelines/pipeline-k8s-image-deploy-noinput"
     trigger_type: "generic_webhook"
-    jenkins_token: "deploy-token"
+    jenkins_token: "pipeline-k8s-image-deploy-noinput-trigger-token1"
     schema:
       type: "page"
       title: "Deploy test1"
