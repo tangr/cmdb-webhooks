@@ -205,6 +205,7 @@ forms:
             source:
               url: "/harbor-artifacts?instance=prod&project=${project}&repo=${service}"
               sendOn: "data.project && data.service"
+              initFetch: false
             initFetchOn: "this.project && this.service"
             resetValue: ""
             clearable: true
