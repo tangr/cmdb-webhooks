@@ -107,36 +107,36 @@ forms:
             placeholder: "Optional, one per line (KEY=VALUE)"
 
   # Example 3: Run Tests (Generic Webhook with multiple options)
-  # run-tests:
-  #   title: "Run Tests"
-  #   description: "Execute test suite on specified branch"
-  #   jenkins_job: "ci/run-tests"
-  #   trigger_type: "generic_webhook"
-  #   jenkins_token: "test-token"
-  #   schema:
-  #     type: "page"
-  #     title: "Run Tests"
-  #     body:
-  #       type: "form"
-  #       api:
-  #         method: "post"
-  #         url: "/amis-jenkins/api/submit/run-tests"
-  #       body:
-  #         - type: "input-text"
-  #           name: "branch"
-  #           label: "Branch Name"
-  #           required: true
-  #         - type: "checkboxes"
-  #           name: "test_types"
-  #           label: "Test Types"
-  #           options:
-  #             - label: "Unit Tests"
-  #               value: "unit"
-  #             - label: "Integration Tests"
-  #               value: "integration"
-  #             - label: "E2E Tests"
-  #               value: "e2e"
-  #         - type: "switch"
-  #           name: "verbose"
-  #           label: "Verbose Output"
-  #           value: false
+  run-tests:
+    title: "Run Tests"
+    description: "Execute test suite on specified branch"
+    jenkins_job: "ci/run-tests"
+    trigger_type: "generic_webhook"
+    jenkins_token: "test-token"
+    schema:
+      type: "page"
+      title: "Run Tests"
+      body:
+        type: "form"
+        api:
+          method: "post"
+          url: "/amis-jenkins/api/submit/run-tests"
+        body:
+          - type: "input-text"
+            name: "branch"
+            label: "Branch Name"
+            required: true
+          - type: "checkboxes"
+            name: "test_types"
+            label: "Test Types"
+            options:
+              - label: "Unit Tests"
+                value: "unit"
+              - label: "Integration Tests"
+                value: "integration"
+              - label: "E2E Tests"
+                value: "e2e"
+          - type: "switch"
+            name: "verbose"
+            label: "Verbose Output"
+            value: false
