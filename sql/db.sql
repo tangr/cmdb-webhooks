@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS `cmdb_reqlog` (
+CREATE TABLE IF NOT EXISTS `cmdb_trigger_reqlog` (
   `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
   `host` varchar(255) NOT NULL,
   `method` varchar(255) NOT NULL,
@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS `feishu_bot_reqlog` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=10000 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE IF NOT EXISTS `gitlab_reqlog` (
+CREATE TABLE IF NOT EXISTS `gitlab_hook_reqlog` (
   `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
   `event_type` varchar(50) NOT NULL COMMENT 'Event type: push, tag_push, merge_request',
   `project_path` varchar(255) NOT NULL COMMENT 'GitLab project path with namespace',

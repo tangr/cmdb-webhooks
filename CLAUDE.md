@@ -42,18 +42,18 @@ webhook-proxy/
 │   ├── internal/          # 内部管理模块
 │   │   └── admin.py       # 管理员路由和功能
 │   ├── models/            # 数据模型
-│   │   ├── cmdb_reqlog.py  # CMDB请求日志模型
-│   │   ├── feishu_bot_reqlog.py # 飞书请求日志模型
-│   │   └── gitlab_hook_reqlog.py # GitLab请求日志模型
+│   │   ├── cmdb_trigger_reqlog.py  # CMDB Trigger请求日志模型
+│   │   ├── feishu_bot_reqlog.py # 飞书机器人请求日志模型
+│   │   └── gitlab_hook_reqlog.py # GitLab Hook请求日志模型
 │   ├── routers/           # API路由处理器
 │   │   ├── auth.py        # 认证相关路由（JWT + Session + OIDC）
-│   │   ├── cmdb.py        # CMDB日志路由
-│   │   ├── feishu.py      # 飞书Webhook代理路由
-│   │   └── gitlab.py      # GitLab Webhook代理路由
+│   │   ├── cmdb_trigger.py        # CMDB Trigger日志路由
+│   │   ├── feishu_bot.py      # 飞书机器人Webhook代理路由
+│   │   └── gitlab_hook.py      # GitLab Hook Webhook代理路由
 │   ├── services/          # 服务层模块
-│   │   ├── cmdb_service.py      # CMDB代理请求处理服务
-│   │   ├── feishu_bot_service.py    # 飞书服务逻辑
-│   │   ├── gitlab_hook_service.py    # GitLab到Jenkins转发服务
+│   │   ├── cmdb_trigger_service.py      # CMDB Trigger代理请求处理服务
+│   │   ├── feishu_bot_service.py    # 飞书机器人服务逻辑
+│   │   ├── gitlab_hook_service.py    # GitLab Hook到Jenkins转发服务
 │   │   ├── redis_session.py     # Redis会话管理服务
 │   │   └── webhook_mapping.py   # Webhook映射服务
 │   └── utils/             # 工具模块
@@ -93,7 +93,7 @@ webhook-proxy/
 这是一个全栈 FastAPI 应用程序，主要功能包括：
 
 - **Webhook 代理服务**: 接收并转发各种系统的 Webhook 请求
-- **请求日志记录**: 记录和管理来自 CMDB 和飞书等系统的 HTTP 请求/响应数据
+- **请求日志记录**: 记录和管理来自 CMDB Trigger、飞书机器人和 GitLab Hook 等系统的 HTTP 请求/响应数据
 - **用户认证系统**: 支持 JWT、Session 和 OIDC 三种认证方式的多层次权限管理
 - **Web 管理界面**: 提供直观的 Web 界面进行日志查看和系统管理
 
@@ -128,9 +128,9 @@ webhook-proxy/
 
 - 数据库连接在`config/config.py`中配置，连接字符串来自环境变量
 - 主要数据实体包括：
-  - `CmdbReqLog`: 存储来自 CMDB 系统的 HTTP 请求/响应数据
-  - `FeishuReqLog`: 存储飞书 Webhook 代理的请求/响应数据
-  - `GitlabReqLog`: 存储 GitLab Webhook 到 Jenkins 的请求/响应数据
+  - `CmdbTriggerReqLog`: 存储来自 CMDB Trigger 系统的 HTTP 请求/响应数据
+  - `FeishuBotReqLog`: 存储飞书机器人 Webhook 代理的请求/响应数据
+  - `GitlabHookReqLog`: 存储 GitLab Hook Webhook 到 Jenkins 的请求/响应数据
 - 使用 JSON 列灵活存储标头和正文数据
 - 时间戳存储为 Unix 时间戳
 
@@ -143,9 +143,9 @@ webhook-proxy/
 
 ### 关键数据模型
 
-- **CmdbReqLog**: 存储来自 CMDB 系统的 HTTP 请求详细信息（方法、路径、标头、正文、状态等）
-- **FeishuReqLog**: 存储飞书 Webhook 代理请求的详细信息（包括请求和响应数据）
-- **GitlabReqLog**: 存储 GitLab Webhook 请求详细信息（事件类型、项目路径、Jenkins 响应等）
+- **CmdbTriggerReqLog**: 存储来自 CMDB Trigger 系统的 HTTP 请求详细信息（方法、路径、标头、正文、状态等）
+- **FeishuBotReqLog**: 存储飞书机器人 Webhook 代理请求的详细信息（包括请求和响应数据）
+- **GitlabHookReqLog**: 存储 GitLab Hook Webhook 请求详细信息（事件类型、项目路径、Jenkins 响应等）
 - **User**: 用户认证和权限管理的用户实体（支持角色基础的访问控制）
 - 所有模型遵循 SQLModel 模式，包含用于创建、更新和读取操作的独立类
 
@@ -158,24 +158,25 @@ webhook-proxy/
   - 自动处理会话过期和清理
   - 包含管理员功能（查看所有会话、批量清理）
 
-- **CmdbService** (`app/services/cmdb_service.py`):
+- **CmdbTriggerService** (`app/services/cmdb_trigger_service.py`):
 
-  - 处理 CMDB 代理请求的核心业务逻辑
+  - 处理 CMDB Trigger 代理请求的核心业务逻辑
   - 支持 API Key 验证和 IP 白名单校验
   - 转发 HTTP 请求到目标服务器（支持 GET/POST/PUT/DELETE/PATCH）
   - 记录请求/响应日志到数据库
 
-- **FeishuService** (`app/services/feishu_bot_service.py`):
+- **FeishuBotService** (`app/services/feishu_bot_service.py`):
 
-  - 处理飞书 Webhook 代理请求的核心业务逻辑
+  - 处理飞书机器人 Webhook 代理请求的核心业务逻辑
   - 包含安全验证和请求转发功能
+  - 支持 Grafana 告警格式自动转换为飞书卡片格式
   - 记录请求/响应日志
 
 - **WebHookMapping** (`app/services/webhook_mapping.py`):
   - 处理 Webhook 请求的路由和映射逻辑
   - 支持配置文件驱动的映射规则
 
-- **GitlabService** (`app/services/gitlab_hook_service.py`):
+- **GitlabHookService** (`app/services/gitlab_hook_service.py`):
   - 处理 GitLab System Hook 到 Jenkins Generic Webhook Trigger 的转发
   - 支持 X-Gitlab-Token 验证
   - 自动预处理 GitLab payload 为标准化字段（Push/Tag Push/Merge Request）
@@ -202,27 +203,27 @@ webhook-proxy/
 - `GET /auth/oidc/callback` - OIDC 回调处理
 - `GET /auth/` - 根路径重定向
 
-**CMDB 请求日志模块 (`/cmdb/*`)**
+**CMDB Trigger 请求日志模块 (`/cmdb-trigger/*`)**
 
-- `GET /cmdb/` - 列出所有日志（HTML 页面，需要认证）
-- `POST /cmdb/` - 创建新日志条目（公开端点，用于接收 Webhook）
-- `GET /cmdb/list` - 分页日志列表（需要认证）
-- `GET /cmdb/{log_id}` - 获取特定日志（需要认证）
-- `PUT /cmdb/{log_id}` - 更新日志条目（需要管理员权限）
-- `DELETE /cmdb/{log_id}` - 删除日志条目（需要管理员权限）
+- `GET /cmdb-trigger/` - 列出所有日志（HTML 页面，需要认证）
+- `POST /cmdb-trigger/` - 创建新日志条目（公开端点，用于接收 Webhook）
+- `GET /cmdb-trigger/logs` - 分页日志列表（需要认证）
+- `GET /cmdb-trigger/{log_id}` - 获取特定日志（需要认证）
+- `PUT /cmdb-trigger/{log_id}` - 更新日志条目（需要管理员权限）
+- `DELETE /cmdb-trigger/{log_id}` - 删除日志条目（需要管理员权限）
 
-**飞书 Webhook 模块 (`/feishu/*`)**
+**飞书机器人 Webhook 模块 (`/feishu-bot/*`)**
 
-- `POST /feishu/webhook/proxy/{webhook_id}` - 飞书 Webhook 代理端点（按 ID）
-- `POST /feishu/webhook/alias/{webhook_name}` - 飞书 Webhook 代理端点（按名称别名）
-- `GET /feishu/logs` - 获取飞书 Webhook 日志列表
-- `GET /feishu/logs/{log_id}` - 获取特定飞书 Webhook 日志
+- `POST /feishu-bot/webhook/proxy/{webhook_id}` - 飞书机器人 Webhook 代理端点（按 ID）
+- `POST /feishu-bot/webhook/alias/{webhook_name}` - 飞书机器人 Webhook 代理端点（按名称别名）
+- `GET /feishu-bot/logs` - 获取飞书机器人 Webhook 日志列表
+- `GET /feishu-bot/logs/{log_id}` - 获取特定飞书机器人 Webhook 日志
 
-**GitLab Webhook 模块 (`/gitlab/*`)**
+**GitLab Hook Webhook 模块 (`/gitlab-hook/*`)**
 
-- `POST /gitlab/webhook` - GitLab System Hook 接收端点，转发到 Jenkins Generic Webhook Trigger
-- `GET /gitlab/logs` - 获取 GitLab Webhook 日志列表（需要认证）
-- `GET /gitlab/logs/{log_id}` - 获取特定 GitLab Webhook 日志（需要认证）
+- `POST /gitlab-hook/webhook` - GitLab System Hook 接收端点，转发到 Jenkins Generic Webhook Trigger
+- `GET /gitlab-hook/logs` - 获取 GitLab Hook Webhook 日志列表（需要认证）
+- `GET /gitlab-hook/logs/{log_id}` - 获取特定 GitLab Hook Webhook 日志（需要认证）
 
 **其他端点:**
 
@@ -264,8 +265,8 @@ webhook-proxy/
 
 **Webhook 安全配置:**
 
-- `cmdb_webhook_api_keys`: CMDB Webhook API Keys（逗号分隔，空值表示不验证）
-- `feishu_bot_webhook_api_keys`: 飞书 Webhook API Keys（逗号分隔，空值表示不验证）
+- `cmdb_trigger_webhook_api_keys`: CMDB Trigger Webhook API Keys（逗号分隔，空值表示不验证）
+- `feishu_bot_webhook_api_keys`: 飞书机器人 Webhook API Keys（逗号分隔，空值表示不验证）
 - `webhook_ip_whitelist`: Webhook 请求 IP 白名单（支持单 IP 和 CIDR 格式）
 
 **登录选项配置:**
@@ -424,17 +425,17 @@ tests/
 ├── pytest.ini                 # pytest 配置文件
 ├── test_auth.py               # 认证 API 测试
 ├── test_models/               # 数据模型单元测试
-│   ├── test_cmdb_reqlog.py   # CMDB 日志模型测试
-│   └── test_feishu_bot_reqlog.py # 飞书日志模型测试
+│   ├── test_cmdb_trigger_reqlog.py   # CMDB Trigger 日志模型测试
+│   └── test_feishu_bot_reqlog.py # 飞书机器人日志模型测试
 ├── test_services/             # 服务层单元测试
 │   ├── test_redis_session.py # Redis 会话服务测试
-│   ├── test_feishu_bot_service.py # 飞书服务测试
+│   ├── test_feishu_bot_service.py # 飞书机器人服务测试
 │   ├── test_webhook_mapping.py # Webhook 映射测试
 │   └── test_login_config.py  # 登录配置测试
 ├── test_utils/               # 工具类测试
 │   └── test_logger.py        # 日志工具测试
-├── test_cmdb_integration.py  # CMDB API 集成测试
-├── test_feishu_bot_integration.py # 飞书 API 集成测试
+├── test_cmdb_trigger_integration.py  # CMDB Trigger API 集成测试
+├── test_feishu_bot_integration.py # 飞书机器人 API 集成测试
 ├── test_security.py          # 安全和认证测试
 ├── Dockerfile.test          # Docker 测试镜像
 ├── docker-compose.test.yml  # Docker Compose 测试配置
@@ -528,10 +529,10 @@ pytest tests/ -v
 pytest tests/ --cov=app --cov-report=html
 
 # 运行特定测试文件
-pytest tests/test_models/test_cmdb_reqlog.py -v
+pytest tests/test_models/test_cmdb_trigger_reqlog.py -v
 
 # 运行特定测试方法
-pytest tests/test_models/test_cmdb_reqlog.py::TestCmdbReqLogModel::test_create_cmdb_reqlog -v
+pytest tests/test_models/test_cmdb_trigger_reqlog.py::TestCmdbTriggerReqLogModel::test_create_cmdb_trigger_reqlog -v
 
 # 在失败时停止
 pytest tests/ -x
