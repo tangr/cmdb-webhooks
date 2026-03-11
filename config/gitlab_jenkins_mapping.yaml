@@ -72,6 +72,9 @@ mappings:
   "exodus-server/contract2":
     jenkins_job: "my-build-job"
     jenkins_token: "your-jenkins-token"
+  "exodus-server/contract":
+    jenkins_job: "pipelines/pipeline-k8s-image-build"
+    jenkins_token: "pipeline-k8s-agent-trigger-token1"
   "*":
     jenkins_job: "generic-build"
     jenkins_token: "generic-token"
