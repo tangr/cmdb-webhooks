@@ -4,7 +4,7 @@
 curl -X POST \
   -H "Content-Type: application/json" \
   -H "X-API-Key: QNbl7W9Ez7hVkR44ja93" \
-  "http://127.0.0.1:8000/cmdb/" \
+  "http://127.0.0.1:8000/cmdb-trigger/" \
   -d '{
     "host": "http://127.0.0.1:8000",
     "method": "POST",
