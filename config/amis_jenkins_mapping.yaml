@@ -176,12 +176,16 @@ forms:
             options:
               - label: "aws1"
                 value: "aws1"
+                visibleOn: "data.project == 'exodus' || data.project == 'wallet'"
               - label: "aws2"
                 value: "aws2"
+                visibleOn: "data.project == 'exodus' || data.project == 'wallet'"
               - label: "txhk"
                 value: "txhk"
+                visibleOn: "data.project == 'exodus' || data.project == 'wallet'"
               - label: "txg"
                 value: "txg"
+                visibleOn: "data.project == 'exodus' || data.project == 'wallet'"
           - type: "select"
             name: "image_tag"
             label: "Image Tag"
@@ -189,6 +193,6 @@ forms:
             required: true
           - type: "input-text"
             name: "comment"
-            label: "Deployment Comment"
+            label: "Comment"
             required: true
             placeholder: "e.g., why are you deploying this version?"
