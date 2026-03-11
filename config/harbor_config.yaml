@@ -1,0 +1,39 @@
+# Harbor Artifacts API Configuration
+# This file configures Harbor instances for fetching container image artifacts
+
+# =============================================================================
+# Harbor Instances Configuration
+# =============================================================================
+# Each instance represents a Harbor server with its own authentication
+# The key (e.g., "prod", "dev") is used as the instance parameter in API calls
+
+instances:
+  prod:
+    base_url: "https://harbor-prod.example.com"
+    # Robot account token format: robot$<robot_name>:<secret>
+    # Create robot account in Harbor: Administration -> Robot Accounts
+    robot_token: "robot$myrobot:xxxxxxxxxxxxxxxxxxxx"
+
+  dev:
+    base_url: "https://harbor-dev.example.com"
+    robot_token: "robot$myrobot:xxxxxxxxxxxxxxxxxxxx"
+
+# Example with custom timeout
+#   staging:
+#     base_url: "https://harbor-staging.example.com"
+#     robot_token: "robot$staging-bot:xxxxxxxxxxxxxxxxxxxx"
+#     timeout: 60  # Custom timeout in seconds (optional, default: 30)
+
+# =============================================================================
+# Default Settings
+# =============================================================================
+
+# Default instance when 'instance' parameter is not specified in API request
+default_instance: "prod"
+
+# Pagination settings
+default_page_size: 50  # Default number of artifacts per page
+max_page_size: 100     # Maximum allowed page size
+
+# Request timeout in seconds (can be overridden per instance)
+default_timeout: 30
