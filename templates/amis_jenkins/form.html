@@ -1,105 +1,89 @@
-<!DOCTYPE html>
-<html>
+{% include "base_head.html" %}
 
-<head>
-  <title>{{ page_name }} - Webhook Proxy</title>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="icon" href="/resource/image/favicon.ico" type="image/x-icon">
+<!-- Amis SDK CSS -->
+<link rel="stylesheet" href="/static/plugin/amis-6.13.0/sdk.css" />
+<link rel="stylesheet" href="/static/plugin/amis-6.13.0/helper.css" />
+<link rel="stylesheet" href="/static/plugin/amis-6.13.0/iconfont.css" />
 
-  <!-- Amis SDK CSS -->
-  <link rel="stylesheet" href="/static/plugin/amis-6.13.0/sdk.css" />
-  <link rel="stylesheet" href="/static/plugin/amis-6.13.0/helper.css" />
-  <link rel="stylesheet" href="/static/plugin/amis-6.13.0/iconfont.css" />
+<style>
+  #amis-root {
+    min-height: 400px;
+  }
 
-  <style>
-    html,
-    body {
-      height: 100%;
-      margin: 0;
-      padding: 0;
-    }
-
-    .page-header {
-      background: #f5f5f5;
-      padding: 12px 20px;
-      border-bottom: 1px solid #e0e0e0;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .page-header .title {
-      font-size: 16px;
-      font-weight: 500;
-      color: #333;
-    }
-
-    .page-header .back-link {
-      color: #1890ff;
-      text-decoration: none;
-      font-size: 14px;
-    }
-
-    .page-header .back-link:hover {
-      text-decoration: underline;
-    }
-
-    .page-header .description {
-      color: #666;
-      font-size: 13px;
-      margin-left: 16px;
-    }
-
-    #amis-root {
-      height: calc(100vh - 50px);
-      overflow: auto;
-    }
-
-    .loading-container {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 200px;
-      color: #666;
-    }
-  </style>
-</head>
+  .loading-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 200px;
+    color: #666;
+  }
+</style>
 
 <body>
-  <!-- Page Header -->
-  <div class="page-header">
-    <div style="display: flex; align-items: center;">
-      <a href="/amis-jenkins/forms" class="back-link">
-        &larr; Back to Forms
-      </a>
-      <span class="description">{{ form_description }}</span>
-    </div>
-    <div>
-      <span style="color: #666; font-size: 13px;">Logged in as: {{ current_user.username }}</span>
-    </div>
-  </div>
+  <div class="wrapper">
+    <div class="ui container maincontainer">
 
-  <!-- Amis Container -->
-  <div id="amis-root">
-    <div class="loading-container">Loading form...</div>
-  </div>
+      {% include "base_menu.html" %}
 
-  <!-- Store form_id in data attribute -->
-  <div id="form-config" data-form-id="{{ form_id }}" style="display: none;"></div>
+      <div class="ui breadcrumb">
+        <a class="section" href="/dashboard">Dashboard</a>
+        <div class="divider"> / </div>
+        <a class="section" href="/amis-jenkins/forms">Amis Jenkins Forms</a>
+        <div class="divider"> / </div>
+        <div class="active section">{{ form_title }}</div>
+      </div>
+
+      <!-- Page Header -->
+      <div class="ui segment">
+        <h3 class="ui header">
+          <i class="wpforms icon"></i>
+          <div class="content">
+            {{ form_title }}
+            <div class="sub header">{{ form_description or 'Fill in the form and submit to trigger Jenkins build' }}
+            </div>
+          </div>
+        </h3>
+      </div>
+
+      <!-- Amis Form Container -->
+      <div class="ui segment">
+        <div id="amis-root">
+          <div class="loading-container">Loading form...</div>
+        </div>
+      </div>
+
+      <!-- Store form_id in data attribute -->
+      <div id="form-config" data-form-id="{{ form_id }}" style="display: none;"></div>
+
+    </div>
+
+    {% include "base_foot.html" %}
+  </div>
 
   <!-- Amis SDK JS -->
   <script src="/static/plugin/amis-6.13.0/sdk.js"></script>
 
   <script type="text/javascript">
+    $(document).ready(function () {
+      $(".ui.dropdown").dropdown();
+    });
+
+    function logout() {
+      fetch("/auth/logout", { method: "POST" })
+        .then(function (response) {
+          window.location.href = "/login";
+        })
+        .catch(function (error) {
+          window.location.href = "/login";
+        });
+    }
+
+    // Initialize Amis form
     (function () {
       var formId = document.getElementById("form-config").dataset.formId;
       var amis = amisRequire("amis/embed");
 
-      // Fetch schema from API
-      fetch("/amis-jenkins/api/schema/" + formId, {
-        credentials: "include"
-      })
+      fetch("/amis-jenkins/api/schema/" + formId, { credentials: "include" })
         .then(function (response) {
           return response.json();
         })
@@ -110,12 +94,9 @@
             return;
           }
 
-          var schema = result.data;
-
-          // Embed Amis form
           amis.embed(
             "#amis-root",
-            schema,
+            result.data,
             { data: {} },
             {
               theme: "cxd",
