@@ -404,7 +404,7 @@ async def process_form_submit(
                     "trigger_type": trigger_type,
                 },
             },
-            status_code=200,  # Always return 200 for Amis to handle response
+            status_code=200 if is_success else jenkins_result["status_code"],
         )
 
     except httpx.TimeoutException:
@@ -414,7 +414,7 @@ async def process_form_submit(
         log_amis_jenkins_request(session, log_entry)
         return JSONResponse(
             content={"status": 1, "msg": error_msg, "data": None},
-            status_code=200,
+            status_code=504,
         )
 
     except httpx.RequestError as e:
@@ -424,7 +424,7 @@ async def process_form_submit(
         log_amis_jenkins_request(session, log_entry)
         return JSONResponse(
             content={"status": 1, "msg": error_msg, "data": None},
-            status_code=200,
+            status_code=502,
         )
 
     except HTTPException:
@@ -437,5 +437,5 @@ async def process_form_submit(
         log_amis_jenkins_request(session, log_entry)
         return JSONResponse(
             content={"status": 1, "msg": error_msg, "data": None},
-            status_code=200,
+            status_code=500,
         )
