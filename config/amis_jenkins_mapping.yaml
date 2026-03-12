@@ -144,8 +144,9 @@ forms:
   deploy-test1:
     title: "Deploy test1"
     description: "Deploy test1 for development"
-    jenkins_base_url: "https://jenkins-dev1.exodushk.com"
-    jenkins_job: "deploy/deploy-test1pipelines/pipeline-k8s-image-deploy-noinput"
+    # jenkins_base_url: "https://jenkins-dev1.exodushk.com"
+    jenkins_base_url: "https://echoserver-test.exodushk.com"
+    jenkins_job: "pipelines/pipeline-k8s-image-deploy-noinput"
     trigger_type: "generic_webhook"
     jenkins_token: "pipeline-k8s-image-deploy-noinput-trigger-token1"
     schema:
@@ -156,6 +157,83 @@ forms:
         api:
           method: "post"
           url: "/amis-jenkins/api/submit/deploy-test1"
+        body:
+          - type: "select"
+            name: "project"
+            label: "Deploy Project"
+            required: true
+            options:
+              - label: "Exodus"
+                value: "exodus"
+              - label: "AMS"
+                value: "ams"
+              - label: "Wallet"
+                value: "wallet"
+              - label: "Infra"
+                value: "infra"
+          - type: "select"
+            name: "environment"
+            label: "Deploy Environment"
+            required: true
+            options:
+              - label: "aws1"
+                value: "aws1"
+                visibleOn: "data.project == 'exodus' || data.project == 'wallet'"
+              - label: "aws2"
+                value: "aws2"
+                visibleOn: "data.project == 'exodus' || data.project == 'wallet'"
+              - label: "txhk"
+                value: "txhk"
+                visibleOn: "data.project == 'exodus' || data.project == 'wallet'"
+              - label: "txg"
+                value: "txg"
+                visibleOn: "data.project == 'exodus' || data.project == 'wallet'"
+          - type: "select"
+            name: "service"
+            label: "Deploy Service"
+            required: true
+            options:
+              - label: "dev/account-server"
+                value: "dev/account-server"
+                visibleOn: "data.project == 'exodus' || data.project == 'wallet'"
+              - label: "exodus/dev/risk-engine-api"
+                value: "exodus/dev/risk-engine-api"
+                visibleOn: "data.project == 'exodus' || data.project == 'wallet'"
+          - type: "select"
+            name: "image_tag"
+            label: "Image Tag"
+            placeholder: "Optional, e.g., v1.0.0"
+            required: true
+            source:
+              url: "/harbor-artifacts?instance=prod&project=${project}&repo=${service}"
+              sendOn: "data.project && data.service"
+              initFetch: false
+            initFetchOn: "this.project && this.service"
+            resetValue: ""
+            clearable: true
+          - type: "input-text"
+            name: "comment"
+            label: "Comment"
+            required: true
+            placeholder: "e.g., why are you deploying this version?"
+  deploy-test2:
+    title: "Deploy test2"
+    description: "Deploy test2 for development"
+    jenkins_job: "pipelines/pipeline-k8s-image-deploy-noinput"
+    trigger_type: "remote_api"
+    # Optional: override global Jenkins config for this form
+    # jenkins_base_url: "https://jenkins-dev1.exodushk.com"
+    jenkins_base_url: "https://echoserver-test.exodushk.com"
+    # jenkins_user: "admin"
+    # jenkins_api_token: "your-api-token"
+    schema:
+      type: "page"
+      title: "Deploy test2"
+      body:
+        type: "form"
+        api:
+          method: "post"
+          url: "/amis-jenkins/api/submit/deploy-test2"
         body:
           - type: "select"
             name: "project"
