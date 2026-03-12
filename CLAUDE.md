@@ -47,7 +47,8 @@ webhook-proxy/
 │   │   ├── feishu_bot_reqlog.py # 飞书机器人请求日志模型
 │   │   ├── gitlab_hook_reqlog.py # GitLab Hook请求日志模型
 │   │   ├── amis_jenkins_reqlog.py # Amis Jenkins请求日志模型
-│   │   └── feishu_approval_reqlog.py # 飞书审批请求日志模型
+│   │   ├── feishu_approval_reqlog.py # 飞书审批请求日志模型
+│   │   └── pending_jenkins_job.py # 待执行Jenkins任务模型（审批关联）
 │   ├── routers/           # API路由处理器
 │   │   ├── auth.py        # 认证相关路由（JWT + Session + OIDC）
 │   │   ├── cmdb_trigger.py        # CMDB Trigger日志路由
@@ -81,7 +82,8 @@ webhook-proxy/
 │   ├── feishu/            # 飞书相关模板目录
 │   └── amis_jenkins/      # Amis Jenkins相关模板
 │       ├── forms.html     # 表单列表页面
-│       └── form.html      # Amis表单渲染页面
+│       ├── form.html      # Amis表单渲染页面
+│       └── pending.html   # 待执行任务页面（审批后执行）
 ├── static/                # 静态资源目录（前端资源）
 │   └── plugin/            # 前端插件库
 │       ├── fomantic-ui-2.9.4/    # UI框架
@@ -153,6 +155,7 @@ webhook-proxy/
   - `GitlabHookReqLog`: 存储 GitLab Hook Webhook 到 Jenkins 的请求/响应数据
   - `AmisJenkinsReqLog`: 存储 Amis 表单提交到 Jenkins 的请求/响应数据
   - `FeishuApprovalReqLog`: 存储飞书审批代理的请求/响应数据
+  - `PendingJenkinsJob`: 存储待执行的 Jenkins 任务（关联飞书审批，审批通过后手动执行）
 - 使用 JSON 列灵活存储标头和正文数据
 - 时间戳存储为 Unix 时间戳
 
@@ -170,6 +173,7 @@ webhook-proxy/
 - **GitlabHookReqLog**: 存储 GitLab Hook Webhook 请求详细信息（事件类型、项目路径、Jenkins 响应等）
 - **AmisJenkinsReqLog**: 存储 Amis 表单提交到 Jenkins 的请求详细信息（表单 ID、触发类型、用户名、Jenkins 响应等）
 - **FeishuApprovalReqLog**: 存储飞书审批代理请求详细信息（应用名称、审批码、飞书实例码、审批状态、表单数据、飞书响应等）
+- **PendingJenkinsJob**: 存储待执行 Jenkins 任务（表单 ID、Jenkins 任务路径、请求参数、审批日志关联、执行状态等）
 - **User**: 用户认证和权限管理的用户实体（支持角色基础的访问控制）
 - 所有模型遵循 SQLModel 模式，包含用于创建、更新和读取操作的独立类
 
@@ -213,6 +217,11 @@ webhook-proxy/
   - 从 YAML 配置文件加载表单定义和 Jenkins 映射
   - 支持表单级别覆盖全局 Jenkins 配置
   - 记录请求/响应日志到数据库
+  - **飞书审批集成**：支持表单提交前的审批流程
+    - 审批配置通过 `approval` 节点启用
+    - 自动创建飞书审批并保存待执行任务
+    - 支持审批状态同步和审批后手动执行
+  - 用户飞书 ID 映射：通过 `user_feishu_mapping` 配置，未配置时默认使用登录用户名
 
 - **HarborArtifactsService** (`app/services/harbor_artifacts_service.py`):
   - 代理 Harbor Registry API 获取镜像 Artifacts 列表
@@ -286,8 +295,17 @@ webhook-proxy/
 - `GET /amis-jenkins/api/forms` - 获取所有表单列表（API，需要认证）
 - `GET /amis-jenkins/api/schema/{form_id}` - 获取表单 Amis Schema（API，需要认证）
 - `POST /amis-jenkins/api/submit/{form_id}` - 提交表单到 Jenkins（API，需要认证）
+  - 若启用审批：创建飞书审批 + 待执行任务记录
+  - 若未启用审批：直接触发 Jenkins 构建
 - `GET /amis-jenkins/logs` - 获取 Amis Jenkins 日志列表（需要认证）
 - `GET /amis-jenkins/logs/{log_id}` - 获取特定 Amis Jenkins 日志（需要认证）
+- `GET /amis-jenkins/pending` - 待执行任务页面（HTML，需要认证）
+- `GET /amis-jenkins/api/pending` - 获取待执行任务列表（API，需要认证）
+  - Query 参数：`username`、`status`、`skip`、`limit`
+  - status 可选值：`pending_approval`、`approved`、`executed`、`rejected`、`canceled`
+- `GET /amis-jenkins/api/pending/{job_id}` - 获取特定待执行任务详情（需要认证）
+- `POST /amis-jenkins/api/pending/{job_id}/sync` - 同步审批状态（从飞书获取最新状态）
+- `POST /amis-jenkins/api/pending/{job_id}/execute` - 执行已审批任务（触发 Jenkins 构建）
 
 **Harbor Artifacts 模块 (`/harbor-artifacts/*`)**
 
@@ -418,6 +436,8 @@ webhook-proxy/
 - `jenkins_default_token`: 默认 Jenkins Generic Webhook 触发 Token
 - `jenkins_default_user`: 默认 Jenkins 用户名（用于 Remote API）
 - `jenkins_default_api_token`: 默认 Jenkins API Token（用于 Remote API）
+- `user_feishu_mapping`: 用户名到飞书用户 ID 的映射（用于审批功能）
+  - 未配置的用户默认使用登录用户名作为飞书用户 ID
 - 支持多个表单定义，每个表单包含：
   - `title`: 表单显示标题
   - `description`: 表单描述
@@ -427,6 +447,11 @@ webhook-proxy/
   - `jenkins_user`: 表单级别的 Jenkins 用户（可选，覆盖全局配置）
   - `jenkins_api_token`: 表单级别的 Jenkins API Token（可选，覆盖全局配置）
   - `jenkins_base_url`: 表单级别的 Jenkins URL（可选，覆盖全局配置）
+  - `approval`: 飞书审批配置（可选）
+    - `enabled`: 是否启用审批（true/false）
+    - `feishu_app`: 飞书应用名称（对应 `feishu_approval_config.yaml` 中的配置）
+    - `approval_code`: 审批定义码（可选，覆盖应用默认配置）
+    - `form_data_template`: 表单数据模板，映射飞书审批控件 ID 到值
   - `schema`: Amis 表单 Schema（JSON/YAML 格式）
 
 **Harbor 配置 (`config/harbor_config.yaml`):**
@@ -450,6 +475,45 @@ webhook-proxy/
   required: true
   source: "/harbor-artifacts?instance=prod&project=${project}&repo=${service}"
 ```
+
+**Amis Jenkins 审批配置示例:**
+
+```yaml
+# 用户到飞书 ID 映射
+user_feishu_mapping:
+  admin: "ce39af4f"
+  tangshoubin: "ce39af4f"
+  # 未配置的用户将使用其登录用户名作为飞书用户 ID
+
+forms:
+  deploy-prod:
+    title: "Deploy to Production"
+    jenkins_job: "deploy/prod"
+    trigger_type: "generic_webhook"
+    approval:
+      enabled: true
+      feishu_app: "yax-tmptest1"
+      # form_data_template 将表单字段映射到飞书审批控件
+      # 可用占位符: {form_id}, {form_title}, {jenkins_job}, {username}, {request_params_json}, {字段名}
+      form_data_template:
+        widget-id1: "表单: {form_title}\nJenkins任务: {jenkins_job}\n提交人: {username}"
+        widget-id2: "项目: {project}\n环境: {environment}\n服务: {service}"
+        widget-id3: "镜像Tag: {image_tag}\n备注: {comment}"
+        widget-id4: "完整参数:\n{request_params_json}"
+    schema:
+      # Amis schema...
+```
+
+**form_data_template 占位符说明:**
+
+| 占位符 | 说明 |
+|--------|------|
+| `{form_id}` | 表单 ID |
+| `{form_title}` | 表单标题 |
+| `{jenkins_job}` | Jenkins 任务路径 |
+| `{username}` | 提交用户名 |
+| `{request_params_json}` | 所有表单参数的 JSON 格式 |
+| `{字段名}` | 任意表单字段（如 `{project}`, `{environment}`）|
 
 **飞书审批配置 (`config/feishu_approval_config.yaml`):**
 
