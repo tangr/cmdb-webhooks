@@ -144,8 +144,8 @@ forms:
   deploy-test1:
     title: "Deploy test1"
     description: "Deploy test1 for development"
-    # jenkins_base_url: "https://jenkins-dev1.exodushk.com"
-    jenkins_base_url: "https://echoserver-test.exodushk.com"
+    jenkins_base_url: "https://jenkins-dev1.exodushk.com"
+    # jenkins_base_url: "https://echoserver-test.exodushk.com"
     jenkins_job: "pipelines/pipeline-k8s-image-deploy-noinput"
     trigger_type: "generic_webhook"
     jenkins_token: "pipeline-k8s-image-deploy-noinput-trigger-token1"
@@ -211,6 +211,9 @@ forms:
             initFetchOn: "this.project && this.service"
             resetValue: ""
             clearable: true
+          - type: "hidden"
+            name: "DRY_RUN"
+            value: "false"
           - type: "input-text"
             name: "comment"
             label: "Comment"
