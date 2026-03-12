@@ -336,6 +336,9 @@ async def process_form_submit(
             detail="Jenkins job not configured for this form",
         )
 
+    # Add current user's username to payload for Jenkins
+    body["submitted_by"] = current_user.username
+
     try:
         if trigger_type == "generic_webhook":
             # Generic Webhook Trigger
