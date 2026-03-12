@@ -17,6 +17,7 @@ jenkins_default_api_token: ""  # Default Jenkins API token for Remote API
 user_feishu_mapping:
   # admin: "ce39af4f"
   # john: "abc12345"
+  tangshoubin: ce39af4f
 
 # =============================================================================
 # Form Definitions
@@ -34,6 +35,9 @@ user_feishu_mapping:
 #       - enabled: true/false to enable/disable approval
 #       - feishu_app: Feishu app name from feishu_approval_config.yaml
 #       - approval_code: Override default approval code (optional)
+#       - form_data_template: Mapping of Feishu widget IDs to form data (optional)
+#           Example: {"widget-id1": "Form: {form_title}\nJob: {jenkins_job}", "widget-id2": "{request_params_json}"}
+#           Available placeholders: {form_id}, {form_title}, {jenkins_job}, {username}, {request_params_json}, {field_name}
 #   - schema: Amis form schema (JSON/YAML format)
 #
 # =============================================================================
@@ -163,10 +167,17 @@ forms:
     trigger_type: "generic_webhook"
     jenkins_token: "pipeline-k8s-image-deploy-noinput-trigger-token1"
     # Feishu approval configuration (optional)
-    # approval:
-    #   enabled: true
-    #   feishu_app: "yax-tmptest1"  # Must match app name in feishu_approval_config.yaml
-    #   # approval_code: "xxx"  # Optional: override default approval code
+    approval:
+      enabled: true
+      feishu_app: "yax-tmptest1"  # Must match app name in feishu_approval_config.yaml
+      # approval_code: "xxx"  # Optional: override default approval code
+      # form_data_template maps Feishu widget IDs to values
+      # Available placeholders: {form_id}, {form_title}, {jenkins_job}, {username}, {request_params_json}, {field_name}
+      form_data_template:
+        widget-id1: "表单: {form_title}\nJenkins任务: {jenkins_job}\n提交人: {username}"
+        widget-id2: "项目: {project}\n环境: {environment}\n服务: {service}"
+        widget-id3: "镜像Tag: {image_tag}\n备注: {comment}"
+        widget-id4: "完整参数:\n{request_params_json}"
     schema:
       type: "page"
       title: "Deploy test1"

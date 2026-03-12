@@ -688,14 +688,50 @@ async def _process_form_submit_with_approval(
             status_code=400,
         )
 
-    # Build form data for Feishu approval (convert to approval-friendly format)
-    # Using form_id and a summary of the request as form data
-    feishu_form_data = {
-        "widget-form-id": form_id,
-        "widget-form-title": form_title,
-        "widget-jenkins-job": jenkins_job,
-        "widget-request-params": json.dumps(body, ensure_ascii=False),
+    # Build form data for Feishu approval
+    # If form_data_template is configured, use it; otherwise use default placeholders
+    form_data_template = approval_config.get("form_data_template")
+
+    # Prepare placeholder values
+    request_params_json = json.dumps(body, ensure_ascii=False, indent=2)
+    placeholders = {
+        "form_id": form_id,
+        "form_title": form_title,
+        "jenkins_job": jenkins_job,
+        "username": current_user.username,
+        "request_params_json": request_params_json,
     }
+    # Add all form field values as placeholders
+    for field_name, field_value in body.items():
+        if isinstance(field_value, (dict, list)):
+            placeholders[field_name] = json.dumps(field_value, ensure_ascii=False)
+        else:
+            placeholders[field_name] = str(field_value) if field_value is not None else ""
+
+    if form_data_template:
+        # Use configured template
+        feishu_form_data = {}
+        for widget_id, template_value in form_data_template.items():
+            try:
+                # Replace placeholders in template
+                value = template_value.format(**placeholders)
+                feishu_form_data[widget_id] = value
+            except KeyError as e:
+                logger.warning(f"Unknown placeholder in form_data_template: {e}")
+                feishu_form_data[widget_id] = template_value
+    else:
+        # No template configured - return error to prompt user to configure
+        return JSONResponse(
+            content={
+                "status": 1,
+                "msg": "Feishu approval form_data_template not configured. Please configure approval.form_data_template in amis_jenkins_mapping.yaml with your Feishu approval widget IDs.",
+                "data": {
+                    "error_type": "FORM_DATA_TEMPLATE_REQUIRED",
+                    "hint": "Example: form_data_template: {\"widget-id1\": \"Job: {jenkins_job}\", \"widget-id2\": \"{request_params_json}\"}",
+                },
+            },
+            status_code=400,
+        )
 
     try:
         # Create Feishu approval
