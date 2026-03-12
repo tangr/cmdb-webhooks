@@ -73,3 +73,25 @@ CREATE TABLE IF NOT EXISTS `amis_jenkins_reqlog` (
   INDEX `idx_username` (`username`),
   INDEX `idx_created_at` (`created_at`)
 ) ENGINE=InnoDB AUTO_INCREMENT=10000 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `feishu_approval_reqlog` (
+  `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `app_name` varchar(100) NOT NULL COMMENT 'Feishu app name from config',
+  `approval_code` varchar(100) NOT NULL COMMENT 'Feishu approval definition code',
+  `feishu_instance_code` varchar(100) DEFAULT NULL COMMENT 'Feishu approval instance code',
+  `feishu_user_id` varchar(100) NOT NULL COMMENT 'Feishu user ID (short format)',
+  `status` varchar(50) NOT NULL DEFAULT 'pending' COMMENT 'Approval status: pending, approved, rejected, canceled, error',
+  `form_data` JSON NOT NULL COMMENT 'Form data submitted with approval',
+  `username` varchar(255) NOT NULL COMMENT 'Submitting user from session',
+  `clientip` varchar(45) NOT NULL,
+  `feishu_response` JSON DEFAULT NULL COMMENT 'Response from Feishu API',
+  `error_message` longtext DEFAULT NULL,
+  `created_at` bigint(10) UNSIGNED NOT NULL,
+  `updated_at` bigint(10) UNSIGNED NOT NULL,
+  PRIMARY KEY (`id`),
+  INDEX `idx_app_name` (`app_name`),
+  INDEX `idx_feishu_instance_code` (`feishu_instance_code`),
+  INDEX `idx_username` (`username`),
+  INDEX `idx_status` (`status`),
+  INDEX `idx_created_at` (`created_at`)
+) ENGINE=InnoDB AUTO_INCREMENT=10000 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

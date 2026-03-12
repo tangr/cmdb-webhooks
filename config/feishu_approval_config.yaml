@@ -1,0 +1,54 @@
+# Feishu Approval Proxy Configuration
+# This file defines Feishu apps and their approval configurations
+
+# =============================================================================
+# Global Feishu API Configuration
+# =============================================================================
+feishu_base_url: "https://open.feishu.cn"  # Feishu API base URL
+feishu_timeout: 30  # Request timeout in seconds
+feishu_token_expire_buffer: 300  # Token refresh buffer in seconds (refresh 5 min before expiry)
+
+# =============================================================================
+# Feishu App Configurations
+# =============================================================================
+# Each app configuration includes:
+#   - app_id: Feishu app ID (from Feishu Developer Console)
+#   - app_secret: Feishu app secret
+#   - approval_code: Default approval definition code (UUID format)
+#   - description: Brief description of the app
+#
+# Multiple apps can be configured for different use cases (e.g., HR, DevOps, Finance)
+# =============================================================================
+
+apps:
+  # Default app configuration
+  default:
+    app_id: "cli_xxxxxxxxxx"
+    app_secret: "your_app_secret_here"
+    approval_code: "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX"
+    description: "Default Feishu application for DevOps approvals"
+
+  # Example: DevOps deployment approval app
+  # devops:
+  #   app_id: "cli_yyyyyyyyyy"
+  #   app_secret: "your_devops_app_secret"
+  #   approval_code: "YYYYYYYY-YYYY-YYYY-YYYY-YYYYYYYYYYYY"
+  #   description: "DevOps deployment approval application"
+
+  # Example: Production release approval app
+  # prod-release:
+  #   app_id: "cli_zzzzzzzzzz"
+  #   app_secret: "your_prod_app_secret"
+  #   approval_code: "ZZZZZZZZ-ZZZZ-ZZZZ-ZZZZ-ZZZZZZZZZZZZ"
+  #   description: "Production release approval application"
+
+# =============================================================================
+# Approval Status Mapping
+# =============================================================================
+# Feishu approval status codes to internal status mapping
+status_mapping:
+  PENDING: "pending"      # Approval is pending
+  APPROVED: "approved"    # Approval has been approved
+  REJECTED: "rejected"    # Approval has been rejected
+  CANCELED: "canceled"    # Approval has been canceled
+  DELETED: "deleted"      # Approval has been deleted

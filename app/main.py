@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 from fastapi import Depends, FastAPI, Request
 from fastapi.responses import RedirectResponse
 
-from .routers import cmdb_trigger, auth, feishu_bot, gitlab_hook, amis_jenkins, harbor_artifacts
+from .routers import cmdb_trigger, auth, feishu_bot, gitlab_hook, amis_jenkins, harbor_artifacts, feishu_approval
 from .dependencies import AuthenticationRequiredException
 from config.config import settings
 from .services.webhook_mapping import init_webhook_mapping
@@ -44,6 +44,7 @@ app.include_router(feishu_bot.router, prefix="/feishu-bot", tags=["feishu-bot"])
 app.include_router(gitlab_hook.router, prefix="/gitlab-hook", tags=["gitlab-hook"])
 app.include_router(amis_jenkins.router, prefix="/amis-jenkins", tags=["amis-jenkins"])
 app.include_router(harbor_artifacts.router, prefix="/harbor-artifacts", tags=["harbor-artifacts"])
+app.include_router(feishu_approval.router, prefix="/feishu-approval", tags=["feishu-approval"])
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
