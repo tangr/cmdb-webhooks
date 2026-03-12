@@ -28,6 +28,12 @@ apps:
     approval_code: "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX"
     description: "Default Feishu application for DevOps approvals"
 
+  yax-tmptest1:
+    app_id: "cli_a85a786d9874d01c"
+    app_secret: "Goz6Q2adlMzYaCDAXZWb5gVTE4pvi8B5"
+    approval_code: "1942A6DA-1A19-4572-9EC3-AA6B4A28F27B"
+    description: "Default Feishu application - 默认飞书应用"
+
   # Example: DevOps deployment approval app
   # devops:
   #   app_id: "cli_yyyyyyyyyy"
