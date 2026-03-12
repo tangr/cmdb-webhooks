@@ -132,4 +132,22 @@ curl -X POST \
 
 curl http://localhost:8000/harbor-artifacts?instance=prod&project=ams&repo=qa/ipip-service
 
+
+# 发起审批单
+curl -X POST http://localhost:8000/feishu-approval/create \
+  -H "Content-Type: application/json" \
+  -H "Cookie: session=xxx" \
+  -d '{
+    "app_name": "default",
+    "feishu_user_id": "ce39af4f",
+    "form_data": {
+      "widget-id1": "发布版本: v1.0.0",
+      "widget-id2": "发布环境: production"
+    }
+  }'
+
+# 查询审批状态
+curl http://localhost:8000/feishu-approval/status/1 \
+  -H "Cookie: session=xxx"
+
 ```

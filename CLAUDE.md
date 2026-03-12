@@ -46,20 +46,24 @@ webhook-proxy/
 │   │   ├── cmdb_trigger_reqlog.py  # CMDB Trigger请求日志模型
 │   │   ├── feishu_bot_reqlog.py # 飞书机器人请求日志模型
 │   │   ├── gitlab_hook_reqlog.py # GitLab Hook请求日志模型
-│   │   └── amis_jenkins_reqlog.py # Amis Jenkins请求日志模型
+│   │   ├── amis_jenkins_reqlog.py # Amis Jenkins请求日志模型
+│   │   └── feishu_approval_reqlog.py # 飞书审批请求日志模型
 │   ├── routers/           # API路由处理器
 │   │   ├── auth.py        # 认证相关路由（JWT + Session + OIDC）
 │   │   ├── cmdb_trigger.py        # CMDB Trigger日志路由
 │   │   ├── feishu_bot.py      # 飞书机器人Webhook代理路由
 │   │   ├── gitlab_hook.py      # GitLab Hook Webhook代理路由
 │   │   ├── amis_jenkins.py    # Amis Jenkins表单代理路由
-│   │   └── harbor_artifacts.py # Harbor镜像Artifacts查询路由
+│   │   ├── harbor_artifacts.py # Harbor镜像Artifacts查询路由
+│   │   └── feishu_approval.py # 飞书审批代理路由
 │   ├── services/          # 服务层模块
 │   │   ├── cmdb_trigger_service.py      # CMDB Trigger代理请求处理服务
 │   │   ├── feishu_bot_service.py    # 飞书机器人服务逻辑
 │   │   ├── gitlab_hook_service.py    # GitLab Hook到Jenkins转发服务
 │   │   ├── amis_jenkins_service.py  # Amis Jenkins表单到Jenkins转发服务
 │   │   ├── harbor_artifacts_service.py # Harbor镜像Artifacts查询服务
+│   │   ├── feishu_client.py     # 飞书开放平台API客户端
+│   │   ├── feishu_approval_service.py # 飞书审批代理服务
 │   │   ├── redis_session.py     # Redis会话管理服务
 │   │   └── webhook_mapping.py   # Webhook映射服务
 │   └── utils/             # 工具模块
@@ -90,7 +94,8 @@ webhook-proxy/
 │   ├── webhook_mapping.yaml # 飞书Webhook映射配置文件
 │   ├── gitlab_jenkins_mapping.yaml # GitLab到Jenkins映射配置文件
 │   ├── amis_jenkins_mapping.yaml # Amis表单到Jenkins映射配置文件
-│   └── harbor_config.yaml # Harbor多实例配置文件
+│   ├── harbor_config.yaml # Harbor多实例配置文件
+│   └── feishu_approval_config.yaml # 飞书审批应用配置文件
 ├── sql/                   # 数据库脚本
 │   └── db.sql            # 数据库初始化脚本
 ├── requirements.txt       # Python依赖包
@@ -110,6 +115,7 @@ webhook-proxy/
 - **Web 管理界面**: 提供直观的 Web 界面进行日志查看和系统管理
 - **Amis Jenkins 表单代理**: 使用百度 Amis 低代码框架构建参数化表单 UI，替代 Jenkins 原生 parameters，支持动态表单渲染和 Jenkins 构建触发
 - **Harbor 镜像查询服务**: 代理 Harbor Registry API，获取镜像 Artifacts 列表，为 Amis Select 组件提供数据源，支持多 Harbor 实例
+- **飞书审批代理服务**: 代理飞书开放平台审批 API，支持发起审批单和查询审批状态，用于 DevOps CD 发布流程的审批关联
 
 应用程序采用前后端分离的架构，后端提供 RESTful API，前端提供 Web 界面，具有清晰的关注点分离。
 
@@ -146,6 +152,7 @@ webhook-proxy/
   - `FeishuBotReqLog`: 存储飞书机器人 Webhook 代理的请求/响应数据
   - `GitlabHookReqLog`: 存储 GitLab Hook Webhook 到 Jenkins 的请求/响应数据
   - `AmisJenkinsReqLog`: 存储 Amis 表单提交到 Jenkins 的请求/响应数据
+  - `FeishuApprovalReqLog`: 存储飞书审批代理的请求/响应数据
 - 使用 JSON 列灵活存储标头和正文数据
 - 时间戳存储为 Unix 时间戳
 
@@ -162,6 +169,7 @@ webhook-proxy/
 - **FeishuBotReqLog**: 存储飞书机器人 Webhook 代理请求的详细信息（包括请求和响应数据）
 - **GitlabHookReqLog**: 存储 GitLab Hook Webhook 请求详细信息（事件类型、项目路径、Jenkins 响应等）
 - **AmisJenkinsReqLog**: 存储 Amis 表单提交到 Jenkins 的请求详细信息（表单 ID、触发类型、用户名、Jenkins 响应等）
+- **FeishuApprovalReqLog**: 存储飞书审批代理请求详细信息（应用名称、审批码、飞书实例码、审批状态、表单数据、飞书响应等）
 - **User**: 用户认证和权限管理的用户实体（支持角色基础的访问控制）
 - 所有模型遵循 SQLModel 模式，包含用于创建、更新和读取操作的独立类
 
@@ -213,6 +221,21 @@ webhook-proxy/
   - 自动格式化返回数据为 Amis Select 组件所需格式
   - 支持分页查询和按推送时间排序
   - 处理带/不带 Tag 的 Artifacts（无 Tag 时显示 Digest）
+
+- **FeishuClient** (`app/services/feishu_client.py`):
+  - 飞书开放平台 API 客户端
+  - 自动管理 tenant_access_token（获取、缓存、刷新）
+  - 提供审批实例创建和状态查询 API
+  - 支持多个飞书应用配置（从 YAML 配置文件加载）
+  - 类级别 Token 缓存，避免重复请求
+
+- **FeishuApprovalService** (`app/services/feishu_approval_service.py`):
+  - 处理飞书审批代理请求的核心业务逻辑
+  - 封装 FeishuClient 提供高级审批操作
+  - 支持发起审批单和查询审批状态
+  - 自动同步飞书审批状态到本地数据库
+  - 记录请求/响应日志到数据库
+  - 支持按用户名、应用名、状态过滤审批记录
 
 ### API 结构
 
@@ -272,6 +295,19 @@ webhook-proxy/
   - Query 参数：`instance`（Harbor 实例 ID）、`project`（项目名）、`repo`（仓库路径）、`page`、`page_size`
   - 返回 Amis Select 兼容格式：`{status, msg, data: {options: [{label, value}], hasMore, page, pageSize}}`
 - `GET /harbor-artifacts/instances` - 列出可用的 Harbor 实例（需要认证）
+
+**飞书审批代理模块 (`/feishu-approval/*`)**
+
+- `GET /feishu-approval/apps` - 获取可用的飞书应用列表（需要认证）
+- `POST /feishu-approval/create` - 发起审批单（需要认证）
+  - 请求参数：`app_name`（应用名称）、`feishu_user_id`（飞书用户 ID）、`form_data`（表单数据）、`approval_code`（可选，审批定义码）
+  - 返回：`{status, msg, data: {success, log_id, feishu_instance_code, status}}`
+- `GET /feishu-approval/status/{log_id}` - 按数据库 ID 查询审批状态（需要认证）
+- `GET /feishu-approval/status/instance/{instance_code}` - 按飞书实例码查询审批状态（需要认证）
+  - Query 参数：`app_name`（默认 "default"）
+- `GET /feishu-approval/logs` - 获取审批记录列表（需要认证）
+  - Query 参数：`username`、`app_name`、`status`、`skip`、`limit`
+- `GET /feishu-approval/logs/{log_id}` - 获取特定审批记录（需要认证）
 
 **其他端点:**
 
@@ -413,6 +449,64 @@ webhook-proxy/
   label: "Image Tag"
   required: true
   source: "/harbor-artifacts?instance=prod&project=${project}&repo=${service}"
+```
+
+**飞书审批配置 (`config/feishu_approval_config.yaml`):**
+
+- `feishu_base_url`: 飞书 API 基础 URL（默认: "https://open.feishu.cn"）
+- `feishu_timeout`: 请求超时时间（默认: 30 秒）
+- `feishu_token_expire_buffer`: Token 刷新缓冲时间（默认: 300 秒，即过期前 5 分钟刷新）
+- `apps`: 飞书应用配置（支持多应用）
+  - 每个应用包含：
+    - `app_id`: 飞书应用 ID（从飞书开发者控制台获取）
+    - `app_secret`: 飞书应用密钥
+    - `approval_code`: 默认审批定义码（UUID 格式）
+    - `description`: 应用描述
+
+**飞书审批配置示例:**
+
+```yaml
+feishu_base_url: "https://open.feishu.cn"
+feishu_timeout: 30
+feishu_token_expire_buffer: 300
+
+apps:
+  default:
+    app_id: "cli_xxxxxxxxxx"
+    app_secret: "your_app_secret_here"
+    approval_code: "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX"
+    description: "Default DevOps approval app"
+
+  prod-release:
+    app_id: "cli_yyyyyyyyyy"
+    app_secret: "your_prod_app_secret"
+    approval_code: "YYYYYYYY-YYYY-YYYY-YYYY-YYYYYYYYYYYY"
+    description: "Production release approval"
+```
+
+**飞书审批 API 调用示例:**
+
+```bash
+# 发起审批单
+curl -X POST http://localhost:8000/feishu-approval/create \
+  -H "Content-Type: application/json" \
+  -H "Cookie: session=xxx" \
+  -d '{
+    "app_name": "default",
+    "feishu_user_id": "ce39af4f",
+    "form_data": {
+      "widget-id1": "发布版本: v1.0.0",
+      "widget-id2": "发布环境: production"
+    }
+  }'
+
+# 查询审批状态（按数据库 ID）
+curl http://localhost:8000/feishu-approval/status/1 \
+  -H "Cookie: session=xxx"
+
+# 查询审批状态（按飞书实例码）
+curl "http://localhost:8000/feishu-approval/status/instance/2B2ADE11-B477-4C84-A24E-706D3393B983?app_name=default" \
+  -H "Cookie: session=xxx"
 ```
 
 ## 开发指南
