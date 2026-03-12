@@ -390,14 +390,19 @@ async def process_form_submit(
 
         # Return Amis-compatible response format
         # Amis expects {"status": 0, "msg": "success", "data": {...}} for success
+        # IMPORTANT: Do NOT put extra fields in "data" as Amis will merge them
+        # into form data, causing them to be sent in subsequent submissions
         is_success = jenkins_result["status_code"] in [200, 201, 202]
         return JSONResponse(
             content={
                 "status": 0 if is_success else 1,
-                "msg": "Jenkins build triggered successfully"
-                if is_success
-                else "Jenkins build trigger failed",
-                "data": {
+                "msg": (
+                    "Jenkins build triggered successfully"
+                    if is_success
+                    else "Jenkins build trigger failed"
+                ),
+                "data": {},
+                "debug": {
                     "jenkins_status": jenkins_result["status_code"],
                     "jenkins_response": jenkins_result["body"],
                     "form_id": form_id,
