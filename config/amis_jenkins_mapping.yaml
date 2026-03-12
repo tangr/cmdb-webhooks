@@ -291,6 +291,9 @@ forms:
             initFetchOn: "this.project && this.service"
             resetValue: ""
             clearable: true
+          - type: "hidden"
+            name: "DRY_RUN"
+            value: "false"
           - type: "input-text"
             name: "comment"
             label: "Comment"
