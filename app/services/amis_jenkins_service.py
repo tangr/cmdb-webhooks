@@ -1,7 +1,15 @@
 from fastapi import HTTPException, Request
 from fastapi.responses import JSONResponse
+from sqlmodel import select
 from app.models.amis_jenkins_reqlog import AmisJenkinsReqLog, AmisJenkinsReqLogCreate
+from app.models.pending_jenkins_job import (
+    PendingJenkinsJob,
+    PendingJenkinsJobCreate,
+    PendingJenkinsJobRead,
+)
+from app.models.feishu_approval_reqlog import FeishuApprovalReqLog
 from app.dependencies import SessionDep, User
+from app.services.feishu_approval_service import FeishuApprovalService
 from config.config import settings
 from typing import Dict, Any, Optional, List
 import httpx
@@ -9,6 +17,7 @@ import json
 import base64
 import yaml
 import hashlib
+import time
 from pathlib import Path
 from app.utils.logger import get_logger
 
@@ -104,6 +113,25 @@ def get_jenkins_default_api_token() -> str:
     return _amis_jenkins_mapping.get("jenkins_default_api_token", "")
 
 
+def get_user_feishu_mapping() -> Dict[str, str]:
+    """Get user to Feishu ID mapping from YAML configuration"""
+    return _amis_jenkins_mapping.get("user_feishu_mapping") or {}
+
+
+def get_user_feishu_id(username: str) -> Optional[str]:
+    """
+    Get Feishu user ID for a given username.
+
+    Args:
+        username: System username
+
+    Returns:
+        Feishu user ID or None if not found
+    """
+    mapping = get_user_feishu_mapping()
+    return mapping.get(username)
+
+
 def get_form_config(form_id: str) -> Optional[Dict[str, Any]]:
     """
     Get form configuration by form ID.
@@ -118,6 +146,38 @@ def get_form_config(form_id: str) -> Optional[Dict[str, Any]]:
     return forms.get(form_id)
 
 
+def get_approval_config(form_id: str) -> Optional[Dict[str, Any]]:
+    """
+    Get approval configuration for a form.
+
+    Args:
+        form_id: Form identifier
+
+    Returns:
+        Approval config dict or None if not configured
+    """
+    form_config = get_form_config(form_id)
+    if not form_config:
+        return None
+    return form_config.get("approval")
+
+
+def is_approval_enabled(form_id: str) -> bool:
+    """
+    Check if approval is enabled for a form.
+
+    Args:
+        form_id: Form identifier
+
+    Returns:
+        True if approval is enabled, False otherwise
+    """
+    approval_config = get_approval_config(form_id)
+    if not approval_config:
+        return False
+    return approval_config.get("enabled", False)
+
+
 def get_all_forms() -> List[Dict[str, Any]]:
     """
     Get all form configurations with their IDs.
@@ -128,12 +188,14 @@ def get_all_forms() -> List[Dict[str, Any]]:
     forms = _amis_jenkins_mapping.get("forms") or {}
     result = []
     for form_id, config in forms.items():
+        approval_config = config.get("approval") or {}
         form_info = {
             "form_id": form_id,
             "title": config.get("title", form_id),
             "description": config.get("description", ""),
             "jenkins_job": config.get("jenkins_job", ""),
             "trigger_type": config.get("trigger_type", "generic_webhook"),
+            "approval_enabled": approval_config.get("enabled", False),
         }
         result.append(form_info)
     return result
@@ -455,6 +517,21 @@ async def process_form_submit(
     # Add current user's username to payload for Jenkins
     body["submitted_by"] = current_user.username
 
+    # Check if approval is enabled for this form
+    if is_approval_enabled(form_id):
+        return await _process_form_submit_with_approval(
+            session=session,
+            form_id=form_id,
+            form_config=form_config,
+            form_title=form_title,
+            trigger_type=trigger_type,
+            jenkins_job=jenkins_job,
+            body=body,
+            client_ip=client_ip,
+            current_user=current_user,
+        )
+
+    # Direct Jenkins trigger (no approval required)
     try:
         if trigger_type == "generic_webhook":
             # Generic Webhook Trigger
@@ -563,3 +640,328 @@ async def process_form_submit(
             content={"status": 1, "msg": error_msg, "data": None},
             status_code=500,
         )
+
+
+async def _process_form_submit_with_approval(
+    session: SessionDep,
+    form_id: str,
+    form_config: Dict[str, Any],
+    form_title: str,
+    trigger_type: str,
+    jenkins_job: str,
+    body: Dict[str, Any],
+    client_ip: str,
+    current_user: User,
+) -> JSONResponse:
+    """
+    Process form submission with Feishu approval.
+
+    Creates an approval request and pending job record instead of triggering Jenkins directly.
+
+    Args:
+        session: Database session
+        form_id: Form identifier
+        form_config: Form configuration dict
+        form_title: Form display title
+        trigger_type: Jenkins trigger type
+        jenkins_job: Jenkins job path
+        body: Form data submitted by user
+        client_ip: Client IP address
+        current_user: Authenticated user
+
+    Returns:
+        JSON response with approval creation result
+    """
+    approval_config = get_approval_config(form_id)
+    feishu_app = approval_config.get("feishu_app", "default")
+    approval_code = approval_config.get("approval_code")  # Optional override
+
+    # Get Feishu user ID for current user
+    feishu_user_id = get_user_feishu_id(current_user.username)
+    if not feishu_user_id:
+        return JSONResponse(
+            content={
+                "status": 1,
+                "msg": f"Feishu user ID not configured for user: {current_user.username}. Please configure user_feishu_mapping in amis_jenkins_mapping.yaml",
+                "data": {"error_type": "FEISHU_USER_NOT_FOUND"},
+            },
+            status_code=400,
+        )
+
+    # Build form data for Feishu approval (convert to approval-friendly format)
+    # Using form_id and a summary of the request as form data
+    feishu_form_data = {
+        "widget-form-id": form_id,
+        "widget-form-title": form_title,
+        "widget-jenkins-job": jenkins_job,
+        "widget-request-params": json.dumps(body, ensure_ascii=False),
+    }
+
+    try:
+        # Create Feishu approval
+        approval_result = await FeishuApprovalService.create_approval(
+            session=session,
+            app_name=feishu_app,
+            feishu_user_id=feishu_user_id,
+            form_data=feishu_form_data,
+            username=current_user.username,
+            clientip=client_ip,
+            approval_code=approval_code,
+        )
+
+        # Create pending job record
+        pending_job = PendingJenkinsJob(
+            form_id=form_id,
+            form_title=form_title,
+            trigger_type=trigger_type,
+            jenkins_job=jenkins_job,
+            request_params=body,
+            username=current_user.username,
+            clientip=client_ip,
+            approval_log_id=approval_result["log_id"],
+            status="pending_approval",
+        )
+        session.add(pending_job)
+        session.commit()
+        session.refresh(pending_job)
+
+        logger.info(
+            f"Created pending job {pending_job.id} with approval {approval_result['feishu_instance_code']}"
+        )
+
+        return JSONResponse(
+            content={
+                "status": 0,
+                "msg": "Approval request created. Please wait for approval before execution.",
+                "data": {},
+                "debug": {
+                    "pending_job_id": pending_job.id,
+                    "approval_log_id": approval_result["log_id"],
+                    "feishu_instance_code": approval_result["feishu_instance_code"],
+                    "approval_status": "pending",
+                },
+            },
+            status_code=200,
+        )
+
+    except ValueError as e:
+        logger.error(f"Approval creation failed: {e}")
+        return JSONResponse(
+            content={
+                "status": 1,
+                "msg": f"Failed to create approval: {str(e)}",
+                "data": {"error_type": "APPROVAL_CONFIG_ERROR"},
+            },
+            status_code=400,
+        )
+
+    except Exception as e:
+        logger.error(f"Approval creation failed: {e}")
+        return JSONResponse(
+            content={
+                "status": 1,
+                "msg": f"Failed to create approval: {str(e)}",
+                "data": {"error_type": "APPROVAL_ERROR"},
+            },
+            status_code=500,
+        )
+
+
+def get_pending_jobs(
+    session: SessionDep,
+    username: Optional[str] = None,
+    status: Optional[str] = None,
+    limit: int = 50,
+    offset: int = 0,
+) -> List[Dict[str, Any]]:
+    """
+    Get pending Jenkins jobs with optional filters.
+
+    Args:
+        session: Database session
+        username: Filter by username (None for all users)
+        status: Filter by status (None for all statuses)
+        limit: Max records to return
+        offset: Offset for pagination
+
+    Returns:
+        List of pending job records with approval info
+    """
+    statement = select(PendingJenkinsJob)
+
+    if username:
+        statement = statement.where(PendingJenkinsJob.username == username)
+    if status:
+        statement = statement.where(PendingJenkinsJob.status == status)
+
+    statement = statement.order_by(PendingJenkinsJob.created_at.desc())
+    statement = statement.offset(offset).limit(limit)
+
+    jobs = session.exec(statement).all()
+
+    result = []
+    for job in jobs:
+        job_dict = PendingJenkinsJobRead.model_validate(job).model_dump()
+        # Add approval info
+        approval_log = session.get(FeishuApprovalReqLog, job.approval_log_id)
+        if approval_log:
+            job_dict["approval_status"] = approval_log.status
+            job_dict["feishu_instance_code"] = approval_log.feishu_instance_code
+        result.append(job_dict)
+
+    return result
+
+
+async def sync_pending_job_status(session: SessionDep, job_id: int) -> Dict[str, Any]:
+    """
+    Sync pending job status from Feishu approval.
+
+    Args:
+        session: Database session
+        job_id: Pending job ID
+
+    Returns:
+        Dict with updated status info
+    """
+    job = session.get(PendingJenkinsJob, job_id)
+    if not job:
+        raise ValueError(f"Pending job not found: {job_id}")
+
+    # Get approval status from Feishu
+    approval_status = await FeishuApprovalService.get_approval_status(
+        session=session, log_id=job.approval_log_id
+    )
+
+    # Map Feishu status to job status
+    feishu_status = approval_status.get("status", "pending")
+    status_mapping = {
+        "pending": "pending_approval",
+        "approved": "approved",
+        "rejected": "rejected",
+        "canceled": "canceled",
+    }
+    new_job_status = status_mapping.get(feishu_status, job.status)
+
+    # Update job status if changed
+    if new_job_status != job.status:
+        job.status = new_job_status
+        job.updated_at = int(time.time())
+        session.add(job)
+        session.commit()
+
+    return {
+        "job_id": job_id,
+        "job_status": job.status,
+        "approval_status": feishu_status,
+        "feishu_instance_code": approval_status.get("feishu_instance_code"),
+    }
+
+
+async def execute_pending_job(session: SessionDep, job_id: int) -> Dict[str, Any]:
+    """
+    Execute a pending Jenkins job after approval.
+
+    Args:
+        session: Database session
+        job_id: Pending job ID
+
+    Returns:
+        Dict with execution result
+    """
+    job = session.get(PendingJenkinsJob, job_id)
+    if not job:
+        raise ValueError(f"Pending job not found: {job_id}")
+
+    # Sync status first to ensure we have latest approval status
+    await sync_pending_job_status(session, job_id)
+    session.refresh(job)
+
+    # Check job status
+    if job.status == "executed":
+        raise ValueError("Job has already been executed")
+    if job.status != "approved":
+        raise ValueError(f"Job is not approved. Current status: {job.status}")
+
+    # Get form config for Jenkins connection settings
+    form_config = get_form_config(job.form_id)
+    if not form_config:
+        raise ValueError(f"Form config not found: {job.form_id}")
+
+    jenkins_base_url = form_config.get("jenkins_base_url") or get_jenkins_base_url()
+    if not jenkins_base_url:
+        raise ValueError("Jenkins base URL not configured")
+
+    try:
+        if job.trigger_type == "generic_webhook":
+            jenkins_token = (
+                form_config.get("jenkins_token") or get_jenkins_default_token()
+            )
+            jenkins_result = await send_to_jenkins_generic_webhook(
+                jenkins_base_url,
+                jenkins_token,
+                job.request_params,
+            )
+        elif job.trigger_type == "remote_api":
+            jenkins_user = form_config.get("jenkins_user") or get_jenkins_default_user()
+            jenkins_api_token = (
+                form_config.get("jenkins_api_token") or get_jenkins_default_api_token()
+            )
+            if not jenkins_user or not jenkins_api_token:
+                raise ValueError("Jenkins user or API token not configured for Remote API")
+
+            jenkins_result = await send_to_jenkins_remote_api(
+                jenkins_base_url,
+                job.jenkins_job,
+                jenkins_user,
+                jenkins_api_token,
+                job.request_params,
+            )
+        else:
+            raise ValueError(f"Unknown trigger type: {job.trigger_type}")
+
+        # Update job with result
+        is_success = jenkins_result["status_code"] in [200, 201, 202]
+        job.status = "executed" if is_success else "approved"  # Keep approved if failed
+        job.jenkins_response = jenkins_result["body"]
+        job.updated_at = int(time.time())
+        if not is_success:
+            job.error_message = f"Jenkins returned status {jenkins_result['status_code']}"
+        session.add(job)
+        session.commit()
+
+        # Also log to amis_jenkins_reqlog for consistency
+        log_entry = AmisJenkinsReqLogCreate(
+            form_id=job.form_id,
+            form_title=job.form_title,
+            trigger_type=job.trigger_type,
+            jenkins_job=job.jenkins_job,
+            request_params=job.request_params,
+            clientip=job.clientip,
+            username=job.username,
+            status=jenkins_result["status_code"],
+            jenkins_response=jenkins_result["body"],
+            error_message=None if is_success else job.error_message,
+        )
+        log_amis_jenkins_request(session, log_entry)
+
+        return {
+            "success": is_success,
+            "job_id": job_id,
+            "job_status": job.status,
+            "jenkins_status": jenkins_result["status_code"],
+            "jenkins_response": jenkins_result["body"],
+        }
+
+    except httpx.TimeoutException:
+        job.error_message = "Request to Jenkins timed out"
+        job.updated_at = int(time.time())
+        session.add(job)
+        session.commit()
+        raise ValueError(job.error_message)
+
+    except httpx.RequestError as e:
+        job.error_message = f"Failed to connect to Jenkins: {str(e)}"
+        job.updated_at = int(time.time())
+        session.add(job)
+        session.commit()
+        raise ValueError(job.error_message)

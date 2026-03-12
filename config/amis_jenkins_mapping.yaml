@@ -10,6 +10,15 @@ jenkins_default_user: ""   # Default Jenkins user for Remote API
 jenkins_default_api_token: ""  # Default Jenkins API token for Remote API
 
 # =============================================================================
+# User to Feishu ID Mapping (for approval feature)
+# =============================================================================
+# Maps system username to Feishu user ID (short format)
+# Used when approval is enabled for a form
+user_feishu_mapping:
+  # admin: "ce39af4f"
+  # john: "abc12345"
+
+# =============================================================================
 # Form Definitions
 # =============================================================================
 # Each form has:
@@ -21,6 +30,10 @@ jenkins_default_api_token: ""  # Default Jenkins API token for Remote API
 #   - jenkins_user: Jenkins user for Remote API (optional, uses default)
 #   - jenkins_api_token: Jenkins API token for Remote API (optional, uses default)
 #   - jenkins_base_url: Override global Jenkins URL (optional)
+#   - approval: Feishu approval config (optional)
+#       - enabled: true/false to enable/disable approval
+#       - feishu_app: Feishu app name from feishu_approval_config.yaml
+#       - approval_code: Override default approval code (optional)
 #   - schema: Amis form schema (JSON/YAML format)
 #
 # =============================================================================
@@ -149,6 +162,11 @@ forms:
     jenkins_job: "pipelines/pipeline-k8s-image-deploy-noinput"
     trigger_type: "generic_webhook"
     jenkins_token: "pipeline-k8s-image-deploy-noinput-trigger-token1"
+    # Feishu approval configuration (optional)
+    # approval:
+    #   enabled: true
+    #   feishu_app: "yax-tmptest1"  # Must match app name in feishu_approval_config.yaml
+    #   # approval_code: "xxx"  # Optional: override default approval code
     schema:
       type: "page"
       title: "Deploy test1"

@@ -2,7 +2,9 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
 from sqlmodel import select
+from typing import Optional
 from app.models.amis_jenkins_reqlog import AmisJenkinsReqLog
+from app.models.pending_jenkins_job import PendingJenkinsJob
 from app.dependencies import (
     SessionDep,
     get_current_user_web_required,
@@ -14,6 +16,9 @@ from app.services.amis_jenkins_service import (
     get_all_forms,
     get_form_schema,
     process_form_submit,
+    get_pending_jobs,
+    sync_pending_job_status,
+    execute_pending_job,
 )
 from app.utils.template_filters import time_to_str, time_diff_now
 import json
@@ -204,3 +209,122 @@ def get_amis_jenkins_log(
     if not log:
         raise HTTPException(status_code=404, detail="Log not found")
     return log
+
+
+# ==================== Pending Jobs (with Approval) ====================
+@router.get("/pending", response_class=HTMLResponse)
+async def pending_jobs_page(
+    request: Request,
+    current_user: User = Depends(get_current_user_web_required),
+):
+    """
+    Display pending Jenkins jobs page.
+    Requires web authentication.
+    """
+    return templates.TemplateResponse(
+        "amis_jenkins/pending.html",
+        {
+            "request": request,
+            "page_name": "Pending Jenkins Jobs",
+            "current_user": current_user,
+        },
+    )
+
+
+@router.get("/api/pending")
+def api_get_pending_jobs(
+    session: SessionDep,
+    current_user: User = Depends(get_current_user_any_required),
+    username: Optional[str] = None,
+    status: Optional[str] = None,
+    skip: int = 0,
+    limit: int = 50,
+):
+    """
+    Get list of pending Jenkins jobs.
+    Requires authentication.
+
+    Query parameters:
+    - username: Filter by username (default: None for all users)
+    - status: Filter by status (pending_approval, approved, executed, rejected, canceled)
+    - skip: Offset for pagination
+    - limit: Max records to return
+    """
+    limit = min(limit, 100)
+    jobs = get_pending_jobs(
+        session=session,
+        username=username,
+        status=status,
+        limit=limit,
+        offset=skip,
+    )
+    return {"status": 0, "msg": "success", "data": jobs}
+
+
+@router.get("/api/pending/{job_id}")
+def api_get_pending_job(
+    job_id: int,
+    session: SessionDep,
+    current_user: User = Depends(get_current_user_any_required),
+):
+    """
+    Get a single pending job by ID.
+    Requires authentication.
+    """
+    job = session.get(PendingJenkinsJob, job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Pending job not found")
+    return {"status": 0, "msg": "success", "data": job}
+
+
+@router.post("/api/pending/{job_id}/sync")
+async def api_sync_pending_job(
+    job_id: int,
+    session: SessionDep,
+    current_user: User = Depends(get_current_user_any_required),
+):
+    """
+    Sync pending job status from Feishu approval.
+    Requires authentication.
+    """
+    try:
+        result = await sync_pending_job_status(session, job_id)
+        return {"status": 0, "msg": "Status synced successfully", "data": result}
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to sync status: {str(e)}")
+
+
+@router.post("/api/pending/{job_id}/execute")
+async def api_execute_pending_job(
+    job_id: int,
+    session: SessionDep,
+    current_user: User = Depends(get_current_user_any_required),
+):
+    """
+    Execute a pending Jenkins job after approval.
+    Requires authentication.
+
+    The job must be in 'approved' status to be executed.
+    """
+    try:
+        result = await execute_pending_job(session, job_id)
+        if result["success"]:
+            return {
+                "status": 0,
+                "msg": "Jenkins build triggered successfully",
+                "data": result,
+            }
+        else:
+            return {
+                "status": 1,
+                "msg": f"Jenkins build trigger failed with status {result['jenkins_status']}",
+                "data": result,
+            }
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to execute job: {str(e)}"
+        )

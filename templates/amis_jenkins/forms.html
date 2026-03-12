@@ -21,6 +21,10 @@
             <div class="sub header">Select a form to trigger Jenkins build</div>
           </div>
         </h3>
+        <a class="ui right floated primary button" href="/amis-jenkins/pending">
+          <i class="clock outline icon"></i>
+          Pending Jobs
+        </a>
       </div>
 
       <!-- Forms List -->
@@ -39,6 +43,9 @@
                 <span class="ui tiny teal label">Generic Webhook</span>
                 {% else %}
                 <span class="ui tiny blue label">Remote API</span>
+                {% endif %}
+                {% if form.approval_enabled %}
+                <span class="ui tiny orange label">Approval Required</span>
                 {% endif %}
               </span>
             </div>

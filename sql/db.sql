@@ -95,3 +95,26 @@ CREATE TABLE IF NOT EXISTS `feishu_approval_reqlog` (
   INDEX `idx_status` (`status`),
   INDEX `idx_created_at` (`created_at`)
 ) ENGINE=InnoDB AUTO_INCREMENT=10000 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `pending_jenkins_jobs` (
+  `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `form_id` varchar(100) NOT NULL COMMENT 'Form ID from amis_jenkins_mapping',
+  `form_title` varchar(255) NOT NULL COMMENT 'Form display title',
+  `trigger_type` varchar(50) NOT NULL COMMENT 'Jenkins trigger type: generic_webhook or remote_api',
+  `jenkins_job` varchar(255) NOT NULL COMMENT 'Jenkins job path',
+  `request_params` JSON NOT NULL COMMENT 'Original form parameters submitted by user',
+  `username` varchar(255) NOT NULL COMMENT 'Submitting user from session',
+  `clientip` varchar(45) NOT NULL,
+  `approval_log_id` bigint(20) UNSIGNED NOT NULL COMMENT 'Foreign key to feishu_approval_reqlog.id',
+  `status` varchar(50) NOT NULL DEFAULT 'pending_approval' COMMENT 'Job status: pending_approval, approved, executed, rejected, canceled',
+  `jenkins_response` JSON DEFAULT NULL COMMENT 'Jenkins response after execution',
+  `error_message` longtext DEFAULT NULL,
+  `created_at` bigint(10) UNSIGNED NOT NULL,
+  `updated_at` bigint(10) UNSIGNED NOT NULL,
+  PRIMARY KEY (`id`),
+  INDEX `idx_form_id` (`form_id`),
+  INDEX `idx_username` (`username`),
+  INDEX `idx_approval_log_id` (`approval_log_id`),
+  INDEX `idx_status` (`status`),
+  INDEX `idx_created_at` (`created_at`)
+) ENGINE=InnoDB AUTO_INCREMENT=10000 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

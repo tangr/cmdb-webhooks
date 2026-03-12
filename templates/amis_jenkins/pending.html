@@ -1,0 +1,290 @@
+{% include "base_head.html" %}
+
+<style>
+  .job-card {
+    margin-bottom: 1em;
+  }
+  .status-badge {
+    margin-left: 0.5em;
+  }
+  .params-preview {
+    max-height: 100px;
+    overflow-y: auto;
+    font-family: monospace;
+    font-size: 0.85em;
+    background: #f8f8f8;
+    padding: 0.5em;
+    border-radius: 4px;
+  }
+  .action-buttons {
+    margin-top: 1em;
+  }
+  .filter-form {
+    margin-bottom: 1.5em;
+  }
+</style>
+
+<body>
+  <div class="wrapper">
+    <div class="ui container maincontainer">
+
+      {% include "base_menu.html" %}
+
+      <div class="ui breadcrumb">
+        <a class="section" href="/dashboard">Dashboard</a>
+        <div class="divider"> / </div>
+        <a class="section" href="/amis-jenkins/forms">Amis Jenkins Forms</a>
+        <div class="divider"> / </div>
+        <div class="active section">Pending Jobs</div>
+      </div>
+
+      <!-- Page Header -->
+      <div class="ui segment">
+        <h3 class="ui header">
+          <i class="clock outline icon"></i>
+          <div class="content">
+            Pending Jenkins Jobs
+            <div class="sub header">Jobs waiting for approval or ready to execute</div>
+          </div>
+        </h3>
+      </div>
+
+      <!-- Filter Form -->
+      <div class="ui segment filter-form">
+        <form class="ui form" id="filter-form">
+          <div class="three fields">
+            <div class="field">
+              <label>Status</label>
+              <select class="ui dropdown" id="filter-status" name="status">
+                <option value="">All Statuses</option>
+                <option value="pending_approval">Pending Approval</option>
+                <option value="approved">Approved (Ready to Execute)</option>
+                <option value="executed">Executed</option>
+                <option value="rejected">Rejected</option>
+                <option value="canceled">Canceled</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Username</label>
+              <input type="text" id="filter-username" name="username" placeholder="Filter by username">
+            </div>
+            <div class="field">
+              <label>&nbsp;</label>
+              <button class="ui primary button" type="submit">
+                <i class="filter icon"></i> Filter
+              </button>
+              <button class="ui button" type="button" onclick="refreshAllJobs()">
+                <i class="sync icon"></i> Refresh All
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <!-- Jobs List -->
+      <div id="jobs-container">
+        <div class="ui active centered inline loader"></div>
+      </div>
+
+    </div>
+
+    {% include "base_foot.html" %}
+  </div>
+
+  <script type="text/javascript">
+    $(document).ready(function () {
+      $('.ui.dropdown').dropdown();
+      loadPendingJobs();
+
+      $('#filter-form').on('submit', function (e) {
+        e.preventDefault();
+        loadPendingJobs();
+      });
+    });
+
+    function logout() {
+      fetch('/auth/logout', { method: 'POST' })
+        .then(function (response) {
+          window.location.href = '/login';
+        })
+        .catch(function (error) {
+          window.location.href = '/login';
+        });
+    }
+
+    function loadPendingJobs() {
+      var status = $('#filter-status').val();
+      var username = $('#filter-username').val();
+      var params = new URLSearchParams();
+      if (status) params.append('status', status);
+      if (username) params.append('username', username);
+
+      $('#jobs-container').html('<div class="ui active centered inline loader"></div>');
+
+      fetch('/amis-jenkins/api/pending?' + params.toString(), { credentials: 'include' })
+        .then(function (response) { return response.json(); })
+        .then(function (result) {
+          if (result.status !== 0) {
+            $('#jobs-container').html('<div class="ui error message">' + result.msg + '</div>');
+            return;
+          }
+          renderJobs(result.data);
+        })
+        .catch(function (error) {
+          $('#jobs-container').html('<div class="ui error message">Failed to load jobs: ' + error.message + '</div>');
+        });
+    }
+
+    function renderJobs(jobs) {
+      if (!jobs || jobs.length === 0) {
+        $('#jobs-container').html('<div class="ui placeholder segment"><div class="ui icon header"><i class="inbox icon"></i>No pending jobs found</div></div>');
+        return;
+      }
+
+      var html = '<div class="ui cards">';
+      jobs.forEach(function (job) {
+        var statusColor = getStatusColor(job.status);
+        var statusLabel = getStatusLabel(job.status);
+        var approvalStatus = job.approval_status || 'unknown';
+        var canExecute = job.status === 'approved';
+        var canSync = job.status === 'pending_approval';
+
+        html += '<div class="ui fluid card job-card">';
+        html += '<div class="content">';
+        html += '<div class="header">';
+        html += '<i class="file alternate outline icon"></i> ' + escapeHtml(job.form_title);
+        html += '<span class="ui ' + statusColor + ' label status-badge">' + statusLabel + '</span>';
+        html += '</div>';
+        html += '<div class="meta">';
+        html += '<span><i class="user icon"></i> ' + escapeHtml(job.username) + '</span>';
+        html += '<span style="margin-left: 1em;"><i class="clock icon"></i> ' + formatTimestamp(job.created_at) + '</span>';
+        html += '</div>';
+        html += '<div class="description">';
+        html += '<p><strong>Jenkins Job:</strong> ' + escapeHtml(job.jenkins_job) + '</p>';
+        html += '<p><strong>Approval Status:</strong> ' + escapeHtml(approvalStatus) + '</p>';
+        if (job.feishu_instance_code) {
+          html += '<p><strong>Feishu Instance:</strong> <code>' + escapeHtml(job.feishu_instance_code) + '</code></p>';
+        }
+        html += '<p><strong>Parameters:</strong></p>';
+        html += '<div class="params-preview">' + escapeHtml(JSON.stringify(job.request_params, null, 2)) + '</div>';
+        if (job.error_message) {
+          html += '<div class="ui red message" style="margin-top: 0.5em;"><i class="exclamation triangle icon"></i> ' + escapeHtml(job.error_message) + '</div>';
+        }
+        html += '</div>';
+        html += '</div>';
+        html += '<div class="extra content action-buttons">';
+        if (canSync) {
+          html += '<button class="ui blue button" onclick="syncJobStatus(' + job.id + ')"><i class="sync icon"></i> Sync Status</button>';
+        }
+        if (canExecute) {
+          html += '<button class="ui green button" onclick="executeJob(' + job.id + ')"><i class="play icon"></i> Execute</button>';
+        }
+        html += '<button class="ui button" onclick="viewJobDetails(' + job.id + ')"><i class="eye icon"></i> Details</button>';
+        html += '</div>';
+        html += '</div>';
+      });
+      html += '</div>';
+
+      $('#jobs-container').html(html);
+    }
+
+    function getStatusColor(status) {
+      switch (status) {
+        case 'pending_approval': return 'yellow';
+        case 'approved': return 'green';
+        case 'executed': return 'blue';
+        case 'rejected': return 'red';
+        case 'canceled': return 'grey';
+        default: return 'grey';
+      }
+    }
+
+    function getStatusLabel(status) {
+      switch (status) {
+        case 'pending_approval': return 'Pending Approval';
+        case 'approved': return 'Approved';
+        case 'executed': return 'Executed';
+        case 'rejected': return 'Rejected';
+        case 'canceled': return 'Canceled';
+        default: return status;
+      }
+    }
+
+    function syncJobStatus(jobId) {
+      fetch('/amis-jenkins/api/pending/' + jobId + '/sync', {
+        method: 'POST',
+        credentials: 'include'
+      })
+        .then(function (response) { return response.json(); })
+        .then(function (result) {
+          if (result.status === 0) {
+            alert('Status synced: ' + result.data.job_status);
+            loadPendingJobs();
+          } else {
+            alert('Failed to sync: ' + result.msg);
+          }
+        })
+        .catch(function (error) {
+          alert('Error: ' + error.message);
+        });
+    }
+
+    function executeJob(jobId) {
+      if (!confirm('Are you sure you want to execute this Jenkins job?')) {
+        return;
+      }
+
+      fetch('/amis-jenkins/api/pending/' + jobId + '/execute', {
+        method: 'POST',
+        credentials: 'include'
+      })
+        .then(function (response) { return response.json(); })
+        .then(function (result) {
+          if (result.status === 0) {
+            alert('Jenkins build triggered successfully!');
+            loadPendingJobs();
+          } else {
+            alert('Failed to execute: ' + result.msg);
+          }
+        })
+        .catch(function (error) {
+          alert('Error: ' + error.message);
+        });
+    }
+
+    function viewJobDetails(jobId) {
+      fetch('/amis-jenkins/api/pending/' + jobId, { credentials: 'include' })
+        .then(function (response) { return response.json(); })
+        .then(function (result) {
+          if (result.status === 0) {
+            alert(JSON.stringify(result.data, null, 2));
+          } else {
+            alert('Failed to load details: ' + result.msg);
+          }
+        })
+        .catch(function (error) {
+          alert('Error: ' + error.message);
+        });
+    }
+
+    function refreshAllJobs() {
+      loadPendingJobs();
+    }
+
+    function formatTimestamp(ts) {
+      if (!ts) return 'N/A';
+      var date = new Date(ts * 1000);
+      return date.toLocaleString();
+    }
+
+    function escapeHtml(text) {
+      if (text === null || text === undefined) return '';
+      var div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+  </script>
+
+</body>
+
+</html>
