@@ -118,18 +118,21 @@ def get_user_feishu_mapping() -> Dict[str, str]:
     return _amis_jenkins_mapping.get("user_feishu_mapping") or {}
 
 
-def get_user_feishu_id(username: str) -> Optional[str]:
+def get_user_feishu_id(username: str) -> str:
     """
     Get Feishu user ID for a given username.
+
+    If user is configured in user_feishu_mapping, return the mapped ID.
+    Otherwise, return the username as the default Feishu user ID.
 
     Args:
         username: System username
 
     Returns:
-        Feishu user ID or None if not found
+        Feishu user ID (mapped value or username as fallback)
     """
     mapping = get_user_feishu_mapping()
-    return mapping.get(username)
+    return mapping.get(username, username)
 
 
 def get_form_config(form_id: str) -> Optional[Dict[str, Any]]:
@@ -676,17 +679,8 @@ async def _process_form_submit_with_approval(
     feishu_app = approval_config.get("feishu_app", "default")
     approval_code = approval_config.get("approval_code")  # Optional override
 
-    # Get Feishu user ID for current user
+    # Get Feishu user ID for current user (falls back to username if not mapped)
     feishu_user_id = get_user_feishu_id(current_user.username)
-    if not feishu_user_id:
-        return JSONResponse(
-            content={
-                "status": 1,
-                "msg": f"Feishu user ID not configured for user: {current_user.username}. Please configure user_feishu_mapping in amis_jenkins_mapping.yaml",
-                "data": {"error_type": "FEISHU_USER_NOT_FOUND"},
-            },
-            status_code=400,
-        )
 
     # Build form data for Feishu approval
     # If form_data_template is configured, use it; otherwise use default placeholders
