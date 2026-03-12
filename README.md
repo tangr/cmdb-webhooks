@@ -152,9 +152,10 @@ curl http://localhost:8000/feishu-approval/status/1 \
 
 curl -X POST http://localhost:8000/feishu-approval/create \
   -H "Content-Type: application/json" \
+  -H "Cookie: session=xxx" \
   -d '{
     "app_name": "default",
-    "user_id": "ce39af4f",
+    "feishu_user_id": "ce39af4f",
     "form_data": {"widget-id1": "test1: test1;\ntest2: test2;\ntest3: test3;\ntest4: test4;\ntest5: test5;","widget-id2": "test1: test1;\ntest2: test2;\ntest3: test3;\ntest4: test4;\ntest5: test5;","widget-id3": "test1: test1;\ntest2: test2;\ntest3: test3;\ntest4: test4;\ntest5: test5;","widget-id4": "test1: test1;\ntest2: test2;\ntest3: test3;\ntest4: test4;\ntest5: test5;"}
   }'
 
