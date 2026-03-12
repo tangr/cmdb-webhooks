@@ -8,6 +8,7 @@ import httpx
 import json
 import base64
 import yaml
+import hashlib
 from pathlib import Path
 from app.utils.logger import get_logger
 
@@ -15,6 +16,7 @@ logger = get_logger(__name__)
 
 # Global mapping storage
 _amis_jenkins_mapping: Dict[str, Any] = {}
+_amis_jenkins_config_version: str = ""
 
 
 def _find_project_root() -> Path:
@@ -26,10 +28,33 @@ def _find_project_root() -> Path:
     return current_path.parent.parent.parent
 
 
+def _get_config_path() -> Path:
+    """Get the path to amis_jenkins_mapping.yaml"""
+    project_root = _find_project_root()
+    return project_root / "config" / "amis_jenkins_mapping.yaml"
+
+
+def _calculate_config_version(config_path: Path) -> str:
+    """
+    Calculate config version based on file content hash.
+
+    Args:
+        config_path: Path to the config file
+
+    Returns:
+        Short hash string (first 8 chars of md5)
+    """
+    try:
+        with open(config_path, "rb") as file:
+            content = file.read()
+            return hashlib.md5(content).hexdigest()[:8]
+    except Exception:
+        return "unknown"
+
+
 def load_amis_jenkins_mapping() -> Dict[str, Any]:
     """Load Amis Jenkins mapping from YAML file"""
-    project_root = _find_project_root()
-    config_path = project_root / "config" / "amis_jenkins_mapping.yaml"
+    config_path = _get_config_path()
 
     try:
         with open(config_path, "r", encoding="utf-8") as file:
@@ -45,10 +70,18 @@ def load_amis_jenkins_mapping() -> Dict[str, Any]:
 
 def init_amis_jenkins_mapping():
     """Initialize Amis-Jenkins mapping on startup"""
-    global _amis_jenkins_mapping
+    global _amis_jenkins_mapping, _amis_jenkins_config_version
     _amis_jenkins_mapping = load_amis_jenkins_mapping()
+    _amis_jenkins_config_version = _calculate_config_version(_get_config_path())
     forms = _amis_jenkins_mapping.get("forms") or {}
-    logger.info(f"Loaded {len(forms)} Amis-Jenkins form mappings")
+    logger.info(
+        f"Loaded {len(forms)} Amis-Jenkins form mappings (version: {_amis_jenkins_config_version})"
+    )
+
+
+def get_config_version() -> str:
+    """Get current config version"""
+    return _amis_jenkins_config_version
 
 
 def get_jenkins_base_url() -> str:
@@ -106,20 +139,83 @@ def get_all_forms() -> List[Dict[str, Any]]:
     return result
 
 
+def _inject_version_field(schema: Dict[str, Any], version: str) -> Dict[str, Any]:
+    """
+    Inject a hidden version field into Amis form schema.
+
+    Args:
+        schema: Amis schema dict
+        version: Config version string
+
+    Returns:
+        Modified schema with version field injected
+    """
+    import copy
+
+    schema = copy.deepcopy(schema)
+    version_field = {
+        "type": "hidden",
+        "name": "_schema_version",
+        "value": version,
+    }
+
+    # Find the form body and inject the hidden field
+    def inject_into_form(node: Dict[str, Any]) -> bool:
+        """Recursively find form and inject version field. Returns True if injected."""
+        if not isinstance(node, dict):
+            return False
+
+        # If this is a form, inject into its body
+        if node.get("type") == "form":
+            body = node.get("body", [])
+            if isinstance(body, list):
+                # Prepend version field to body
+                node["body"] = [version_field] + body
+            elif isinstance(body, dict):
+                # Body is a single component, wrap in list
+                node["body"] = [version_field, body]
+            else:
+                node["body"] = [version_field]
+            return True
+
+        # Search in body/items/controls for nested form
+        for key in ["body", "items", "controls", "content"]:
+            child = node.get(key)
+            if isinstance(child, list):
+                for item in child:
+                    if inject_into_form(item):
+                        return True
+            elif isinstance(child, dict):
+                if inject_into_form(child):
+                    return True
+
+        return False
+
+    inject_into_form(schema)
+    return schema
+
+
 def get_form_schema(form_id: str) -> Optional[Dict[str, Any]]:
     """
-    Get Amis schema for a form.
+    Get Amis schema for a form with version field injected.
 
     Args:
         form_id: Form identifier
 
     Returns:
-        Amis schema dict or None if not found
+        Amis schema dict with _schema_version hidden field, or None if not found
     """
     form_config = get_form_config(form_id)
     if not form_config:
         return None
-    return form_config.get("schema")
+
+    schema = form_config.get("schema")
+    if not schema:
+        return None
+
+    # Inject version field into schema
+    version = get_config_version()
+    return _inject_version_field(schema, version)
 
 
 def log_amis_jenkins_request(session: SessionDep, log_entry: AmisJenkinsReqLogCreate):
@@ -293,6 +389,26 @@ async def process_form_submit(
         body = json.loads(body_bytes.decode("utf-8")) if body_bytes else {}
     except json.JSONDecodeError:
         raise HTTPException(status_code=400, detail="Invalid JSON payload")
+
+    # Validate schema version to detect stale form submissions
+    submitted_version = body.pop("_schema_version", None)
+    current_version = get_config_version()
+    logger.debug(
+        f"Schema version check - submitted: {submitted_version}, current: {current_version}"
+    )
+    if submitted_version and submitted_version != current_version:
+        return JSONResponse(
+            content={
+                "status": 1,
+                "msg": "Form configuration has been updated. Please refresh the page to get the latest form.",
+                "data": {
+                    "error_type": "VERSION_MISMATCH",
+                    "submitted_version": submitted_version,
+                    "current_version": current_version,
+                },
+            },
+            status_code=409,  # Conflict
+        )
 
     # Extract form title and Jenkins config
     form_title = form_config.get("title", form_id)
