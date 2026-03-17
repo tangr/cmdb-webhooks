@@ -2,7 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
 from sqlmodel import select
-from typing import Optional
+from pydantic import BaseModel
+from typing import Optional, Dict, Any
 from app.models.amis_jenkins_reqlog import AmisJenkinsReqLog
 from app.models.pending_jenkins_job import PendingJenkinsJob
 from app.dependencies import (
@@ -24,6 +25,14 @@ from app.utils.template_filters import time_to_str, time_diff_now
 import json
 
 router = APIRouter()
+
+
+# ==================== Request Models ====================
+class ExecuteJobRequest(BaseModel):
+    """Request body for executing a pending job with optional modified fields."""
+
+    modified_fields: Optional[Dict[str, Any]] = None
+
 
 # Setup templates
 templates = Jinja2Templates(directory="templates")
@@ -301,15 +310,25 @@ async def api_execute_pending_job(
     job_id: int,
     session: SessionDep,
     current_user: User = Depends(get_current_user_any_required),
+    body: Optional[ExecuteJobRequest] = None,
 ):
     """
     Execute a pending Jenkins job after approval.
     Requires authentication.
 
     The job must be in 'approved' status to be executed.
+
+    Request body (optional):
+    - modified_fields: Dict of field values to override (must be in modifiable_fields list)
+
+    Multi-execution support:
+    - Jobs with max_executions > 0 can be executed multiple times
+    - Jobs with expire_at > 0 have time-based expiration
+    - Status remains 'approved' until exhausted or expired
     """
     try:
-        result = await execute_pending_job(session, job_id)
+        modified_fields = body.modified_fields if body else None
+        result = await execute_pending_job(session, job_id, modified_fields)
         if result["success"]:
             return {
                 "status": 0,

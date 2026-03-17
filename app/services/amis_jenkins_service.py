@@ -204,6 +204,90 @@ def get_all_forms() -> List[Dict[str, Any]]:
     return result
 
 
+def _extract_field_options_from_schema(
+    schema: Dict[str, Any], field_names: List[str]
+) -> Dict[str, List[Dict[str, Any]]]:
+    """
+    Extract options for select fields from Amis schema.
+
+    Args:
+        schema: Amis schema dict
+        field_names: List of field names to extract options for
+
+    Returns:
+        Dict mapping field name to list of options (each option has 'label' and 'value')
+    """
+    result = {}
+    field_names_set = set(field_names)
+
+    def extract_from_node(node: Any) -> None:
+        """Recursively search for select fields and extract their options."""
+        if not isinstance(node, dict):
+            return
+
+        # Check if this is a select-type field we're looking for
+        node_type = node.get("type", "")
+        node_name = node.get("name", "")
+
+        if node_name in field_names_set and node_type in ["select", "checkboxes", "radios"]:
+            options = node.get("options", [])
+            if options:
+                # Extract only visible options (respect visibleOn if needed)
+                extracted_options = []
+                for opt in options:
+                    if isinstance(opt, dict):
+                        extracted_options.append({
+                            "label": opt.get("label", ""),
+                            "value": opt.get("value", ""),
+                        })
+                    else:
+                        # Simple value
+                        extracted_options.append({"label": str(opt), "value": opt})
+                result[node_name] = extracted_options
+
+        # Recursively search in all dict/list values
+        for key, value in node.items():
+            if isinstance(value, dict):
+                extract_from_node(value)
+            elif isinstance(value, list):
+                for item in value:
+                    extract_from_node(item)
+
+    extract_from_node(schema)
+    return result
+
+
+def get_modifiable_fields_config(form_id: str) -> Dict[str, Any]:
+    """
+    Get modifiable fields configuration for a form.
+
+    Args:
+        form_id: Form identifier
+
+    Returns:
+        Dict with modifiable_fields list and options snapshot
+    """
+    approval_config = get_approval_config(form_id)
+    if not approval_config:
+        return {"modifiable_fields": [], "max_executions": 0, "expire_hours": 0}
+
+    modifiable_fields = approval_config.get("modifiable_fields", [])
+    max_executions = approval_config.get("max_executions", 0)
+    expire_hours = approval_config.get("expire_hours", 0)
+
+    # Get form schema and extract options for modifiable select fields
+    form_config = get_form_config(form_id)
+    schema = form_config.get("schema", {}) if form_config else {}
+    field_options = _extract_field_options_from_schema(schema, modifiable_fields)
+
+    return {
+        "modifiable_fields": modifiable_fields,
+        "field_options": field_options,
+        "max_executions": max_executions,
+        "expire_hours": expire_hours,
+    }
+
+
 def _inject_version_field(schema: Dict[str, Any], version: str) -> Dict[str, Any]:
     """
     Inject a hidden version field into Amis form schema.
@@ -727,6 +811,25 @@ async def _process_form_submit_with_approval(
             status_code=400,
         )
 
+    # Get multi-execution configuration
+    modifiable_config = get_modifiable_fields_config(form_id)
+    modifiable_fields = modifiable_config.get("modifiable_fields", [])
+    field_options = modifiable_config.get("field_options", {})
+    max_executions = modifiable_config.get("max_executions", 0)
+    expire_hours = modifiable_config.get("expire_hours", 0)
+
+    # Calculate expire_at timestamp
+    expire_at = 0
+    if expire_hours > 0:
+        expire_at = int(time.time()) + (expire_hours * 3600)
+
+    # Build modifiable_fields_options snapshot
+    # This stores both the list of modifiable fields and their available options
+    modifiable_fields_options = {
+        "fields": modifiable_fields,
+        "options": field_options,
+    }
+
     try:
         # Create Feishu approval
         approval_result = await FeishuApprovalService.create_approval(
@@ -739,7 +842,7 @@ async def _process_form_submit_with_approval(
             approval_code=approval_code,
         )
 
-        # Create pending job record
+        # Create pending job record with multi-execution settings
         pending_job = PendingJenkinsJob(
             form_id=form_id,
             form_title=form_title,
@@ -750,6 +853,10 @@ async def _process_form_submit_with_approval(
             clientip=client_ip,
             approval_log_id=approval_result["log_id"],
             status="pending_approval",
+            modifiable_fields_options=modifiable_fields_options,
+            execution_count=0,
+            max_executions=max_executions,
+            expire_at=expire_at,
         )
         session.add(pending_job)
         session.commit()
@@ -887,13 +994,21 @@ async def sync_pending_job_status(session: SessionDep, job_id: int) -> Dict[str,
     }
 
 
-async def execute_pending_job(session: SessionDep, job_id: int) -> Dict[str, Any]:
+async def execute_pending_job(
+    session: SessionDep,
+    job_id: int,
+    modified_fields: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
     """
     Execute a pending Jenkins job after approval.
+
+    Supports multi-execution: if max_executions > 0 or expire_at > 0,
+    the job can be executed multiple times until limits are reached.
 
     Args:
         session: Database session
         job_id: Pending job ID
+        modified_fields: Optional dict of field values to override (must be in modifiable_fields list)
 
     Returns:
         Dict with execution result
@@ -906,11 +1021,30 @@ async def execute_pending_job(session: SessionDep, job_id: int) -> Dict[str, Any
     await sync_pending_job_status(session, job_id)
     session.refresh(job)
 
-    # Check job status
-    if job.status == "executed":
-        raise ValueError("Job has already been executed")
-    if job.status != "approved":
+    # Check job status - allow approved, also allow re-execution if not exhausted/expired
+    if job.status == "exhausted":
+        raise ValueError("Job has reached maximum execution count")
+    if job.status == "expired":
+        raise ValueError("Job has expired")
+    if job.status not in ["approved"]:
         raise ValueError(f"Job is not approved. Current status: {job.status}")
+
+    # Check expiration
+    current_time = int(time.time())
+    if job.expire_at > 0 and current_time > job.expire_at:
+        job.status = "expired"
+        job.updated_at = current_time
+        session.add(job)
+        session.commit()
+        raise ValueError("Job has expired")
+
+    # Check execution count limit
+    if job.max_executions > 0 and job.execution_count >= job.max_executions:
+        job.status = "exhausted"
+        job.updated_at = current_time
+        session.add(job)
+        session.commit()
+        raise ValueError("Job has reached maximum execution count")
 
     # Get form config for Jenkins connection settings
     form_config = get_form_config(job.form_id)
@@ -921,6 +1055,31 @@ async def execute_pending_job(session: SessionDep, job_id: int) -> Dict[str, Any
     if not jenkins_base_url:
         raise ValueError("Jenkins base URL not configured")
 
+    # Build execution params - start with original request_params
+    execution_params = dict(job.request_params)
+
+    # Apply modified fields if provided
+    if modified_fields:
+        # Validate modified fields are allowed
+        modifiable_config = job.modifiable_fields_options or {}
+        allowed_fields = modifiable_config.get("fields", [])
+        field_options = modifiable_config.get("options", {})
+
+        for field_name, field_value in modified_fields.items():
+            if field_name not in allowed_fields:
+                raise ValueError(f"Field '{field_name}' is not modifiable for this job")
+
+            # Validate value is in allowed options (if options exist for this field)
+            if field_name in field_options:
+                allowed_values = [opt.get("value") for opt in field_options[field_name]]
+                if field_value not in allowed_values:
+                    raise ValueError(
+                        f"Invalid value '{field_value}' for field '{field_name}'. "
+                        f"Allowed values: {allowed_values}"
+                    )
+
+            execution_params[field_name] = field_value
+
     try:
         if job.trigger_type == "generic_webhook":
             jenkins_token = (
@@ -929,7 +1088,7 @@ async def execute_pending_job(session: SessionDep, job_id: int) -> Dict[str, Any
             jenkins_result = await send_to_jenkins_generic_webhook(
                 jenkins_base_url,
                 jenkins_token,
-                job.request_params,
+                execution_params,
             )
         elif job.trigger_type == "remote_api":
             jenkins_user = form_config.get("jenkins_user") or get_jenkins_default_user()
@@ -944,18 +1103,35 @@ async def execute_pending_job(session: SessionDep, job_id: int) -> Dict[str, Any
                 job.jenkins_job,
                 jenkins_user,
                 jenkins_api_token,
-                job.request_params,
+                execution_params,
             )
         else:
             raise ValueError(f"Unknown trigger type: {job.trigger_type}")
 
         # Update job with result
         is_success = jenkins_result["status_code"] in [200, 201, 202]
-        job.status = "executed" if is_success else "approved"  # Keep approved if failed
-        job.jenkins_response = jenkins_result["body"]
-        job.updated_at = int(time.time())
-        if not is_success:
+        current_time = int(time.time())
+
+        if is_success:
+            # Increment execution count
+            job.execution_count += 1
+            job.error_message = None
+
+            # Determine new status based on limits
+            if job.max_executions > 0 and job.execution_count >= job.max_executions:
+                job.status = "exhausted"
+            elif job.expire_at > 0 and current_time > job.expire_at:
+                job.status = "expired"
+            else:
+                # Keep approved for multi-execution
+                job.status = "approved"
+        else:
+            # Keep approved if failed, so user can retry
+            job.status = "approved"
             job.error_message = f"Jenkins returned status {jenkins_result['status_code']}"
+
+        job.jenkins_response = jenkins_result["body"]
+        job.updated_at = current_time
         session.add(job)
         session.commit()
 
@@ -965,7 +1141,7 @@ async def execute_pending_job(session: SessionDep, job_id: int) -> Dict[str, Any
             form_title=job.form_title,
             trigger_type=job.trigger_type,
             jenkins_job=job.jenkins_job,
-            request_params=job.request_params,
+            request_params=execution_params,  # Log actual params used
             clientip=job.clientip,
             username=job.username,
             status=jenkins_result["status_code"],
@@ -978,8 +1154,12 @@ async def execute_pending_job(session: SessionDep, job_id: int) -> Dict[str, Any
             "success": is_success,
             "job_id": job_id,
             "job_status": job.status,
+            "execution_count": job.execution_count,
+            "max_executions": job.max_executions,
+            "expire_at": job.expire_at,
             "jenkins_status": jenkins_result["status_code"],
             "jenkins_response": jenkins_result["body"],
+            "executed_params": execution_params,
         }
 
     except httpx.TimeoutException:

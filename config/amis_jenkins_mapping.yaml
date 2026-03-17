@@ -38,6 +38,11 @@ user_feishu_mapping:
 #       - form_data_template: Mapping of Feishu widget IDs to form data (optional)
 #           Example: {"widget-id1": "Form: {form_title}\nJob: {jenkins_job}", "widget-id2": "{request_params_json}"}
 #           Available placeholders: {form_id}, {form_title}, {jenkins_job}, {username}, {request_params_json}, {field_name}
+#       - modifiable_fields: List of fields that can be modified after approval (optional)
+#           Example: ["environment", "comment"]
+#           These fields' options will be saved at submission time
+#       - max_executions: Maximum number of executions allowed (0 = unlimited, default: 0)
+#       - expire_hours: Hours until approval expires (0 = never, default: 0)
 #   - schema: Amis form schema (JSON/YAML format)
 #
 # =============================================================================
@@ -178,6 +183,10 @@ forms:
         widget-id2: "项目: {project}\n环境: {environment}\n服务: {service}"
         widget-id3: "镜像Tag: {image_tag}\n备注: {comment}"
         widget-id4: "完整参数:\n{request_params_json}"
+      # Multi-execution settings
+      modifiable_fields: ["environment", "comment"]  # Fields that can be modified after approval
+      max_executions: 0  # 0 = unlimited
+      expire_hours: 0    # 0 = never expires
     schema:
       type: "page"
       title: "Deploy test1"

@@ -106,9 +106,13 @@ CREATE TABLE IF NOT EXISTS `pending_jenkins_jobs` (
   `username` varchar(255) NOT NULL COMMENT 'Submitting user from session',
   `clientip` varchar(45) NOT NULL,
   `approval_log_id` bigint(20) UNSIGNED NOT NULL COMMENT 'Foreign key to feishu_approval_reqlog.id',
-  `status` varchar(50) NOT NULL DEFAULT 'pending_approval' COMMENT 'Job status: pending_approval, approved, executed, rejected, canceled',
-  `jenkins_response` JSON DEFAULT NULL COMMENT 'Jenkins response after execution',
-  `error_message` longtext DEFAULT NULL,
+  `status` varchar(50) NOT NULL DEFAULT 'pending_approval' COMMENT 'Job status: pending_approval, approved, expired, exhausted, rejected, canceled',
+  `modifiable_fields_options` JSON DEFAULT NULL COMMENT 'Snapshot of options for modifiable fields at submission time',
+  `execution_count` int(10) UNSIGNED NOT NULL DEFAULT 0 COMMENT 'Number of times this job has been executed',
+  `max_executions` int(10) UNSIGNED NOT NULL DEFAULT 0 COMMENT 'Maximum allowed executions (0 = unlimited)',
+  `expire_at` bigint(10) UNSIGNED NOT NULL DEFAULT 0 COMMENT 'Expiration timestamp (0 = never expires)',
+  `jenkins_response` JSON DEFAULT NULL COMMENT 'Jenkins response from last execution',
+  `error_message` longtext DEFAULT NULL COMMENT 'Error message from last execution',
   `created_at` bigint(10) UNSIGNED NOT NULL,
   `updated_at` bigint(10) UNSIGNED NOT NULL,
   PRIMARY KEY (`id`),
@@ -116,5 +120,14 @@ CREATE TABLE IF NOT EXISTS `pending_jenkins_jobs` (
   INDEX `idx_username` (`username`),
   INDEX `idx_approval_log_id` (`approval_log_id`),
   INDEX `idx_status` (`status`),
-  INDEX `idx_created_at` (`created_at`)
+  INDEX `idx_created_at` (`created_at`),
+  INDEX `idx_expire_at` (`expire_at`)
 ) ENGINE=InnoDB AUTO_INCREMENT=10000 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Migration: Add new columns to existing pending_jenkins_jobs table
+-- ALTER TABLE `pending_jenkins_jobs`
+--   ADD COLUMN `modifiable_fields_options` JSON DEFAULT NULL COMMENT 'Snapshot of options for modifiable fields' AFTER `status`,
+--   ADD COLUMN `execution_count` int(10) UNSIGNED NOT NULL DEFAULT 0 COMMENT 'Execution count' AFTER `modifiable_fields_options`,
+--   ADD COLUMN `max_executions` int(10) UNSIGNED NOT NULL DEFAULT 0 COMMENT 'Max executions (0=unlimited)' AFTER `execution_count`,
+--   ADD COLUMN `expire_at` bigint(10) UNSIGNED NOT NULL DEFAULT 0 COMMENT 'Expiration timestamp (0=never)' AFTER `max_executions`,
+--   ADD INDEX `idx_expire_at` (`expire_at`);

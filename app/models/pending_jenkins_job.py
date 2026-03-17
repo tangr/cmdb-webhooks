@@ -19,13 +19,29 @@ class PendingJenkinsJobBase(SQLModel):
     approval_log_id: int = Field(description="Foreign key to feishu_approval_reqlog.id")
     status: str = Field(
         default="pending_approval",
-        description="Job status: pending_approval, approved, executed, rejected, canceled",
+        description="Job status: pending_approval, approved, expired, exhausted, rejected, canceled",
     )
+    # Multi-execution support fields
+    modifiable_fields_options: Optional[Dict[str, Any]] = Field(
+        sa_column=Column(JSON),
+        default=None,
+        description="Snapshot of options for modifiable fields at submission time",
+    )
+    execution_count: int = Field(
+        default=0, description="Number of times this job has been executed"
+    )
+    max_executions: int = Field(
+        default=0, description="Maximum allowed executions (0 = unlimited)"
+    )
+    expire_at: int = Field(
+        default=0, description="Expiration timestamp (0 = never expires)"
+    )
+    # Last execution response (for display purposes)
     jenkins_response: Optional[Dict[str, Any]] = Field(
-        sa_column=Column(JSON), default=None, description="Jenkins response after execution"
+        sa_column=Column(JSON), default=None, description="Jenkins response from last execution"
     )
     error_message: Optional[str] = Field(
-        default=None, description="Error message if execution failed"
+        default=None, description="Error message from last execution"
     )
 
 
@@ -49,6 +65,7 @@ class PendingJenkinsJobUpdate(SQLModel):
     """Model for updating pending Jenkins job"""
 
     status: Optional[str] = None
+    execution_count: Optional[int] = None
     jenkins_response: Optional[Dict[str, Any]] = None
     error_message: Optional[str] = None
 

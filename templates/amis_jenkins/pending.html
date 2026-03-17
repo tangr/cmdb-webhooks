@@ -22,6 +22,30 @@
   .filter-form {
     margin-bottom: 1.5em;
   }
+  .execution-info {
+    margin-top: 0.5em;
+    font-size: 0.9em;
+    color: #666;
+  }
+  .execution-info .label {
+    margin-right: 0.5em;
+  }
+  .locked-field {
+    background: #f0f0f0;
+    padding: 0.5em;
+    border-radius: 4px;
+    margin-bottom: 0.5em;
+  }
+  .locked-field .field-name {
+    font-weight: bold;
+    color: #666;
+  }
+  .locked-field .field-value {
+    font-family: monospace;
+  }
+  .modifiable-field {
+    margin-bottom: 1em;
+  }
 </style>
 
 <body>
@@ -86,6 +110,41 @@
         <div class="ui active centered inline loader"></div>
       </div>
 
+    </div>
+
+    <!-- Execution Modal -->
+    <div class="ui modal" id="execute-modal">
+      <i class="close icon"></i>
+      <div class="header">
+        <i class="play icon"></i> Execute Jenkins Job
+      </div>
+      <div class="content">
+        <div id="modal-job-info">
+          <!-- Job info will be populated dynamically -->
+        </div>
+        <div class="ui divider"></div>
+        <div id="modal-locked-fields">
+          <h4 class="ui header">
+            <i class="lock icon"></i> Locked Parameters
+          </h4>
+          <!-- Locked fields will be populated dynamically -->
+        </div>
+        <div id="modal-modifiable-fields" style="display: none;">
+          <div class="ui divider"></div>
+          <h4 class="ui header">
+            <i class="edit icon"></i> Modifiable Parameters
+          </h4>
+          <form class="ui form" id="modifiable-fields-form">
+            <!-- Modifiable fields will be populated dynamically -->
+          </form>
+        </div>
+      </div>
+      <div class="actions">
+        <div class="ui cancel button">Cancel</div>
+        <div class="ui green approve button" id="modal-execute-btn">
+          <i class="play icon"></i> Execute
+        </div>
+      </div>
     </div>
 
     {% include "base_foot.html" %}
@@ -165,6 +224,20 @@
         if (job.feishu_instance_code) {
           html += '<p><strong>Feishu Instance:</strong> <code>' + escapeHtml(job.feishu_instance_code) + '</code></p>';
         }
+        // Execution info
+        html += '<div class="execution-info">';
+        if (job.execution_count > 0) {
+          html += '<span class="ui blue mini label"><i class="redo icon"></i> Executed: ' + job.execution_count + '</span>';
+        }
+        if (job.max_executions > 0) {
+          html += '<span class="ui grey mini label"><i class="hashtag icon"></i> Max: ' + job.max_executions + '</span>';
+        }
+        if (job.expire_at > 0) {
+          var expireTime = formatTimestamp(job.expire_at);
+          var isExpired = job.expire_at * 1000 < Date.now();
+          html += '<span class="ui ' + (isExpired ? 'red' : 'grey') + ' mini label"><i class="clock icon"></i> Expires: ' + expireTime + '</span>';
+        }
+        html += '</div>';
         html += '<p><strong>Parameters:</strong></p>';
         html += '<div class="params-preview">' + escapeHtml(JSON.stringify(job.request_params, null, 2)) + '</div>';
         if (job.error_message) {
@@ -177,7 +250,7 @@
           html += '<button class="ui blue button" onclick="syncJobStatus(' + job.id + ')"><i class="sync icon"></i> Sync Status</button>';
         }
         if (canExecute) {
-          html += '<button class="ui green button" onclick="executeJob(' + job.id + ')"><i class="play icon"></i> Execute</button>';
+          html += '<button class="ui green button" onclick="openExecuteModal(' + job.id + ')"><i class="play icon"></i> Execute</button>';
         }
         html += '<button class="ui button" onclick="viewJobDetails(' + job.id + ')"><i class="eye icon"></i> Details</button>';
         html += '</div>';
@@ -193,6 +266,8 @@
         case 'pending_approval': return 'yellow';
         case 'approved': return 'green';
         case 'executed': return 'blue';
+        case 'exhausted': return 'teal';
+        case 'expired': return 'orange';
         case 'rejected': return 'red';
         case 'canceled': return 'grey';
         default: return 'grey';
@@ -204,6 +279,8 @@
         case 'pending_approval': return 'Pending Approval';
         case 'approved': return 'Approved';
         case 'executed': return 'Executed';
+        case 'exhausted': return 'Exhausted';
+        case 'expired': return 'Expired';
         case 'rejected': return 'Rejected';
         case 'canceled': return 'Canceled';
         default: return status;
@@ -229,25 +306,156 @@
         });
     }
 
-    function executeJob(jobId) {
-      if (!confirm('Are you sure you want to execute this Jenkins job?')) {
+    // Store current job data for modal
+    var currentModalJobId = null;
+    var currentModalJobData = null;
+
+    function openExecuteModal(jobId) {
+      // Fetch job details first
+      fetch('/amis-jenkins/api/pending/' + jobId, { credentials: 'include' })
+        .then(function (response) { return response.json(); })
+        .then(function (result) {
+          if (result.status !== 0) {
+            alert('Failed to load job details: ' + result.msg);
+            return;
+          }
+          currentModalJobId = jobId;
+          currentModalJobData = result.data;
+          populateExecuteModal(result.data);
+          $('#execute-modal').modal({
+            closable: true,
+            onApprove: function () {
+              executeJobFromModal();
+              return false; // Prevent modal from closing automatically
+            }
+          }).modal('show');
+        })
+        .catch(function (error) {
+          alert('Error loading job: ' + error.message);
+        });
+    }
+
+    function populateExecuteModal(job) {
+      // Job info
+      var infoHtml = '<div class="ui list">';
+      infoHtml += '<div class="item"><strong>Form:</strong> ' + escapeHtml(job.form_title) + '</div>';
+      infoHtml += '<div class="item"><strong>Jenkins Job:</strong> ' + escapeHtml(job.jenkins_job) + '</div>';
+      infoHtml += '<div class="item"><strong>Submitted by:</strong> ' + escapeHtml(job.username) + '</div>';
+      if (job.execution_count > 0) {
+        infoHtml += '<div class="item"><strong>Executed:</strong> ' + job.execution_count + ' time(s)</div>';
+      }
+      if (job.max_executions > 0) {
+        infoHtml += '<div class="item"><strong>Max executions:</strong> ' + job.max_executions + '</div>';
+      }
+      if (job.expire_at > 0) {
+        infoHtml += '<div class="item"><strong>Expires:</strong> ' + formatTimestamp(job.expire_at) + '</div>';
+      }
+      infoHtml += '</div>';
+      $('#modal-job-info').html(infoHtml);
+
+      // Get modifiable fields info
+      var modifiableConfig = job.modifiable_fields_options || {};
+      var modifiableFields = modifiableConfig.fields || [];
+      var fieldOptions = modifiableConfig.options || {};
+
+      // Locked fields (non-modifiable params)
+      var lockedHtml = '';
+      var requestParams = job.request_params || {};
+      for (var key in requestParams) {
+        if (modifiableFields.indexOf(key) === -1) {
+          var value = requestParams[key];
+          if (typeof value === 'object') {
+            value = JSON.stringify(value);
+          }
+          lockedHtml += '<div class="locked-field">';
+          lockedHtml += '<span class="field-name">' + escapeHtml(key) + ':</span> ';
+          lockedHtml += '<span class="field-value">' + escapeHtml(value) + '</span>';
+          lockedHtml += '</div>';
+        }
+      }
+      $('#modal-locked-fields').find('h4').nextAll().remove();
+      $('#modal-locked-fields').append(lockedHtml || '<p>No locked parameters</p>');
+
+      // Modifiable fields
+      if (modifiableFields.length > 0) {
+        var formHtml = '';
+        modifiableFields.forEach(function (fieldName) {
+          var currentValue = requestParams[fieldName] || '';
+          var options = fieldOptions[fieldName] || [];
+
+          formHtml += '<div class="field modifiable-field">';
+          formHtml += '<label>' + escapeHtml(fieldName) + '</label>';
+
+          if (options.length > 0) {
+            // Render as select with options from snapshot
+            formHtml += '<select class="ui dropdown" name="' + escapeHtml(fieldName) + '">';
+            options.forEach(function (opt) {
+              var selected = opt.value === currentValue ? ' selected' : '';
+              formHtml += '<option value="' + escapeHtml(opt.value) + '"' + selected + '>' + escapeHtml(opt.label) + '</option>';
+            });
+            formHtml += '</select>';
+          } else {
+            // Render as text input
+            formHtml += '<input type="text" name="' + escapeHtml(fieldName) + '" value="' + escapeHtml(currentValue) + '">';
+          }
+          formHtml += '</div>';
+        });
+
+        $('#modifiable-fields-form').html(formHtml);
+        $('#modal-modifiable-fields').show();
+        // Initialize dropdowns
+        $('#modifiable-fields-form .ui.dropdown').dropdown();
+      } else {
+        $('#modal-modifiable-fields').hide();
+        $('#modifiable-fields-form').html('');
+      }
+    }
+
+    function executeJobFromModal() {
+      if (!currentModalJobId) {
+        alert('No job selected');
         return;
       }
 
-      fetch('/amis-jenkins/api/pending/' + jobId + '/execute', {
+      // Collect modified field values
+      var modifiedFields = {};
+      var modifiableConfig = currentModalJobData.modifiable_fields_options || {};
+      var modifiableFieldsList = modifiableConfig.fields || [];
+
+      modifiableFieldsList.forEach(function (fieldName) {
+        var input = $('#modifiable-fields-form [name="' + fieldName + '"]');
+        if (input.length > 0) {
+          modifiedFields[fieldName] = input.val();
+        }
+      });
+
+      // Disable execute button
+      $('#modal-execute-btn').addClass('loading disabled');
+
+      var requestBody = {};
+      if (Object.keys(modifiedFields).length > 0) {
+        requestBody.modified_fields = modifiedFields;
+      }
+
+      fetch('/amis-jenkins/api/pending/' + currentModalJobId + '/execute', {
         method: 'POST',
-        credentials: 'include'
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody)
       })
         .then(function (response) { return response.json(); })
         .then(function (result) {
+          $('#modal-execute-btn').removeClass('loading disabled');
           if (result.status === 0) {
-            alert('Jenkins build triggered successfully!');
+            $('#execute-modal').modal('hide');
+            alert('Jenkins build triggered successfully!\nExecution count: ' + result.data.execution_count);
             loadPendingJobs();
           } else {
             alert('Failed to execute: ' + result.msg);
           }
         })
         .catch(function (error) {
+          $('#modal-execute-btn').removeClass('loading disabled');
           alert('Error: ' + error.message);
         });
     }
