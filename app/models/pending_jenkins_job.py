@@ -55,21 +55,6 @@ class PendingJenkinsJob(PendingJenkinsJobBase, table=True):
     updated_at: int = Field(default_factory=lambda: int(time.time()))
 
 
-class PendingJenkinsJobCreate(PendingJenkinsJobBase):
-    """Model for creating pending Jenkins job"""
-
-    pass
-
-
-class PendingJenkinsJobUpdate(SQLModel):
-    """Model for updating pending Jenkins job"""
-
-    status: Optional[str] = None
-    execution_count: Optional[int] = None
-    jenkins_response: Optional[Dict[str, Any]] = None
-    error_message: Optional[str] = None
-
-
 class PendingJenkinsJobRead(PendingJenkinsJobBase):
     """Model for API responses"""
 

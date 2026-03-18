@@ -299,7 +299,7 @@
     // Store current job data and Amis instance for modal
     var currentModalJobId = null;
     var currentModalJobData = null;
-    var amisModifiableInstance = null;
+    var amisFormInstance = null;
     var amisFormData = {};  // Track Amis form data
 
     function openExecuteModal(jobId) {
@@ -322,9 +322,9 @@
             },
             onHidden: function () {
               // Clean up Amis instance when modal closes
-              if (amisModifiableInstance) {
-                amisModifiableInstance.unmount();
-                amisModifiableInstance = null;
+              if (amisFormInstance) {
+                amisFormInstance.unmount();
+                amisFormInstance = null;
               }
               $('#amis-form-container').html('');
             }
@@ -355,14 +355,13 @@
 
       // Get field schema (includes all fields, non-modifiable marked as static)
       var formSchemaConfig = job.execution_form_schema || {};
-      var modifiableFields = formSchemaConfig.fields || [];
       var fieldSchema = formSchemaConfig.schema || [];
       var requestParams = job.request_params || {};
 
       // Clean up previous Amis instance
-      if (amisModifiableInstance) {
-        amisModifiableInstance.unmount();
-        amisModifiableInstance = null;
+      if (amisFormInstance) {
+        amisFormInstance.unmount();
+        amisFormInstance = null;
       }
 
       if (fieldSchema.length > 0) {
@@ -387,7 +386,7 @@
 
         // Render Amis form
         var amis = amisRequire('amis/embed');
-        amisModifiableInstance = amis.embed(
+        amisFormInstance = amis.embed(
           '#amis-form-container',
           amisSchema,
           {
@@ -416,11 +415,11 @@
       // Collect modified field values from Amis
       var modifiedFields = {};
       var formSchemaConfig = currentModalJobData.execution_form_schema || {};
-      var modifiableFieldsList = formSchemaConfig.fields || [];
+      var modifiableFields = formSchemaConfig.fields || [];
 
-      if (modifiableFieldsList.length > 0) {
+      if (modifiableFields.length > 0) {
         // Get current form data from tracked amisFormData
-        modifiableFieldsList.forEach(function (fieldName) {
+        modifiableFields.forEach(function (fieldName) {
           if (amisFormData.hasOwnProperty(fieldName)) {
             modifiedFields[fieldName] = amisFormData[fieldName];
           }

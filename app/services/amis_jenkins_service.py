@@ -4,7 +4,6 @@ from sqlmodel import select
 from app.models.amis_jenkins_reqlog import AmisJenkinsReqLog, AmisJenkinsReqLogCreate
 from app.models.pending_jenkins_job import (
     PendingJenkinsJob,
-    PendingJenkinsJobCreate,
     PendingJenkinsJobRead,
 )
 from app.models.feishu_approval_reqlog import FeishuApprovalReqLog
