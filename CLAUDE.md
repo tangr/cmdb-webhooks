@@ -173,7 +173,7 @@ webhook-proxy/
 - **GitlabHookReqLog**: 存储 GitLab Hook Webhook 请求详细信息（事件类型、项目路径、Jenkins 响应等）
 - **AmisJenkinsReqLog**: 存储 Amis 表单提交到 Jenkins 的请求详细信息（表单 ID、触发类型、用户名、Jenkins 响应等）
 - **FeishuApprovalReqLog**: 存储飞书审批代理请求详细信息（应用名称、审批码、飞书实例码、审批状态、表单数据、飞书响应等）
-- **PendingJenkinsJob**: 存储待执行 Jenkins 任务（表单 ID、Jenkins 任务路径、请求参数、审批日志关联、执行状态等）
+- **PendingJenkinsJob**: 存储待执行 Jenkins 任务（表单 ID、Jenkins 任务路径、请求参数、审批日志关联、执行状态、可修改字段选项快照、执行次数、最大执行次数、过期时间等）
 - **User**: 用户认证和权限管理的用户实体（支持角色基础的访问控制）
 - 所有模型遵循 SQLModel 模式，包含用于创建、更新和读取操作的独立类
 
@@ -452,6 +452,9 @@ webhook-proxy/
     - `feishu_app`: 飞书应用名称（对应 `feishu_approval_config.yaml` 中的配置）
     - `approval_code`: 审批定义码（可选，覆盖应用默认配置）
     - `form_data_template`: 表单数据模板，映射飞书审批控件 ID 到值
+    - `modifiable_fields`: 可修改字段列表（审批后执行时可修改的字段）
+    - `max_executions`: 最大执行次数（0 = 无限制，默认: 0）
+    - `expire_hours`: 审批过期时间（小时，0 = 永不过期，默认: 0）
   - `schema`: Amis 表单 Schema（JSON/YAML 格式）
 
 **Harbor 配置 (`config/harbor_config.yaml`):**
@@ -500,9 +503,34 @@ forms:
         widget-id2: "项目: {project}\n环境: {environment}\n服务: {service}"
         widget-id3: "镜像Tag: {image_tag}\n备注: {comment}"
         widget-id4: "完整参数:\n{request_params_json}"
+      # 多次执行配置（可选）
+      modifiable_fields: ["environment", "comment"]  # 执行时可修改的字段
+      max_executions: 5   # 最多执行 5 次（0 = 无限制）
+      expire_hours: 24    # 24 小时后过期（0 = 永不过期）
     schema:
       # Amis schema...
 ```
+
+**多次执行功能说明:**
+
+当配置了 `modifiable_fields`、`max_executions` 或 `expire_hours` 时，一个审批单可以触发多次 Jenkins 执行：
+
+- **modifiable_fields**: 列表中的字段在执行时可以修改（如切换部署环境）
+  - 字段选项在提交审批时快照保存，不受后续表单配置变更影响
+  - 仅支持 `select`、`checkboxes`、`radios` 类型字段的选项快照
+- **max_executions**: 限制执行次数，达到限制后状态变为 `exhausted`
+- **expire_hours**: 设置审批有效期，过期后状态变为 `expired`
+
+**Pending Job 状态说明:**
+
+| 状态 | 说明 |
+|------|------|
+| `pending_approval` | 等待审批 |
+| `approved` | 已审批，可执行 |
+| `exhausted` | 已达到最大执行次数 |
+| `expired` | 已过期 |
+| `rejected` | 审批被拒绝 |
+| `canceled` | 审批被取消 |
 
 **form_data_template 占位符说明:**
 
