@@ -229,7 +229,8 @@ def _extract_all_form_fields_from_amis(
     found_names = set()
 
     def filter_options_by_selected(options: List[Any], selected_value: Any) -> List[Any]:
-        """Filter options to only include values that were originally selected."""
+        """Filter options to only include values that were originally selected.
+        Also removes visibleOn/hiddenOn conditions since filtering already handles visibility."""
         if not options or selected_value is None:
             return options
 
@@ -241,12 +242,18 @@ def _extract_all_form_fields_from_amis(
         else:
             selected_set = {selected_value}
 
-        # Filter options
+        # Filter options and remove visibility conditions
         filtered = []
         for opt in options:
-            opt_value = opt.get("value") if isinstance(opt, dict) else opt
-            if opt_value in selected_set:
-                filtered.append(opt)
+            if isinstance(opt, dict):
+                opt_value = opt.get("value")
+                if opt_value in selected_set:
+                    # Copy and remove visibility conditions
+                    clean_opt = {k: v for k, v in opt.items() if k not in ("visibleOn", "hiddenOn")}
+                    filtered.append(clean_opt)
+            else:
+                if opt in selected_set:
+                    filtered.append(opt)
 
         return filtered if filtered else options
 
@@ -279,6 +286,9 @@ def _extract_all_form_fields_from_amis(
                     field_def["options"] = filter_options_by_selected(
                         field_def["options"], request_params[node_name]
                     )
+                # Remove visibility conditions (already filtered by approved values)
+                field_def.pop("visibleOn", None)
+                field_def.pop("hiddenOn", None)
 
             found_fields.append(field_def)
             found_names.add(node_name)
