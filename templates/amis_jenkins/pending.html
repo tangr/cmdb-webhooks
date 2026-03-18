@@ -354,9 +354,9 @@
       $('#modal-job-info').html(infoHtml);
 
       // Get field schema (includes all fields, non-modifiable marked as static)
-      var modifiableConfig = job.modifiable_fields_options || {};
-      var modifiableFields = modifiableConfig.fields || [];
-      var fieldSchema = modifiableConfig.schema || [];
+      var formSchemaConfig = job.execution_form_schema || {};
+      var modifiableFields = formSchemaConfig.fields || [];
+      var fieldSchema = formSchemaConfig.schema || [];
       var requestParams = job.request_params || {};
 
       // Clean up previous Amis instance
@@ -415,8 +415,8 @@
 
       // Collect modified field values from Amis
       var modifiedFields = {};
-      var modifiableConfig = currentModalJobData.modifiable_fields_options || {};
-      var modifiableFieldsList = modifiableConfig.fields || [];
+      var formSchemaConfig = currentModalJobData.execution_form_schema || {};
+      var modifiableFieldsList = formSchemaConfig.fields || [];
 
       if (modifiableFieldsList.length > 0) {
         // Get current form data from tracked amisFormData

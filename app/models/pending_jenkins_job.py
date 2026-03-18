@@ -21,11 +21,11 @@ class PendingJenkinsJobBase(SQLModel):
         default="pending_approval",
         description="Job status: pending_approval, approved, expired, exhausted, rejected, canceled",
     )
-    # Multi-execution support fields
-    modifiable_fields_options: Optional[Dict[str, Any]] = Field(
+    # Execution form schema (Amis field definitions with static flags for non-modifiable fields)
+    execution_form_schema: Optional[Dict[str, Any]] = Field(
         sa_column=Column(JSON),
         default=None,
-        description="Snapshot of options for modifiable fields at submission time",
+        description="Amis schema for execution form: {fields: [...], schema: [...]}",
     )
     execution_count: int = Field(
         default=0, description="Number of times this job has been executed"

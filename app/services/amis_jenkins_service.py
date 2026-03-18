@@ -834,9 +834,9 @@ async def _process_form_submit_with_approval(
     if expire_hours > 0:
         expire_at = int(time.time()) + (expire_hours * 3600)
 
-    # Build modifiable_fields_options snapshot
-    # This stores the list of modifiable fields and their complete Amis schema
-    modifiable_fields_options = {
+    # Build execution form schema
+    # Stores modifiable field names and complete Amis schema for all fields
+    execution_form_schema = {
         "fields": modifiable_fields,
         "schema": field_schema,
     }
@@ -864,7 +864,7 @@ async def _process_form_submit_with_approval(
             clientip=client_ip,
             approval_log_id=approval_result["log_id"],
             status="pending_approval",
-            modifiable_fields_options=modifiable_fields_options,
+            execution_form_schema=execution_form_schema,
             execution_count=0,
             max_executions=max_executions,
             expire_at=expire_at,
@@ -1072,9 +1072,9 @@ async def execute_pending_job(
     # Apply modified fields if provided
     if modified_fields:
         # Validate modified fields are allowed
-        modifiable_config = job.modifiable_fields_options or {}
-        allowed_fields = modifiable_config.get("fields", [])
-        field_schema_list = modifiable_config.get("schema", [])
+        form_schema_config = job.execution_form_schema or {}
+        allowed_fields = form_schema_config.get("fields", [])
+        field_schema_list = form_schema_config.get("schema", [])
 
         # Build a lookup dict from field name to its schema
         field_schema_map = {f.get("name"): f for f in field_schema_list if f.get("name")}

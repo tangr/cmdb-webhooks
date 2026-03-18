@@ -107,7 +107,7 @@ CREATE TABLE IF NOT EXISTS `pending_jenkins_jobs` (
   `clientip` varchar(45) NOT NULL,
   `approval_log_id` bigint(20) UNSIGNED NOT NULL COMMENT 'Foreign key to feishu_approval_reqlog.id',
   `status` varchar(50) NOT NULL DEFAULT 'pending_approval' COMMENT 'Job status: pending_approval, approved, expired, exhausted, rejected, canceled',
-  `modifiable_fields_options` JSON DEFAULT NULL COMMENT 'Snapshot of options for modifiable fields at submission time',
+  `execution_form_schema` JSON DEFAULT NULL COMMENT 'Amis schema for execution form: {fields: [...], schema: [...]}',
   `execution_count` int(10) UNSIGNED NOT NULL DEFAULT 0 COMMENT 'Number of times this job has been executed',
   `max_executions` int(10) UNSIGNED NOT NULL DEFAULT 0 COMMENT 'Maximum allowed executions (0 = unlimited)',
   `expire_at` bigint(10) UNSIGNED NOT NULL DEFAULT 0 COMMENT 'Expiration timestamp (0 = never expires)',
@@ -124,10 +124,3 @@ CREATE TABLE IF NOT EXISTS `pending_jenkins_jobs` (
   INDEX `idx_expire_at` (`expire_at`)
 ) ENGINE=InnoDB AUTO_INCREMENT=10000 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Migration: Add new columns to existing pending_jenkins_jobs table
--- ALTER TABLE `pending_jenkins_jobs`
---   ADD COLUMN `modifiable_fields_options` JSON DEFAULT NULL COMMENT 'Snapshot of options for modifiable fields' AFTER `status`,
---   ADD COLUMN `execution_count` int(10) UNSIGNED NOT NULL DEFAULT 0 COMMENT 'Execution count' AFTER `modifiable_fields_options`,
---   ADD COLUMN `max_executions` int(10) UNSIGNED NOT NULL DEFAULT 0 COMMENT 'Max executions (0=unlimited)' AFTER `execution_count`,
---   ADD COLUMN `expire_at` bigint(10) UNSIGNED NOT NULL DEFAULT 0 COMMENT 'Expiration timestamp (0=never)' AFTER `max_executions`,
---   ADD INDEX `idx_expire_at` (`expire_at`);
