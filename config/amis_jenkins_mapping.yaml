@@ -163,9 +163,9 @@ forms:
             label: "Verbose Output"
             value: false
 
-  deploy-test1:
-    title: "Deploy test1"
-    description: "Deploy test1 for development"
+  deploy-test1a:
+    title: "Deploy test1a"
+    description: "Deploy test1a for development"
     jenkins_base_url: "https://jenkins-dev1.exodushk.com"
     # jenkins_base_url: "https://echoserver-test.exodushk.com"
     jenkins_job: "pipelines/pipeline-k8s-image-deploy-noinput"
@@ -189,12 +189,107 @@ forms:
       expire_hours: 0    # 0 = never expires
     schema:
       type: "page"
-      title: "Deploy test1"
+      title: "Deploy test1a"
       body:
         type: "form"
         api:
           method: "post"
-          url: "/amis-jenkins/api/submit/deploy-test1"
+          url: "/amis-jenkins/api/submit/deploy-test1a"
+        body:
+          - type: "select"
+            name: "project"
+            label: "Deploy Project"
+            required: true
+            options:
+              - label: "Exodus"
+                value: "exodus"
+              - label: "AMS"
+                value: "ams"
+              - label: "Wallet"
+                value: "wallet"
+              - label: "Infra"
+                value: "infra"
+          - type: "select"
+            name: "environment"
+            label: "Deploy Environment"
+            required: true
+            options:
+              - label: "aws1"
+                value: "aws1"
+                visibleOn: "data.project == 'exodus' || data.project == 'wallet'"
+              - label: "aws2"
+                value: "aws2"
+                visibleOn: "data.project == 'exodus' || data.project == 'wallet'"
+              - label: "txhk"
+                value: "txhk"
+                visibleOn: "data.project == 'exodus' || data.project == 'wallet'"
+              - label: "txg"
+                value: "txg"
+                visibleOn: "data.project == 'exodus' || data.project == 'wallet'"
+          - type: "select"
+            name: "service"
+            label: "Deploy Service"
+            required: true
+            options:
+              - label: "dev/account-server"
+                value: "dev/account-server"
+                visibleOn: "data.project == 'exodus' || data.project == 'wallet'"
+              - label: "exodus/dev/risk-engine-api"
+                value: "exodus/dev/risk-engine-api"
+                visibleOn: "data.project == 'exodus' || data.project == 'wallet'"
+          - type: "select"
+            name: "image_tag"
+            label: "Image Tag"
+            placeholder: "Optional, e.g., v1.0.0"
+            required: true
+            source:
+              url: "/harbor-artifacts?instance=prod&project=${project}&repo=${service}"
+              sendOn: "data.project && data.service"
+              initFetch: false
+            initFetchOn: "this.project && this.service"
+            resetValue: ""
+            clearable: true
+          - type: "hidden"
+            name: "DRY_RUN"
+            value: "false"
+          - type: "input-text"
+            name: "comment"
+            label: "Comment"
+            required: true
+            placeholder: "e.g., why are you deploying this version?"
+
+  deploy-test1b:
+    title: "Deploy test1b"
+    description: "Deploy test1b for development"
+    jenkins_base_url: "https://jenkins-dev1.exodushk.com"
+    # jenkins_base_url: "https://echoserver-test.exodushk.com"
+    jenkins_job: "pipelines/pipeline-k8s-image-deploy-noinput"
+    trigger_type: "generic_webhook"
+    jenkins_token: "pipeline-k8s-image-deploy-noinput-trigger-token1"
+    # Feishu approval configuration (optional)
+    approval:
+      enabled: true
+      feishu_app: "yax-tmptest1"  # Must match app name in feishu_approval_config.yaml
+      # approval_code: "xxx"  # Optional: override default approval code
+      # form_data_template maps Feishu widget IDs to values
+      # Available placeholders: {form_id}, {form_title}, {jenkins_job}, {username}, {request_params_json}, {field_name}
+      form_data_template:
+        widget-id1: "表单: {form_title}\nJenkins任务: {jenkins_job}\n提交人: {username}"
+        widget-id2: "项目: {project}\n环境: {environment}\n服务: {service}"
+        widget-id3: "镜像Tag: {image_tag}\n备注: {comment}"
+        widget-id4: "完整参数:\n{request_params_json}"
+      # Multi-execution settings
+      modifiable_fields: ["environment", "comment"]  # Fields that can be modified after approval
+      max_executions: 0  # 0 = unlimited
+      expire_hours: 0    # 0 = never expires
+    schema:
+      type: "page"
+      title: "Deploy test1b"
+      body:
+        type: "form"
+        api:
+          method: "post"
+          url: "/amis-jenkins/api/submit/deploy-test1b"
         body:
           - type: "select"
             name: "project"
