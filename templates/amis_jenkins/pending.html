@@ -37,9 +37,14 @@
   }
   #amis-form-container {
     min-height: 100px;
+    position: relative;
   }
   #amis-form-container .cxd-Page {
     padding: 0;
+  }
+  /* Ensure dropdowns appear above modal content */
+  #amis-form-container .cxd-PopOver {
+    z-index: 1060;
   }
 </style>
 
@@ -398,7 +403,11 @@
           },
           {
             theme: 'cxd',
-            locale: 'zh-CN'
+            locale: 'zh-CN',
+            // Fix dropdown positioning in modal - mount popover to the container instead of body
+            getModalContainer: function () {
+              return document.getElementById('amis-form-container');
+            }
           }
         );
       } else {
