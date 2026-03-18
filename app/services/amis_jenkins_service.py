@@ -206,30 +206,55 @@ def get_all_forms() -> List[Dict[str, Any]]:
 def _extract_all_form_fields_from_amis(
     schema: Dict[str, Any],
     modifiable_fields: List[str],
+    request_params: Optional[Dict[str, Any]] = None,
 ) -> List[Dict[str, Any]]:
     """
     Extract all form field definitions from Amis schema.
     Non-modifiable fields are marked as static (readonly display).
+    For modifiable fields, filter options to only include originally selected values.
 
     Args:
         schema: Amis schema dict
         modifiable_fields: List of field names that can be modified
+        request_params: Original form submission values (used to filter options)
 
     Returns:
-        List of Amis field definitions with non-modifiable fields set to static
+        List of Amis field definitions with filtered options
     """
     import copy
 
     modifiable_set = set(modifiable_fields)
+    request_params = request_params or {}
     found_fields = []
     found_names = set()
+
+    def filter_options_by_selected(options: List[Any], selected_value: Any) -> List[Any]:
+        """Filter options to only include values that were originally selected."""
+        if not options or selected_value is None:
+            return options
+
+        # Normalize selected values to a set
+        if isinstance(selected_value, list):
+            selected_set = set(selected_value)
+        elif isinstance(selected_value, str) and "," in selected_value:
+            selected_set = set(v.strip() for v in selected_value.split(","))
+        else:
+            selected_set = {selected_value}
+
+        # Filter options
+        filtered = []
+        for opt in options:
+            opt_value = opt.get("value") if isinstance(opt, dict) else opt
+            if opt_value in selected_set:
+                filtered.append(opt)
+
+        return filtered if filtered else options
 
     def extract_from_node(node: Any) -> None:
         """Recursively search for fields and extract their complete definition."""
         if not isinstance(node, dict):
             return
 
-        # Check if this node has a "name" attribute (is a form field)
         node_name = node.get("name", "")
         node_type = node.get("type", "")
 
@@ -237,23 +262,28 @@ def _extract_all_form_fields_from_amis(
         if node_type == "hidden" or not node_name or node_name.startswith("_"):
             pass
         elif node_name and node_name not in found_names:
-            # Deep copy the entire field definition
             field_def = copy.deepcopy(node)
 
-            # Remove any api/source that fetches dynamic data - use static options only
+            # Remove dynamic data sources
             if "source" in field_def:
                 del field_def["source"]
             if "initFetchOn" in field_def:
                 del field_def["initFetchOn"]
 
-            # If not modifiable, set to static mode (readonly display)
             if node_name not in modifiable_set:
+                # Non-modifiable: readonly display
                 field_def["static"] = True
+            else:
+                # Modifiable: filter options to only approved values
+                if "options" in field_def and node_name in request_params:
+                    field_def["options"] = filter_options_by_selected(
+                        field_def["options"], request_params[node_name]
+                    )
 
             found_fields.append(field_def)
             found_names.add(node_name)
 
-        # Recursively search in all dict/list values
+        # Recursively search
         for key, value in node.items():
             if isinstance(value, dict):
                 extract_from_node(value)
@@ -265,16 +295,21 @@ def _extract_all_form_fields_from_amis(
     return found_fields
 
 
-def get_modifiable_fields_config(form_id: str) -> Dict[str, Any]:
+def get_modifiable_fields_config(
+    form_id: str,
+    request_params: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
     """
     Get modifiable fields configuration for a form.
 
     Args:
         form_id: Form identifier
+        request_params: Original form submission values (used to filter options
+                       for modifiable fields to only include approved values)
 
     Returns:
         Dict with modifiable_fields list and Amis schema for all fields
-        (non-modifiable fields are marked as static)
+        (non-modifiable fields are marked as static, modifiable fields have filtered options)
     """
     approval_config = get_approval_config(form_id)
     if not approval_config:
@@ -286,9 +321,12 @@ def get_modifiable_fields_config(form_id: str) -> Dict[str, Any]:
 
     # Get form schema and extract all field definitions
     # Non-modifiable fields are marked as static (readonly)
+    # Modifiable fields have options filtered to only approved values
     form_config = get_form_config(form_id)
     form_schema = form_config.get("schema", {}) if form_config else {}
-    field_schema = _extract_all_form_fields_from_amis(form_schema, modifiable_fields)
+    field_schema = _extract_all_form_fields_from_amis(
+        form_schema, modifiable_fields, request_params
+    )
 
     return {
         "modifiable_fields": modifiable_fields,
@@ -822,7 +860,8 @@ async def _process_form_submit_with_approval(
         )
 
     # Get multi-execution configuration
-    modifiable_config = get_modifiable_fields_config(form_id)
+    # Pass body to filter options for modifiable fields to only include approved values
+    modifiable_config = get_modifiable_fields_config(form_id, request_params=body)
     modifiable_fields = modifiable_config.get("modifiable_fields", [])
     field_schema = modifiable_config.get("schema", [])
     max_executions = modifiable_config.get("max_executions", 0)
