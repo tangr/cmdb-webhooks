@@ -204,46 +204,41 @@ def get_all_forms() -> List[Dict[str, Any]]:
     return result
 
 
-def _extract_field_options_from_schema(
+def _extract_field_schema_from_amis(
     schema: Dict[str, Any], field_names: List[str]
-) -> Dict[str, List[Dict[str, Any]]]:
+) -> List[Dict[str, Any]]:
     """
-    Extract options for select fields from Amis schema.
+    Extract complete Amis field definitions for specified fields.
 
     Args:
         schema: Amis schema dict
-        field_names: List of field names to extract options for
+        field_names: List of field names to extract
 
     Returns:
-        Dict mapping field name to list of options (each option has 'label' and 'value')
+        List of complete Amis field definitions (preserving order of field_names)
     """
-    result = {}
+    import copy
+
     field_names_set = set(field_names)
+    found_fields = {}
 
     def extract_from_node(node: Any) -> None:
-        """Recursively search for select fields and extract their options."""
+        """Recursively search for fields and extract their complete definition."""
         if not isinstance(node, dict):
             return
 
-        # Check if this is a select-type field we're looking for
-        node_type = node.get("type", "")
+        # Check if this is a field we're looking for
         node_name = node.get("name", "")
 
-        if node_name in field_names_set and node_type in ["select", "checkboxes", "radios"]:
-            options = node.get("options", [])
-            if options:
-                # Extract only visible options (respect visibleOn if needed)
-                extracted_options = []
-                for opt in options:
-                    if isinstance(opt, dict):
-                        extracted_options.append({
-                            "label": opt.get("label", ""),
-                            "value": opt.get("value", ""),
-                        })
-                    else:
-                        # Simple value
-                        extracted_options.append({"label": str(opt), "value": opt})
-                result[node_name] = extracted_options
+        if node_name in field_names_set:
+            # Deep copy the entire field definition
+            field_def = copy.deepcopy(node)
+            # Remove any api/source that fetches dynamic data - use static options only
+            if "source" in field_def:
+                del field_def["source"]
+            if "initFetchOn" in field_def:
+                del field_def["initFetchOn"]
+            found_fields[node_name] = field_def
 
         # Recursively search in all dict/list values
         for key, value in node.items():
@@ -254,7 +249,9 @@ def _extract_field_options_from_schema(
                     extract_from_node(item)
 
     extract_from_node(schema)
-    return result
+
+    # Return in the order specified by field_names
+    return [found_fields[name] for name in field_names if name in found_fields]
 
 
 def get_modifiable_fields_config(form_id: str) -> Dict[str, Any]:
@@ -265,24 +262,24 @@ def get_modifiable_fields_config(form_id: str) -> Dict[str, Any]:
         form_id: Form identifier
 
     Returns:
-        Dict with modifiable_fields list and options snapshot
+        Dict with modifiable_fields list and Amis schema for those fields
     """
     approval_config = get_approval_config(form_id)
     if not approval_config:
-        return {"modifiable_fields": [], "max_executions": 0, "expire_hours": 0}
+        return {"modifiable_fields": [], "schema": [], "max_executions": 0, "expire_hours": 0}
 
     modifiable_fields = approval_config.get("modifiable_fields", [])
     max_executions = approval_config.get("max_executions", 0)
     expire_hours = approval_config.get("expire_hours", 0)
 
-    # Get form schema and extract options for modifiable select fields
+    # Get form schema and extract complete Amis field definitions for modifiable fields
     form_config = get_form_config(form_id)
-    schema = form_config.get("schema", {}) if form_config else {}
-    field_options = _extract_field_options_from_schema(schema, modifiable_fields)
+    form_schema = form_config.get("schema", {}) if form_config else {}
+    field_schema = _extract_field_schema_from_amis(form_schema, modifiable_fields)
 
     return {
         "modifiable_fields": modifiable_fields,
-        "field_options": field_options,
+        "schema": field_schema,
         "max_executions": max_executions,
         "expire_hours": expire_hours,
     }
@@ -814,7 +811,7 @@ async def _process_form_submit_with_approval(
     # Get multi-execution configuration
     modifiable_config = get_modifiable_fields_config(form_id)
     modifiable_fields = modifiable_config.get("modifiable_fields", [])
-    field_options = modifiable_config.get("field_options", {})
+    field_schema = modifiable_config.get("schema", [])
     max_executions = modifiable_config.get("max_executions", 0)
     expire_hours = modifiable_config.get("expire_hours", 0)
 
@@ -824,10 +821,10 @@ async def _process_form_submit_with_approval(
         expire_at = int(time.time()) + (expire_hours * 3600)
 
     # Build modifiable_fields_options snapshot
-    # This stores both the list of modifiable fields and their available options
+    # This stores the list of modifiable fields and their complete Amis schema
     modifiable_fields_options = {
         "fields": modifiable_fields,
-        "options": field_options,
+        "schema": field_schema,
     }
 
     try:
@@ -1063,20 +1060,42 @@ async def execute_pending_job(
         # Validate modified fields are allowed
         modifiable_config = job.modifiable_fields_options or {}
         allowed_fields = modifiable_config.get("fields", [])
-        field_options = modifiable_config.get("options", {})
+        field_schema_list = modifiable_config.get("schema", [])
+
+        # Build a lookup dict from field name to its schema
+        field_schema_map = {f.get("name"): f for f in field_schema_list if f.get("name")}
 
         for field_name, field_value in modified_fields.items():
             if field_name not in allowed_fields:
                 raise ValueError(f"Field '{field_name}' is not modifiable for this job")
 
-            # Validate value is in allowed options (if options exist for this field)
-            if field_name in field_options:
-                allowed_values = [opt.get("value") for opt in field_options[field_name]]
-                if field_value not in allowed_values:
-                    raise ValueError(
-                        f"Invalid value '{field_value}' for field '{field_name}'. "
-                        f"Allowed values: {allowed_values}"
-                    )
+            # Validate value is in allowed options (if field has options)
+            field_def = field_schema_map.get(field_name, {})
+            field_options = field_def.get("options", [])
+
+            if field_options:
+                # Extract allowed values from options
+                allowed_values = []
+                for opt in field_options:
+                    if isinstance(opt, dict):
+                        allowed_values.append(opt.get("value"))
+                    else:
+                        allowed_values.append(opt)
+
+                # Handle multi-select (list of values)
+                if isinstance(field_value, list):
+                    for val in field_value:
+                        if val not in allowed_values:
+                            raise ValueError(
+                                f"Invalid value '{val}' for field '{field_name}'. "
+                                f"Allowed values: {allowed_values}"
+                            )
+                else:
+                    if field_value not in allowed_values:
+                        raise ValueError(
+                            f"Invalid value '{field_value}' for field '{field_name}'. "
+                            f"Allowed values: {allowed_values}"
+                        )
 
             execution_params[field_name] = field_value
 

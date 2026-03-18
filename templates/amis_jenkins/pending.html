@@ -1,5 +1,10 @@
 {% include "base_head.html" %}
 
+<!-- Amis SDK CSS (for modifiable fields modal) -->
+<link rel="stylesheet" href="/static/plugin/amis-6.13.0/sdk.css" />
+<link rel="stylesheet" href="/static/plugin/amis-6.13.0/helper.css" />
+<link rel="stylesheet" href="/static/plugin/amis-6.13.0/iconfont.css" />
+
 <style>
   .job-card {
     margin-bottom: 1em;
@@ -45,6 +50,12 @@
   }
   .modifiable-field {
     margin-bottom: 1em;
+  }
+  #amis-modifiable-container {
+    min-height: 100px;
+  }
+  #amis-modifiable-container .cxd-Page {
+    padding: 0;
   }
 </style>
 
@@ -134,9 +145,9 @@
           <h4 class="ui header">
             <i class="edit icon"></i> Modifiable Parameters
           </h4>
-          <form class="ui form" id="modifiable-fields-form">
-            <!-- Modifiable fields will be populated dynamically -->
-          </form>
+          <div id="amis-modifiable-container">
+            <!-- Amis will render modifiable fields here -->
+          </div>
         </div>
       </div>
       <div class="actions">
@@ -149,6 +160,9 @@
 
     {% include "base_foot.html" %}
   </div>
+
+  <!-- Amis SDK JS -->
+  <script src="/static/plugin/amis-6.13.0/sdk.js"></script>
 
   <script type="text/javascript">
     $(document).ready(function () {
@@ -306,9 +320,11 @@
         });
     }
 
-    // Store current job data for modal
+    // Store current job data and Amis instance for modal
     var currentModalJobId = null;
     var currentModalJobData = null;
+    var amisModifiableInstance = null;
+    var amisFormData = {};  // Track Amis form data
 
     function openExecuteModal(jobId) {
       // Fetch job details first
@@ -327,6 +343,13 @@
             onApprove: function () {
               executeJobFromModal();
               return false; // Prevent modal from closing automatically
+            },
+            onHidden: function () {
+              // Clean up Amis instance when modal closes
+              if (amisModifiableInstance) {
+                amisModifiableInstance.unmount();
+                amisModifiableInstance = null;
+              }
             }
           }).modal('show');
         })
@@ -356,7 +379,7 @@
       // Get modifiable fields info
       var modifiableConfig = job.modifiable_fields_options || {};
       var modifiableFields = modifiableConfig.fields || [];
-      var fieldOptions = modifiableConfig.options || {};
+      var fieldSchema = modifiableConfig.schema || [];
 
       // Locked fields (non-modifiable params)
       var lockedHtml = '';
@@ -376,38 +399,59 @@
       $('#modal-locked-fields').find('h4').nextAll().remove();
       $('#modal-locked-fields').append(lockedHtml || '<p>No locked parameters</p>');
 
-      // Modifiable fields
-      if (modifiableFields.length > 0) {
-        var formHtml = '';
-        modifiableFields.forEach(function (fieldName) {
-          var currentValue = requestParams[fieldName] || '';
-          var options = fieldOptions[fieldName] || [];
+      // Modifiable fields - render with Amis
+      if (fieldSchema.length > 0) {
+        $('#modal-modifiable-fields').show();
+        $('#amis-modifiable-container').html(''); // Clear previous content
 
-          formHtml += '<div class="field modifiable-field">';
-          formHtml += '<label>' + escapeHtml(fieldName) + '</label>';
+        // Clean up previous Amis instance
+        if (amisModifiableInstance) {
+          amisModifiableInstance.unmount();
+          amisModifiableInstance = null;
+        }
 
-          if (options.length > 0) {
-            // Render as select with options from snapshot
-            formHtml += '<select class="ui dropdown" name="' + escapeHtml(fieldName) + '">';
-            options.forEach(function (opt) {
-              var selected = opt.value === currentValue ? ' selected' : '';
-              formHtml += '<option value="' + escapeHtml(opt.value) + '"' + selected + '>' + escapeHtml(opt.label) + '</option>';
-            });
-            formHtml += '</select>';
-          } else {
-            // Render as text input
-            formHtml += '<input type="text" name="' + escapeHtml(fieldName) + '" value="' + escapeHtml(currentValue) + '">';
+        // Build Amis schema for modifiable fields (without submit button)
+        var amisSchema = {
+          type: 'page',
+          body: {
+            type: 'form',
+            name: 'modifiableForm',
+            mode: 'horizontal',
+            wrapWithPanel: false,
+            submitOnChange: false,
+            actions: [],  // Hide default submit button
+            body: fieldSchema
           }
-          formHtml += '</div>';
+        };
+
+        // Prepare initial data from request_params
+        amisFormData = {};
+        modifiableFields.forEach(function (fieldName) {
+          if (requestParams.hasOwnProperty(fieldName)) {
+            amisFormData[fieldName] = requestParams[fieldName];
+          }
         });
 
-        $('#modifiable-fields-form').html(formHtml);
-        $('#modal-modifiable-fields').show();
-        // Initialize dropdowns
-        $('#modifiable-fields-form .ui.dropdown').dropdown();
+        // Render Amis form
+        var amis = amisRequire('amis/embed');
+        amisModifiableInstance = amis.embed(
+          '#amis-modifiable-container',
+          amisSchema,
+          {
+            data: amisFormData,
+            onDataChange: function (data) {
+              // Track form data changes
+              Object.assign(amisFormData, data);
+            }
+          },
+          {
+            theme: 'cxd',
+            locale: 'zh-CN'
+          }
+        );
       } else {
         $('#modal-modifiable-fields').hide();
-        $('#modifiable-fields-form').html('');
+        $('#amis-modifiable-container').html('');
       }
     }
 
@@ -417,17 +461,19 @@
         return;
       }
 
-      // Collect modified field values
+      // Collect modified field values from Amis
       var modifiedFields = {};
       var modifiableConfig = currentModalJobData.modifiable_fields_options || {};
       var modifiableFieldsList = modifiableConfig.fields || [];
 
-      modifiableFieldsList.forEach(function (fieldName) {
-        var input = $('#modifiable-fields-form [name="' + fieldName + '"]');
-        if (input.length > 0) {
-          modifiedFields[fieldName] = input.val();
-        }
-      });
+      if (modifiableFieldsList.length > 0) {
+        // Get current form data from tracked amisFormData
+        modifiableFieldsList.forEach(function (fieldName) {
+          if (amisFormData.hasOwnProperty(fieldName)) {
+            modifiedFields[fieldName] = amisFormData[fieldName];
+          }
+        });
+      }
 
       // Disable execute button
       $('#modal-execute-btn').addClass('loading disabled');
