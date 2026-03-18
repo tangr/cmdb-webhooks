@@ -204,41 +204,55 @@ def get_all_forms() -> List[Dict[str, Any]]:
     return result
 
 
-def _extract_field_schema_from_amis(
-    schema: Dict[str, Any], field_names: List[str]
+def _extract_all_form_fields_from_amis(
+    schema: Dict[str, Any],
+    modifiable_fields: List[str],
 ) -> List[Dict[str, Any]]:
     """
-    Extract complete Amis field definitions for specified fields.
+    Extract all form field definitions from Amis schema.
+    Non-modifiable fields are marked as static (readonly display).
 
     Args:
         schema: Amis schema dict
-        field_names: List of field names to extract
+        modifiable_fields: List of field names that can be modified
 
     Returns:
-        List of complete Amis field definitions (preserving order of field_names)
+        List of Amis field definitions with non-modifiable fields set to static
     """
     import copy
 
-    field_names_set = set(field_names)
-    found_fields = {}
+    modifiable_set = set(modifiable_fields)
+    found_fields = []
+    found_names = set()
 
     def extract_from_node(node: Any) -> None:
         """Recursively search for fields and extract their complete definition."""
         if not isinstance(node, dict):
             return
 
-        # Check if this is a field we're looking for
+        # Check if this node has a "name" attribute (is a form field)
         node_name = node.get("name", "")
+        node_type = node.get("type", "")
 
-        if node_name in field_names_set:
+        # Skip hidden fields and non-form-field types
+        if node_type == "hidden" or not node_name or node_name.startswith("_"):
+            pass
+        elif node_name and node_name not in found_names:
             # Deep copy the entire field definition
             field_def = copy.deepcopy(node)
+
             # Remove any api/source that fetches dynamic data - use static options only
             if "source" in field_def:
                 del field_def["source"]
             if "initFetchOn" in field_def:
                 del field_def["initFetchOn"]
-            found_fields[node_name] = field_def
+
+            # If not modifiable, set to static mode (readonly display)
+            if node_name not in modifiable_set:
+                field_def["static"] = True
+
+            found_fields.append(field_def)
+            found_names.add(node_name)
 
         # Recursively search in all dict/list values
         for key, value in node.items():
@@ -249,9 +263,7 @@ def _extract_field_schema_from_amis(
                     extract_from_node(item)
 
     extract_from_node(schema)
-
-    # Return in the order specified by field_names
-    return [found_fields[name] for name in field_names if name in found_fields]
+    return found_fields
 
 
 def get_modifiable_fields_config(form_id: str) -> Dict[str, Any]:
@@ -262,7 +274,8 @@ def get_modifiable_fields_config(form_id: str) -> Dict[str, Any]:
         form_id: Form identifier
 
     Returns:
-        Dict with modifiable_fields list and Amis schema for those fields
+        Dict with modifiable_fields list and Amis schema for all fields
+        (non-modifiable fields are marked as static)
     """
     approval_config = get_approval_config(form_id)
     if not approval_config:
@@ -272,10 +285,11 @@ def get_modifiable_fields_config(form_id: str) -> Dict[str, Any]:
     max_executions = approval_config.get("max_executions", 0)
     expire_hours = approval_config.get("expire_hours", 0)
 
-    # Get form schema and extract complete Amis field definitions for modifiable fields
+    # Get form schema and extract all field definitions
+    # Non-modifiable fields are marked as static (readonly)
     form_config = get_form_config(form_id)
     form_schema = form_config.get("schema", {}) if form_config else {}
-    field_schema = _extract_field_schema_from_amis(form_schema, modifiable_fields)
+    field_schema = _extract_all_form_fields_from_amis(form_schema, modifiable_fields)
 
     return {
         "modifiable_fields": modifiable_fields,

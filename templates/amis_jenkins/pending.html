@@ -35,26 +35,10 @@
   .execution-info .label {
     margin-right: 0.5em;
   }
-  .locked-field {
-    background: #f0f0f0;
-    padding: 0.5em;
-    border-radius: 4px;
-    margin-bottom: 0.5em;
-  }
-  .locked-field .field-name {
-    font-weight: bold;
-    color: #666;
-  }
-  .locked-field .field-value {
-    font-family: monospace;
-  }
-  .modifiable-field {
-    margin-bottom: 1em;
-  }
-  #amis-modifiable-container {
+  #amis-form-container {
     min-height: 100px;
   }
-  #amis-modifiable-container .cxd-Page {
+  #amis-form-container .cxd-Page {
     padding: 0;
   }
 </style>
@@ -134,20 +118,12 @@
           <!-- Job info will be populated dynamically -->
         </div>
         <div class="ui divider"></div>
-        <div id="modal-locked-fields">
-          <h4 class="ui header">
-            <i class="lock icon"></i> Locked Parameters
-          </h4>
-          <!-- Locked fields will be populated dynamically -->
-        </div>
-        <div id="modal-modifiable-fields" style="display: none;">
-          <div class="ui divider"></div>
-          <h4 class="ui header">
-            <i class="edit icon"></i> Modifiable Parameters
-          </h4>
-          <div id="amis-modifiable-container">
-            <!-- Amis will render modifiable fields here -->
-          </div>
+        <h4 class="ui header">
+          <i class="wpforms icon"></i> Execution Parameters
+          <div class="sub header">Fields marked as static are locked, others can be modified</div>
+        </h4>
+        <div id="amis-form-container">
+          <!-- Amis will render all fields here (static + editable) -->
         </div>
       </div>
       <div class="actions">
@@ -350,6 +326,7 @@
                 amisModifiableInstance.unmount();
                 amisModifiableInstance = null;
               }
+              $('#amis-form-container').html('');
             }
           }).modal('show');
         })
@@ -376,46 +353,27 @@
       infoHtml += '</div>';
       $('#modal-job-info').html(infoHtml);
 
-      // Get modifiable fields info
+      // Get field schema (includes all fields, non-modifiable marked as static)
       var modifiableConfig = job.modifiable_fields_options || {};
       var modifiableFields = modifiableConfig.fields || [];
       var fieldSchema = modifiableConfig.schema || [];
-
-      // Locked fields (non-modifiable params)
-      var lockedHtml = '';
       var requestParams = job.request_params || {};
-      for (var key in requestParams) {
-        if (modifiableFields.indexOf(key) === -1) {
-          var value = requestParams[key];
-          if (typeof value === 'object') {
-            value = JSON.stringify(value);
-          }
-          lockedHtml += '<div class="locked-field">';
-          lockedHtml += '<span class="field-name">' + escapeHtml(key) + ':</span> ';
-          lockedHtml += '<span class="field-value">' + escapeHtml(value) + '</span>';
-          lockedHtml += '</div>';
-        }
+
+      // Clean up previous Amis instance
+      if (amisModifiableInstance) {
+        amisModifiableInstance.unmount();
+        amisModifiableInstance = null;
       }
-      $('#modal-locked-fields').find('h4').nextAll().remove();
-      $('#modal-locked-fields').append(lockedHtml || '<p>No locked parameters</p>');
 
-      // Modifiable fields - render with Amis
       if (fieldSchema.length > 0) {
-        $('#modal-modifiable-fields').show();
-        $('#amis-modifiable-container').html(''); // Clear previous content
+        $('#amis-form-container').html(''); // Clear previous content
 
-        // Clean up previous Amis instance
-        if (amisModifiableInstance) {
-          amisModifiableInstance.unmount();
-          amisModifiableInstance = null;
-        }
-
-        // Build Amis schema for modifiable fields (without submit button)
+        // Build Amis schema (all fields, static + editable)
         var amisSchema = {
           type: 'page',
           body: {
             type: 'form',
-            name: 'modifiableForm',
+            name: 'executeForm',
             mode: 'horizontal',
             wrapWithPanel: false,
             submitOnChange: false,
@@ -424,23 +382,18 @@
           }
         };
 
-        // Prepare initial data from request_params
-        amisFormData = {};
-        modifiableFields.forEach(function (fieldName) {
-          if (requestParams.hasOwnProperty(fieldName)) {
-            amisFormData[fieldName] = requestParams[fieldName];
-          }
-        });
+        // Initialize form data from request_params
+        amisFormData = Object.assign({}, requestParams);
 
         // Render Amis form
         var amis = amisRequire('amis/embed');
         amisModifiableInstance = amis.embed(
-          '#amis-modifiable-container',
+          '#amis-form-container',
           amisSchema,
           {
             data: amisFormData,
             onDataChange: function (data) {
-              // Track form data changes
+              // Track form data changes (only modifiable fields will change)
               Object.assign(amisFormData, data);
             }
           },
@@ -450,8 +403,7 @@
           }
         );
       } else {
-        $('#modal-modifiable-fields').hide();
-        $('#amis-modifiable-container').html('');
+        $('#amis-form-container').html('<p>No parameters to display</p>');
       }
     }
 
