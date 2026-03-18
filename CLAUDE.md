@@ -173,7 +173,7 @@ webhook-proxy/
 - **GitlabHookReqLog**: 存储 GitLab Hook Webhook 请求详细信息（事件类型、项目路径、Jenkins 响应等）
 - **AmisJenkinsReqLog**: 存储 Amis 表单提交到 Jenkins 的请求详细信息（表单 ID、触发类型、用户名、Jenkins 响应等）
 - **FeishuApprovalReqLog**: 存储飞书审批代理请求详细信息（应用名称、审批码、飞书实例码、审批状态、表单数据、飞书响应等）
-- **PendingJenkinsJob**: 存储待执行 Jenkins 任务（表单 ID、Jenkins 任务路径、请求参数、审批日志关联、执行状态、可修改字段选项快照、执行次数、最大执行次数、过期时间等）
+- **PendingJenkinsJob**: 存储待执行 Jenkins 任务（表单 ID、Jenkins 任务路径、请求参数、审批日志关联、执行状态、执行表单 Schema、执行次数、最大执行次数、过期时间等）
 - **User**: 用户认证和权限管理的用户实体（支持角色基础的访问控制）
 - 所有模型遵循 SQLModel 模式，包含用于创建、更新和读取操作的独立类
 
@@ -516,8 +516,9 @@ forms:
 当配置了 `modifiable_fields`、`max_executions` 或 `expire_hours` 时，一个审批单可以触发多次 Jenkins 执行：
 
 - **modifiable_fields**: 列表中的字段在执行时可以修改（如切换部署环境）
-  - 字段选项在提交审批时快照保存，不受后续表单配置变更影响
-  - 仅支持 `select`、`checkboxes`、`radios` 类型字段的选项快照
+  - 提交审批时，完整的 Amis 表单 Schema 会被快照保存到 `execution_form_schema`
+  - 执行时使用 Amis 渲染表单：可修改字段可编辑，其他字段显示为静态（readonly）
+  - 支持所有 Amis 字段类型，保留原始表单的 UI 和逻辑
 - **max_executions**: 限制执行次数，达到限制后状态变为 `exhausted`
 - **expire_hours**: 设置审批有效期，过期后状态变为 `expired`
 
