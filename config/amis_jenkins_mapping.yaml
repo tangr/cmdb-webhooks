@@ -279,7 +279,7 @@ forms:
         widget-id3: "镜像Tag: {image_tag}\n备注: {comment}"
         widget-id4: "完整参数:\n{request_params_json}"
       # Multi-execution settings
-      modifiable_fields: ["environment", "comment"]  # Fields that can be modified after approval
+      modifiable_fields: ["environment"]  # Fields that can be modified after approval
       max_executions: 0  # 0 = unlimited
       expire_hours: 0    # 0 = never expires
     schema:
