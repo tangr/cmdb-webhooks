@@ -141,12 +141,20 @@
       // Initialize tabs
       $(".menu .item").tab({
         onVisible: function (tabPath) {
+          // Update URL hash when tab changes
+          history.replaceState(null, "", "#" + tabPath);
           if (tabPath === "history" && !historyLoaded) {
             historySkip = 0;
             loadHistory();
           }
         }
       });
+
+      // Restore tab from URL hash on page load
+      var hash = window.location.hash.replace("#", "");
+      if (hash === "history" || hash === "submit") {
+        $(".menu .item").tab("change tab", hash);
+      }
     });
 
     function logout() {
