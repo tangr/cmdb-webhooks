@@ -3,7 +3,7 @@ from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
 from sqlmodel import select
 from pydantic import BaseModel
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any
 from app.models.amis_jenkins_reqlog import AmisJenkinsReqLog
 from app.models.pending_jenkins_job import PendingJenkinsJob
 from app.dependencies import (
@@ -20,6 +20,7 @@ from app.services.amis_jenkins_service import (
     get_pending_jobs,
     sync_pending_job_status,
     execute_pending_job,
+    get_form_history,
 )
 from app.utils.template_filters import time_to_str, time_diff_now
 import json
@@ -153,82 +154,8 @@ def api_get_form_history(
     Returns a unified list with a 'source' field ('log' or 'pending') to distinguish record types.
     """
     limit = min(limit, 100)
-
-    # Query reqlog entries for this form_id
-    log_stmt = (
-        select(AmisJenkinsReqLog)
-        .where(AmisJenkinsReqLog.form_id == form_id)
-        .order_by(AmisJenkinsReqLog.created_at.desc())
-    )
-    logs = session.exec(log_stmt).all()
-
-    # Query pending jobs for this form_id (exclude those that already have reqlog entries)
-    pending_stmt = (
-        select(PendingJenkinsJob)
-        .where(PendingJenkinsJob.form_id == form_id)
-        .order_by(PendingJenkinsJob.created_at.desc())
-    )
-    pending_jobs = session.exec(pending_stmt).all()
-
-    # Merge into unified list
-    merged: List[Dict[str, Any]] = []
-
-    for log in logs:
-        merged.append(
-            {
-                "source": "log",
-                "id": log.id,
-                "username": log.username,
-                "trigger_type": log.trigger_type,
-                "status": log.status,
-                "status_label": str(log.status),
-                "request_params": log.request_params,
-                "jenkins_response": log.jenkins_response,
-                "error_message": log.error_message,
-                "created_at": log.created_at,
-            }
-        )
-
-    for job in pending_jobs:
-        merged.append(
-            {
-                "source": "pending",
-                "id": job.id,
-                "username": job.username,
-                "trigger_type": job.trigger_type,
-                "status": job.status,
-                "status_label": job.status,
-                "request_params": job.request_params,
-                "jenkins_response": job.jenkins_response,
-                "error_message": job.error_message,
-                "created_at": job.created_at,
-                "execution_count": job.execution_count,
-                "max_executions": job.max_executions,
-                "expire_at": job.expire_at,
-            }
-        )
-
-    # Sort merged list by created_at desc
-    merged.sort(key=lambda x: x["created_at"], reverse=True)
-
-    # Paginate
-    total = len(merged)
-    has_prev = skip > 0
-    has_next = (skip + limit) < total
-    page_data = merged[skip : skip + limit]
-
-    return {
-        "status": 0,
-        "msg": "success",
-        "data": page_data,
-        "pagination": {
-            "total": total,
-            "skip": skip,
-            "limit": limit,
-            "has_prev": has_prev,
-            "has_next": has_next,
-        },
-    }
+    result = get_form_history(session=session, form_id=form_id, skip=skip, limit=limit)
+    return {"status": 0, "msg": "success", **result}
 
 
 # ==================== Log Endpoints ====================
