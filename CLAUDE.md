@@ -222,6 +222,7 @@ webhook-proxy/
     - 自动创建飞书审批并保存待执行任务
     - 支持审批状态同步和审批后手动执行
   - 用户飞书 ID 映射：通过 `user_feishu_mapping` 配置，未配置时默认使用登录用户名
+  - **合并历史查询**：`get_form_history` 合并 AmisJenkinsReqLog 和 PendingJenkinsJob 按时间倒序展示
 
 - **HarborArtifactsService** (`app/services/harbor_artifacts_service.py`):
   - 代理 Harbor Registry API 获取镜像 Artifacts 列表
@@ -291,13 +292,18 @@ webhook-proxy/
 **Amis Jenkins 表单模块 (`/amis-jenkins/*`)**
 
 - `GET /amis-jenkins/forms` - 表单列表页面（HTML，需要认证）
-- `GET /amis-jenkins/forms/{form_id}` - Amis 表单渲染页面（HTML，需要认证）
+- `GET /amis-jenkins/forms/{form_id}` - Amis 表单页面（HTML，需要认证，Tab 切换：Submit 提交表单 / History 提交历史）
 - `GET /amis-jenkins/api/forms` - 获取所有表单列表（API，需要认证）
 - `GET /amis-jenkins/api/schema/{form_id}` - 获取表单 Amis Schema（API，需要认证）
 - `POST /amis-jenkins/api/submit/{form_id}` - 提交表单到 Jenkins（API，需要认证）
   - 若启用审批：创建飞书审批 + 待执行任务记录
   - 若未启用审批：直接触发 Jenkins 构建
+- `GET /amis-jenkins/api/history/{form_id}` - 获取表单合并历史记录（API，需要认证）
+  - 合并 AmisJenkinsReqLog（已执行日志）和 PendingJenkinsJob（审批任务），按时间倒序
+  - Query 参数：`skip`、`limit`
+  - 返回统一格式，`source` 字段区分来源（`log` 或 `pending`）
 - `GET /amis-jenkins/logs` - 获取 Amis Jenkins 日志列表（需要认证）
+  - Query 参数：`form_id`（可选，按表单过滤）、`skip`、`limit`
 - `GET /amis-jenkins/logs/{log_id}` - 获取特定 Amis Jenkins 日志（需要认证）
 - `GET /amis-jenkins/pending` - 待执行任务页面（HTML，需要认证）
 - `GET /amis-jenkins/api/pending` - 获取待执行任务列表（API，需要认证）
