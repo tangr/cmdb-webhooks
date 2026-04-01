@@ -279,7 +279,6 @@
       html += '<th>User</th>';
       html += '<th>Trigger Type</th>';
       html += '<th>Status</th>';
-      html += '<th>Error</th>';
       html += '<th>Time</th>';
       html += '<th>Action</th>';
       html += "</tr></thead><tbody>";
@@ -294,13 +293,15 @@
         html += '<td><span class="ui tiny ' + (log.trigger_type === "generic_webhook" ? "teal" : "blue") + ' label">'
           + escapeHtml(log.trigger_type) + '</span></td>';
         html += '<td><span class="ui tiny ' + statusColor + ' label">' + log.status + '</span></td>';
-        html += '<td>' + (hasError ? '<span class="ui tiny red text">' + escapeHtml(truncate(log.error_message, 40)) + '</span>' : '-') + '</td>';
         html += '<td data-tooltip="' + escapeHtml(timeStr) + '">' + escapeHtml(timeStr) + '</td>';
         html += '<td><a href="javascript:void(0)" onclick="toggleDetail(' + log.id + ', this)"><i class="eye icon"></i>Detail</a></td>';
         html += '</tr>';
         // Hidden detail row
         html += '<tr class="detail-row" id="detail-row-' + log.id + '" style="display: none;">';
-        html += '<td colspan="6">';
+        html += '<td colspan="5">';
+        if (hasError) {
+          html += '<div class="ui red message" style="margin-bottom: 1em;"><i class="exclamation triangle icon"></i><strong>Error:</strong> ' + escapeHtml(log.error_message) + '</div>';
+        }
         html += '<div class="ui two column grid">';
         html += '<div class="column"><strong>Request Params:</strong>';
         html += '<div class="detail-content">' + escapeHtml(JSON.stringify(log.request_params, null, 2)) + '</div></div>';
