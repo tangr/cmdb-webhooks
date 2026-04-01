@@ -241,8 +241,8 @@
       }
 
       var formId = document.getElementById("form-config").dataset.formId;
-      var url = "/amis-jenkins/logs?form_id=" + encodeURIComponent(formId)
-        + "&skip=" + historySkip + "&limit=" + historyLimit;
+      var url = "/amis-jenkins/api/history/" + encodeURIComponent(formId)
+        + "?skip=" + historySkip + "&limit=" + historyLimit;
 
       $("#history-container").html('<div class="ui active centered inline loader" style="margin: 2em 0;"></div>');
 
@@ -250,12 +250,12 @@
         .then(function (response) { return response.json(); })
         .then(function (result) {
           historyLoaded = true;
-          var logs = result.data || [];
+          var items = result.data || [];
           var pagination = result.pagination || {};
           historyHasNext = pagination.has_next || false;
           historyHasPrev = pagination.has_prev || false;
 
-          renderHistory(logs);
+          renderHistory(items);
           updatePagination();
         })
         .catch(function (error) {
@@ -265,8 +265,35 @@
         });
     }
 
-    function renderHistory(logs) {
-      if (!logs || logs.length === 0) {
+    function getStatusBadge(item) {
+      if (item.source === "log") {
+        // Jenkins execution log - show HTTP status code
+        var color = item.status >= 200 && item.status < 300 ? "green" : "red";
+        return '<span class="ui tiny ' + color + ' label">' + item.status + '</span>';
+      }
+      // Pending job - show approval/execution status
+      var map = {
+        "pending_approval": { color: "yellow", text: "Pending Approval" },
+        "approved": { color: "green", text: "Approved" },
+        "exhausted": { color: "teal", text: "Exhausted" },
+        "expired": { color: "orange", text: "Expired" },
+        "rejected": { color: "red", text: "Rejected" },
+        "canceled": { color: "grey", text: "Canceled" }
+      };
+      var info = map[item.status] || { color: "grey", text: item.status };
+      return '<span class="ui tiny ' + info.color + ' label">' + info.text + '</span>';
+    }
+
+    function getTypeBadge(item) {
+      if (item.source === "pending") {
+        return '<span class="ui tiny orange label">Approval</span>';
+      }
+      var color = item.trigger_type === "generic_webhook" ? "teal" : "blue";
+      return '<span class="ui tiny ' + color + ' label">' + escapeHtml(item.trigger_type) + '</span>';
+    }
+
+    function renderHistory(items) {
+      if (!items || items.length === 0) {
         $("#history-container").html(
           '<div class="ui placeholder segment"><div class="ui icon header">' +
           '<i class="inbox icon"></i>No submission records</div></div>'
@@ -277,36 +304,48 @@
       var html = '<table class="ui selectable compact table">';
       html += "<thead><tr>";
       html += '<th>User</th>';
-      html += '<th>Trigger Type</th>';
+      html += '<th>Type</th>';
       html += '<th>Status</th>';
       html += '<th>Time</th>';
       html += '<th>Action</th>';
       html += "</tr></thead><tbody>";
 
-      logs.forEach(function (log) {
-        var statusColor = log.status >= 200 && log.status < 300 ? "green" : "red";
-        var timeStr = formatTimestamp(log.created_at);
-        var hasError = log.error_message ? true : false;
+      items.forEach(function (item) {
+        var timeStr = formatTimestamp(item.created_at);
+        var hasError = item.error_message ? true : false;
+        var rowId = item.source + "-" + item.id;
 
         html += '<tr>';
-        html += '<td>' + escapeHtml(log.username) + '</td>';
-        html += '<td><span class="ui tiny ' + (log.trigger_type === "generic_webhook" ? "teal" : "blue") + ' label">'
-          + escapeHtml(log.trigger_type) + '</span></td>';
-        html += '<td><span class="ui tiny ' + statusColor + ' label">' + log.status + '</span></td>';
+        html += '<td>' + escapeHtml(item.username) + '</td>';
+        html += '<td>' + getTypeBadge(item) + '</td>';
+        html += '<td>' + getStatusBadge(item) + '</td>';
         html += '<td data-tooltip="' + escapeHtml(timeStr) + '">' + escapeHtml(timeStr) + '</td>';
-        html += '<td><a href="javascript:void(0)" onclick="toggleDetail(' + log.id + ', this)"><i class="eye icon"></i>Detail</a></td>';
+        html += '<td><a href="javascript:void(0)" onclick="toggleDetail(\'' + rowId + '\')"><i class="eye icon"></i>Detail</a></td>';
         html += '</tr>';
         // Hidden detail row
-        html += '<tr class="detail-row" id="detail-row-' + log.id + '" style="display: none;">';
+        html += '<tr class="detail-row" id="detail-row-' + rowId + '" style="display: none;">';
         html += '<td colspan="5">';
         if (hasError) {
-          html += '<div class="ui red message" style="margin-bottom: 1em;"><i class="exclamation triangle icon"></i><strong>Error:</strong> ' + escapeHtml(log.error_message) + '</div>';
+          html += '<div class="ui red message" style="margin-bottom: 1em;"><i class="exclamation triangle icon"></i><strong>Error:</strong> ' + escapeHtml(item.error_message) + '</div>';
+        }
+        if (item.source === "pending" && item.execution_count !== undefined) {
+          html += '<div style="margin-bottom: 0.5em;">';
+          html += '<span class="ui blue mini label"><i class="redo icon"></i> Executed: ' + item.execution_count + '</span>';
+          if (item.max_executions > 0) {
+            html += ' <span class="ui grey mini label"><i class="hashtag icon"></i> Max: ' + item.max_executions + '</span>';
+          }
+          if (item.expire_at > 0) {
+            var isExpired = item.expire_at * 1000 < Date.now();
+            html += ' <span class="ui ' + (isExpired ? 'red' : 'grey') + ' mini label"><i class="clock icon"></i> Expires: ' + formatTimestamp(item.expire_at) + '</span>';
+          }
+          html += '</div>';
         }
         html += '<div class="ui two column grid">';
         html += '<div class="column"><strong>Request Params:</strong>';
-        html += '<div class="detail-content">' + escapeHtml(JSON.stringify(log.request_params, null, 2)) + '</div></div>';
+        html += '<div class="detail-content">' + escapeHtml(JSON.stringify(item.request_params, null, 2)) + '</div></div>';
         html += '<div class="column"><strong>Jenkins Response:</strong>';
-        html += '<div class="detail-content">' + escapeHtml(JSON.stringify(log.jenkins_response, null, 2)) + '</div></div>';
+        var responseText = item.jenkins_response ? JSON.stringify(item.jenkins_response, null, 2) : 'N/A';
+        html += '<div class="detail-content">' + escapeHtml(responseText) + '</div></div>';
         html += '</div></td></tr>';
       });
 
@@ -314,8 +353,8 @@
       $("#history-container").html(html);
     }
 
-    function toggleDetail(logId, el) {
-      var row = $("#detail-row-" + logId);
+    function toggleDetail(rowId) {
+      var row = $("#detail-row-" + rowId);
       if (row.is(":visible")) {
         row.hide();
       } else {
