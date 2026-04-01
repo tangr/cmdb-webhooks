@@ -22,6 +22,37 @@
     height: 200px;
     color: #666;
   }
+
+  .params-cell {
+    max-width: 400px;
+    word-break: break-all;
+  }
+
+  .params-preview {
+    max-height: 80px;
+    overflow-y: auto;
+    font-family: monospace;
+    font-size: 0.85em;
+    background: #f8f8f8;
+    padding: 0.5em;
+    border-radius: 4px;
+    white-space: pre-wrap;
+  }
+
+  .detail-row td {
+    background: #f9fafb !important;
+  }
+
+  .detail-content {
+    max-height: 300px;
+    overflow-y: auto;
+    font-family: monospace;
+    font-size: 0.85em;
+    background: #f8f8f8;
+    padding: 0.8em;
+    border-radius: 4px;
+    white-space: pre-wrap;
+  }
 </style>
 
 <body>
@@ -50,10 +81,39 @@
         </h3>
       </div>
 
-      <!-- Amis Form Container -->
-      <div class="ui segment">
+      <!-- Tab Menu -->
+      <div class="ui top attached tabular menu">
+        <a class="item active" data-tab="submit"><i class="play icon"></i> Submit</a>
+        <a class="item" data-tab="history"><i class="history icon"></i> History</a>
+      </div>
+
+      <!-- Submit Tab -->
+      <div class="ui bottom attached tab segment active" data-tab="submit">
         <div id="amis-root">
           <div class="loading-container">Loading form...</div>
+        </div>
+      </div>
+
+      <!-- History Tab -->
+      <div class="ui bottom attached tab segment" data-tab="history">
+        <div id="history-container">
+          <div class="loading-container">Select this tab to load history...</div>
+        </div>
+        <!-- Pagination -->
+        <div id="history-pagination" class="ui centered grid" style="display: none;">
+          <div class="row">
+            <div class="center aligned column">
+              <div class="ui pagination menu">
+                <a class="icon item" id="history-prev" onclick="loadHistory('prev')">
+                  <i class="angle left icon"></i>
+                </a>
+                <div class="active item" id="history-page-info">1</div>
+                <a class="icon item" id="history-next" onclick="loadHistory('next')">
+                  <i class="angle right icon"></i>
+                </a>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -69,8 +129,24 @@
   <script src="/static/plugin/amis-6.13.0/sdk.js"></script>
 
   <script type="text/javascript">
+    var historySkip = 0;
+    var historyLimit = 20;
+    var historyHasNext = false;
+    var historyHasPrev = false;
+    var historyLoaded = false;
+
     $(document).ready(function () {
       $(".ui.dropdown").dropdown();
+
+      // Initialize tabs
+      $(".menu .item").tab({
+        onVisible: function (tabPath) {
+          if (tabPath === "history" && !historyLoaded) {
+            historySkip = 0;
+            loadHistory();
+          }
+        }
+      });
     });
 
     function logout() {
@@ -83,7 +159,7 @@
         });
     }
 
-    // Initialize Amis form
+    // ==================== Amis Form ====================
     (function () {
       var formId = document.getElementById("form-config").dataset.formId;
       var amis = amisRequire("amis/embed");
@@ -155,6 +231,134 @@
             '<div class="loading-container">Failed to load form: ' + error.message + "</div>";
         });
     })();
+
+    // ==================== History Tab ====================
+    function loadHistory(direction) {
+      if (direction === "next") {
+        historySkip += historyLimit;
+      } else if (direction === "prev") {
+        historySkip = Math.max(0, historySkip - historyLimit);
+      }
+
+      var formId = document.getElementById("form-config").dataset.formId;
+      var url = "/amis-jenkins/logs?form_id=" + encodeURIComponent(formId)
+        + "&skip=" + historySkip + "&limit=" + historyLimit;
+
+      $("#history-container").html('<div class="ui active centered inline loader" style="margin: 2em 0;"></div>');
+
+      fetch(url, { credentials: "include" })
+        .then(function (response) { return response.json(); })
+        .then(function (result) {
+          historyLoaded = true;
+          var logs = result.data || [];
+          var pagination = result.pagination || {};
+          historyHasNext = pagination.has_next || false;
+          historyHasPrev = pagination.has_prev || false;
+
+          renderHistory(logs);
+          updatePagination();
+        })
+        .catch(function (error) {
+          $("#history-container").html(
+            '<div class="ui error message">Failed to load history: ' + escapeHtml(error.message) + "</div>"
+          );
+        });
+    }
+
+    function renderHistory(logs) {
+      if (!logs || logs.length === 0) {
+        $("#history-container").html(
+          '<div class="ui placeholder segment"><div class="ui icon header">' +
+          '<i class="inbox icon"></i>No submission records</div></div>'
+        );
+        return;
+      }
+
+      var html = '<table class="ui selectable compact table">';
+      html += "<thead><tr>";
+      html += '<th>User</th>';
+      html += '<th>Trigger Type</th>';
+      html += '<th>Status</th>';
+      html += '<th>Error</th>';
+      html += '<th>Time</th>';
+      html += '<th>Action</th>';
+      html += "</tr></thead><tbody>";
+
+      logs.forEach(function (log) {
+        var statusColor = log.status >= 200 && log.status < 300 ? "green" : "red";
+        var timeStr = formatTimestamp(log.created_at);
+        var hasError = log.error_message ? true : false;
+
+        html += '<tr>';
+        html += '<td>' + escapeHtml(log.username) + '</td>';
+        html += '<td><span class="ui tiny ' + (log.trigger_type === "generic_webhook" ? "teal" : "blue") + ' label">'
+          + escapeHtml(log.trigger_type) + '</span></td>';
+        html += '<td><span class="ui tiny ' + statusColor + ' label">' + log.status + '</span></td>';
+        html += '<td>' + (hasError ? '<span class="ui tiny red text">' + escapeHtml(truncate(log.error_message, 40)) + '</span>' : '-') + '</td>';
+        html += '<td data-tooltip="' + escapeHtml(timeStr) + '">' + escapeHtml(timeStr) + '</td>';
+        html += '<td><a href="javascript:void(0)" onclick="toggleDetail(' + log.id + ', this)"><i class="eye icon"></i>Detail</a></td>';
+        html += '</tr>';
+        // Hidden detail row
+        html += '<tr class="detail-row" id="detail-row-' + log.id + '" style="display: none;">';
+        html += '<td colspan="6">';
+        html += '<div class="ui two column grid">';
+        html += '<div class="column"><strong>Request Params:</strong>';
+        html += '<div class="detail-content">' + escapeHtml(JSON.stringify(log.request_params, null, 2)) + '</div></div>';
+        html += '<div class="column"><strong>Jenkins Response:</strong>';
+        html += '<div class="detail-content">' + escapeHtml(JSON.stringify(log.jenkins_response, null, 2)) + '</div></div>';
+        html += '</div></td></tr>';
+      });
+
+      html += "</tbody></table>";
+      $("#history-container").html(html);
+    }
+
+    function toggleDetail(logId, el) {
+      var row = $("#detail-row-" + logId);
+      if (row.is(":visible")) {
+        row.hide();
+      } else {
+        row.show();
+      }
+    }
+
+    function updatePagination() {
+      if (!historyHasNext && !historyHasPrev) {
+        $("#history-pagination").hide();
+        return;
+      }
+      $("#history-pagination").show();
+      var page = Math.floor(historySkip / historyLimit) + 1;
+      $("#history-page-info").text(page);
+      if (historyHasPrev) {
+        $("#history-prev").removeClass("disabled");
+      } else {
+        $("#history-prev").addClass("disabled");
+      }
+      if (historyHasNext) {
+        $("#history-next").removeClass("disabled");
+      } else {
+        $("#history-next").addClass("disabled");
+      }
+    }
+
+    function formatTimestamp(ts) {
+      if (!ts) return "N/A";
+      var date = new Date(ts * 1000);
+      return date.toLocaleString();
+    }
+
+    function escapeHtml(text) {
+      if (text === null || text === undefined) return "";
+      var div = document.createElement("div");
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    function truncate(str, len) {
+      if (!str) return "";
+      return str.length > len ? str.substring(0, len) + "..." : str;
+    }
   </script>
 
 </body>

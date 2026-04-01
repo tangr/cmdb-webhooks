@@ -145,6 +145,7 @@ def get_amis_jenkins_logs(
     request: Request,
     session: SessionDep,
     current_user: User = Depends(get_current_user_any_required),
+    form_id: Optional[str] = None,
     skip: int = 0,
     limit: int = 10,
 ):
@@ -152,9 +153,11 @@ def get_amis_jenkins_logs(
     limit = min(limit, 1000)  # Protect limit for max records in one page
 
     # Get logs with pagination (fetch limit+1 to check if there are more records)
+    statement = select(AmisJenkinsReqLog)
+    if form_id:
+        statement = statement.where(AmisJenkinsReqLog.form_id == form_id)
     statement = (
-        select(AmisJenkinsReqLog)
-        .offset(skip)
+        statement.offset(skip)
         .limit(limit + 1)
         .order_by(AmisJenkinsReqLog.updated_at.desc())
     )
