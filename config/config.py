@@ -85,7 +85,7 @@ class Settings(BaseSettings):
             # "user@example.com",
         ],
         "jenkins-form-role1": [
-            # "tangshoubin",
+            "tangshoubin",
         ],
         # Custom roles for form-level access control in amis-jenkins
         # Example: "deploy-prod": ["alice", "bob"]
