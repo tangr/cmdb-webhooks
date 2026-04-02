@@ -85,7 +85,11 @@ def can_execute_pending_job(
     if "admin" in user.roles:
         return True
 
-    # Submitter can always execute their own job
+    # Must have form view permission first
+    if not can_view_form(user, form_id):
+        return False
+
+    # Submitter can execute their own job
     if user.username == job_username:
         return True
 

@@ -1023,16 +1023,10 @@ def get_pending_jobs(
                 can_execute_pending_job,
             )
 
-            # Non-admin users: only see jobs they submitted (for forms they can view)
-            # or jobs they can execute
+            # Non-admin users: must have form view permission first,
+            # then can see own jobs or jobs they can execute
             if "admin" not in current_user.roles:
-                is_own_job = current_user.username == job.username and can_view_form(
-                    current_user, job.form_id
-                )
-                can_execute = can_execute_pending_job(
-                    current_user, job.username, job.form_id
-                )
-                if not is_own_job and not can_execute:
+                if not can_view_form(current_user, job.form_id):
                     continue
 
             job_dict["can_execute"] = can_execute_pending_job(

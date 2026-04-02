@@ -16,7 +16,7 @@ MOCK_FORMS = {
         "jenkins_job": "test/job1",
         "permissions": {
             "allowed_roles": ["deploy-prod", "deploy-staging"],
-            "allowed_users": ["special-user"],
+            "allowed_users": ["special-user", "ops-user"],
             "execute_roles": ["deploy-prod"],
             "execute_users": ["ops-user"],
         },
@@ -160,13 +160,22 @@ class TestCanExecutePendingJob:
         )
 
     def test_submitter_can_execute_own_job(self):
-        """Job submitter can always execute their own pending job."""
+        """Job submitter can execute their own job if they have form view permission."""
+        # deploy_prod_user has form access via allowed_roles
         assert (
-            can_execute_pending_job(regular_user, "regular", "form-with-roles") is True
+            can_execute_pending_job(deploy_prod_user, "deployer", "form-with-roles")
+            is True
         )
+        # regular_user does NOT have form access, so cannot execute even own job
+        assert (
+            can_execute_pending_job(regular_user, "regular", "form-with-roles") is False
+        )
+
+    def test_submitter_without_form_access_denied(self):
+        """Submitter cannot execute own job if they lost form view permission."""
         assert (
             can_execute_pending_job(regular_user, "regular", "form-no-permissions")
-            is True
+            is False
         )
 
     def test_execute_roles_grants_execution(self):
@@ -212,19 +221,27 @@ class TestCanExecutePendingJob:
 
     def test_form_without_execute_config(self):
         """Form with permissions but no execute_roles/execute_users."""
-        # form-roles-only has no execute_roles/execute_users
+        # form-roles-only has allowed_roles: ["deploy-prod"] but no execute_roles
+        # deploy_prod_user has form access, but no execute role for others' jobs
         assert (
             can_execute_pending_job(
                 deploy_prod_user, "other-user", "form-roles-only"
             )
             is False
         )
-        # But submitter still can
+        # Submitter with form access can execute own job
         assert (
             can_execute_pending_job(
                 deploy_prod_user, "deployer", "form-roles-only"
             )
             is True
+        )
+        # User without form access cannot execute even as submitter
+        assert (
+            can_execute_pending_job(
+                regular_user, "regular", "form-roles-only"
+            )
+            is False
         )
 
 
