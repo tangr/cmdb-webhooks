@@ -61,6 +61,7 @@ var AmisJenkins = (function () {
               _amisFormInstance = null;
             }
             $("#amis-form-container").html("");
+            window.__amisExecuteFormData = null;
           }
         }).modal("show");
       })
@@ -110,21 +111,27 @@ var AmisJenkins = (function () {
           wrapWithPanel: false,
           submitOnChange: false,
           actions: [],
+          onEvent: {
+            change: {
+              actions: [{
+                actionType: "custom",
+                script: "window.__amisExecuteFormData = Object.assign(window.__amisExecuteFormData || {}, event.data);"
+              }]
+            }
+          },
           body: fieldSchema
         }
       };
 
       _amisFormData = Object.assign({}, requestParams);
+      window.__amisExecuteFormData = Object.assign({}, requestParams);
 
       var amis = amisRequire("amis/embed");
       _amisFormInstance = amis.embed(
         "#amis-form-container",
         amisSchema,
         {
-          data: _amisFormData,
-          onDataChange: function (data) {
-            Object.assign(_amisFormData, data);
-          }
+          data: _amisFormData
         },
         {
           theme: "cxd",
@@ -150,9 +157,12 @@ var AmisJenkins = (function () {
     var modifiableFields = formSchemaConfig.fields || [];
 
     if (modifiableFields.length > 0) {
+      // Read current form values tracked by onEvent.change
+      var currentValues = window.__amisExecuteFormData || _amisFormData;
+
       modifiableFields.forEach(function (fieldName) {
-        if (_amisFormData.hasOwnProperty(fieldName)) {
-          modifiedFields[fieldName] = _amisFormData[fieldName];
+        if (currentValues.hasOwnProperty(fieldName)) {
+          modifiedFields[fieldName] = currentValues[fieldName];
         }
       });
     }
