@@ -59,7 +59,7 @@ forms:
     title: "Deploy Application"
     description: "Deploy application to specified environment"
     permissions:
-      allowed_roles: ["user"]
+      allowed_roles: ["jenkins-form-role1"]
     jenkins_job: "deploy/app-deploy"
     trigger_type: "generic_webhook"
     jenkins_token: "deploy-token"
@@ -98,7 +98,7 @@ forms:
     title: "Build Docker Image"
     description: "Build and push Docker image to registry"
     permissions:
-      allowed_roles: ["user"]
+      allowed_roles: ["jenkins-form-role1"]
     jenkins_job: "pipelines/build-image"
     trigger_type: "remote_api"
     # Optional: override global Jenkins config for this form
@@ -143,7 +143,7 @@ forms:
     title: "Run Tests"
     description: "Execute test suite on specified branch"
     permissions:
-      allowed_roles: ["user"]
+      allowed_roles: ["jenkins-form-role1"]
     jenkins_job: "ci/run-tests"
     trigger_type: "generic_webhook"
     jenkins_token: "test-token"
@@ -179,7 +179,7 @@ forms:
     title: "Deploy test1a"
     description: "Deploy test1a for development"
     permissions:
-      allowed_roles: ["user"]
+      allowed_roles: ["jenkins-form-role1"]
     jenkins_base_url: "https://jenkins-dev1.exodushk.com"
     # jenkins_base_url: "https://echoserver-test.exodushk.com"
     jenkins_job: "pipelines/pipeline-k8s-image-deploy-noinput"
@@ -276,7 +276,7 @@ forms:
     title: "Deploy test1b"
     description: "Deploy test1b for development"
     permissions:
-      allowed_roles: ["user"]
+      allowed_roles: ["jenkins-form-role1"]
     jenkins_base_url: "https://jenkins-dev1.exodushk.com"
     # jenkins_base_url: "https://echoserver-test.exodushk.com"
     jenkins_job: "pipelines/pipeline-k8s-image-deploy-noinput"
@@ -374,7 +374,7 @@ forms:
     title: "Deploy test2"
     description: "Deploy test2 for development"
     permissions:
-      allowed_roles: ["user"]
+      allowed_roles: ["jenkins-form-role1"]
     jenkins_job: "pipelines/pipeline-k8s-image-deploy-noinput"
     trigger_type: "remote_api"
     # Optional: override global Jenkins config for this form
@@ -456,7 +456,7 @@ forms:
     title: "Deploy test1"
     description: "Deploy test1 for development"
     permissions:
-      allowed_roles: ["user"]
+      allowed_roles: ["jenkins-form-role1"]
     jenkins_base_url: "https://jenkins-dev1.exodushk.com"
     # jenkins_base_url: "https://echoserver-test.exodushk.com"
     jenkins_job: "pipelines/pipeline-k8s-image-deploy-noinput"

@@ -78,11 +78,14 @@ class Settings(BaseSettings):
             "admin@example.com",
             "administrator",
             "root",
-            "tangshoubin",
+            # "tangshoubin",
         ],
         "user": [
             # Add regular user usernames here (optional, as "user" is default)
             # "user@example.com",
+        ],
+        "jenkins-form-role1": [
+            # "tangshoubin",
         ],
         # Custom roles for form-level access control in amis-jenkins
         # Example: "deploy-prod": ["alice", "bob"]
