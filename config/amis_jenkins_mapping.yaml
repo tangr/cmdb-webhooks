@@ -187,6 +187,8 @@ forms:
     jenkins_job: "pipelines/pipeline-k8s-image-deploy-noinput"
     trigger_type: "generic_webhook"
     jenkins_token: "pipeline-k8s-image-deploy-noinput-trigger-token1"
+    jenkins_build_url_format: "blueocean"
+    jenkins_queue_resolve_delay: 10
     # Feishu approval configuration (optional)
     approval:
       enabled: true
