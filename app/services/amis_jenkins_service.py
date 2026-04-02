@@ -1301,6 +1301,7 @@ def get_form_history(
     form_id: str,
     skip: int = 0,
     limit: int = 20,
+    current_user: Optional["User"] = None,
 ) -> Dict[str, Any]:
     """
     Get merged history for a form: executed logs + pending jobs, sorted by time desc.
@@ -1310,6 +1311,7 @@ def get_form_history(
         form_id: Form identifier
         skip: Offset for pagination
         limit: Max records per page
+        current_user: If provided, compute can_execute for pending jobs
 
     Returns:
         Dict with paginated merged history data
@@ -1329,6 +1331,11 @@ def get_form_history(
         .order_by(PendingJenkinsJob.created_at.desc())
     )
     pending_jobs = session.exec(pending_stmt).all()
+
+    # Get form config for title and jenkins_job
+    form_config = get_form_config(form_id)
+    form_title = form_config.get("title", form_id) if form_config else form_id
+    jenkins_job = form_config.get("jenkins_job", "") if form_config else ""
 
     # Merge into unified list
     merged: List[Dict[str, Any]] = []
@@ -1350,23 +1357,41 @@ def get_form_history(
         )
 
     for job in pending_jobs:
-        merged.append(
-            {
-                "source": "pending",
-                "id": job.id,
-                "username": job.username,
-                "trigger_type": job.trigger_type,
-                "status": job.status,
-                "status_label": job.status,
-                "request_params": job.request_params,
-                "jenkins_response": job.jenkins_response,
-                "error_message": job.error_message,
-                "created_at": job.created_at,
-                "execution_count": job.execution_count,
-                "max_executions": job.max_executions,
-                "expire_at": job.expire_at,
-            }
-        )
+        job_dict = {
+            "source": "pending",
+            "id": job.id,
+            "username": job.username,
+            "trigger_type": job.trigger_type,
+            "status": job.status,
+            "status_label": job.status,
+            "request_params": job.request_params,
+            "jenkins_response": job.jenkins_response,
+            "error_message": job.error_message,
+            "created_at": job.created_at,
+            "execution_count": job.execution_count,
+            "max_executions": job.max_executions,
+            "expire_at": job.expire_at,
+            "execution_form_schema": job.execution_form_schema,
+            "form_title": form_title,
+            "jenkins_job": jenkins_job,
+        }
+
+        # Add approval info from linked FeishuApprovalReqLog
+        if job.approval_log_id:
+            approval_log = session.get(FeishuApprovalReqLog, job.approval_log_id)
+            if approval_log:
+                job_dict["approval_status"] = approval_log.status
+                job_dict["feishu_instance_code"] = approval_log.feishu_instance_code
+
+        # Compute can_execute permission flag
+        if current_user is not None:
+            from app.services.amis_jenkins_permissions import can_execute_pending_job
+
+            job_dict["can_execute"] = can_execute_pending_job(
+                current_user, job.username, job.form_id
+            )
+
+        merged.append(job_dict)
 
     # Sort merged list by created_at desc
     merged.sort(key=lambda x: x["created_at"], reverse=True)

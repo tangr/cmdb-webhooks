@@ -183,7 +183,13 @@ def api_get_form_history(
         )
 
     limit = min(limit, 100)
-    result = get_form_history(session=session, form_id=form_id, skip=skip, limit=limit)
+    result = get_form_history(
+        session=session,
+        form_id=form_id,
+        skip=skip,
+        limit=limit,
+        current_user=current_user,
+    )
     return {"status": 0, "msg": "success", **result}
 
 

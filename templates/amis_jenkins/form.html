@@ -15,6 +15,20 @@
     min-height: 400px;
   }
 
+  #amis-form-container {
+    min-height: 100px;
+    position: relative;
+  }
+
+  #amis-form-container .cxd-Page {
+    padding: 0;
+  }
+
+  /* Ensure dropdowns appear above modal content */
+  #amis-form-container .cxd-PopOver {
+    z-index: 1060;
+  }
+
   .loading-container {
     display: flex;
     justify-content: center;
@@ -120,6 +134,33 @@
       <!-- Store form_id in data attribute -->
       <div id="form-config" data-form-id="{{ form_id }}" style="display: none;"></div>
 
+    </div>
+
+    <!-- Execution Modal -->
+    <div class="ui modal" id="execute-modal">
+      <i class="close icon"></i>
+      <div class="header">
+        <i class="play icon"></i> Execute Jenkins Job
+      </div>
+      <div class="content">
+        <div id="modal-job-info">
+          <!-- Job info will be populated dynamically -->
+        </div>
+        <div class="ui divider"></div>
+        <h4 class="ui header">
+          <i class="wpforms icon"></i> Execution Parameters
+          <div class="sub header">Fields marked as static are locked, others can be modified</div>
+        </h4>
+        <div id="amis-form-container">
+          <!-- Amis will render all fields here (static + editable) -->
+        </div>
+      </div>
+      <div class="actions">
+        <div class="ui cancel button">Cancel</div>
+        <div class="ui green approve button" id="modal-execute-btn">
+          <i class="play icon"></i> Execute
+        </div>
+      </div>
     </div>
 
     {% include "base_foot.html" %}
@@ -321,7 +362,18 @@
         html += '<td>' + getTypeBadge(item) + '</td>';
         html += '<td>' + getStatusBadge(item) + '</td>';
         html += '<td data-tooltip="' + escapeHtml(timeStr) + '">' + escapeHtml(timeStr) + '</td>';
-        html += '<td><a href="javascript:void(0)" onclick="toggleDetail(\'' + rowId + '\')"><i class="eye icon"></i>Detail</a></td>';
+        html += '<td>';
+        // Action buttons for pending jobs
+        if (item.source === "pending") {
+          if (item.status === "pending_approval") {
+            html += '<a href="javascript:void(0)" class="ui tiny blue button" onclick="syncJobStatus(' + item.id + ')"><i class="sync icon"></i>Sync</a> ';
+          }
+          if (item.status === "approved" && item.can_execute !== false) {
+            html += '<a href="javascript:void(0)" class="ui tiny green button" onclick="openExecuteModal(' + item.id + ')"><i class="play icon"></i>Execute</a> ';
+          }
+        }
+        html += '<a href="javascript:void(0)" onclick="toggleDetail(\'' + rowId + '\')"><i class="eye icon"></i>Detail</a>';
+        html += '</td>';
         html += '</tr>';
         // Hidden detail row
         html += '<tr class="detail-row" id="detail-row-' + rowId + '" style="display: none;">';
@@ -383,6 +435,181 @@
       }
     }
 
+    // ==================== Sync & Execute (for pending jobs) ====================
+    var currentModalJobId = null;
+    var currentModalJobData = null;
+    var amisFormInstance = null;
+    var amisFormData = {};
+
+    function syncJobStatus(jobId) {
+      fetch("/amis-jenkins/api/pending/" + jobId + "/sync", {
+        method: "POST",
+        credentials: "include"
+      })
+        .then(function (response) { return response.json(); })
+        .then(function (result) {
+          if (result.status === 0) {
+            alert("Status synced: " + result.data.job_status);
+            loadHistory();
+          } else {
+            alert("Failed to sync: " + result.msg);
+          }
+        })
+        .catch(function (error) {
+          alert("Error: " + error.message);
+        });
+    }
+
+    function openExecuteModal(jobId) {
+      fetch("/amis-jenkins/api/pending/" + jobId, { credentials: "include" })
+        .then(function (response) { return response.json(); })
+        .then(function (result) {
+          if (result.status !== 0) {
+            alert("Failed to load job details: " + result.msg);
+            return;
+          }
+          currentModalJobId = jobId;
+          currentModalJobData = result.data;
+          populateExecuteModal(result.data);
+          $("#execute-modal").modal({
+            closable: true,
+            onApprove: function () {
+              executeJobFromModal();
+              return false;
+            },
+            onHidden: function () {
+              if (amisFormInstance) {
+                amisFormInstance.unmount();
+                amisFormInstance = null;
+              }
+              $("#amis-form-container").html("");
+            }
+          }).modal("show");
+        })
+        .catch(function (error) {
+          alert("Error loading job: " + error.message);
+        });
+    }
+
+    function populateExecuteModal(job) {
+      // Job info header
+      var infoHtml = '<div class="ui list">';
+      infoHtml += '<div class="item"><strong>Form:</strong> ' + escapeHtml(job.form_title) + '</div>';
+      infoHtml += '<div class="item"><strong>Jenkins Job:</strong> ' + escapeHtml(job.jenkins_job) + '</div>';
+      infoHtml += '<div class="item"><strong>Submitted by:</strong> ' + escapeHtml(job.username) + '</div>';
+      if (job.execution_count > 0) {
+        infoHtml += '<div class="item"><strong>Executed:</strong> ' + job.execution_count + ' time(s)</div>';
+      }
+      if (job.max_executions > 0) {
+        infoHtml += '<div class="item"><strong>Max executions:</strong> ' + job.max_executions + '</div>';
+      }
+      if (job.expire_at > 0) {
+        infoHtml += '<div class="item"><strong>Expires:</strong> ' + formatTimestamp(job.expire_at) + '</div>';
+      }
+      infoHtml += '</div>';
+      $("#modal-job-info").html(infoHtml);
+
+      // Get field schema (includes all fields, non-modifiable marked as static)
+      var formSchemaConfig = job.execution_form_schema || {};
+      var fieldSchema = formSchemaConfig.schema || [];
+      var requestParams = job.request_params || {};
+
+      // Clean up previous Amis instance
+      if (amisFormInstance) {
+        amisFormInstance.unmount();
+        amisFormInstance = null;
+      }
+
+      if (fieldSchema.length > 0) {
+        $("#amis-form-container").html("");
+
+        var amisSchema = {
+          type: "page",
+          body: {
+            type: "form",
+            name: "executeForm",
+            mode: "horizontal",
+            wrapWithPanel: false,
+            submitOnChange: false,
+            actions: [],
+            body: fieldSchema
+          }
+        };
+
+        amisFormData = Object.assign({}, requestParams);
+
+        var amis = amisRequire("amis/embed");
+        amisFormInstance = amis.embed(
+          "#amis-form-container",
+          amisSchema,
+          {
+            data: amisFormData,
+            onDataChange: function (data) {
+              Object.assign(amisFormData, data);
+            }
+          },
+          {
+            theme: "cxd",
+            locale: "zh-CN",
+            getModalContainer: function () {
+              return document.getElementById("amis-form-container");
+            }
+          }
+        );
+      } else {
+        $("#amis-form-container").html("<p>No parameters to display</p>");
+      }
+    }
+
+    function executeJobFromModal() {
+      if (!currentModalJobId) {
+        alert("No job selected");
+        return;
+      }
+
+      var modifiedFields = {};
+      var formSchemaConfig = currentModalJobData.execution_form_schema || {};
+      var modifiableFields = formSchemaConfig.fields || [];
+
+      if (modifiableFields.length > 0) {
+        modifiableFields.forEach(function (fieldName) {
+          if (amisFormData.hasOwnProperty(fieldName)) {
+            modifiedFields[fieldName] = amisFormData[fieldName];
+          }
+        });
+      }
+
+      $("#modal-execute-btn").addClass("loading disabled");
+
+      var requestBody = {};
+      if (Object.keys(modifiedFields).length > 0) {
+        requestBody.modified_fields = modifiedFields;
+      }
+
+      fetch("/amis-jenkins/api/pending/" + currentModalJobId + "/execute", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestBody)
+      })
+        .then(function (response) { return response.json(); })
+        .then(function (result) {
+          $("#modal-execute-btn").removeClass("loading disabled");
+          if (result.status === 0) {
+            $("#execute-modal").modal("hide");
+            alert("Jenkins build triggered successfully!\nExecution count: " + result.data.execution_count);
+            loadHistory();
+          } else {
+            alert("Failed to execute: " + result.msg);
+          }
+        })
+        .catch(function (error) {
+          $("#modal-execute-btn").removeClass("loading disabled");
+          alert("Error: " + error.message);
+        });
+    }
+
+    // ==================== Utility Functions ====================
     function formatTimestamp(ts) {
       if (!ts) return "N/A";
       var date = new Date(ts * 1000);
