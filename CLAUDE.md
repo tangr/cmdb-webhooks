@@ -83,9 +83,12 @@ webhook-proxy/
 │   ├── feishu/            # 飞书相关模板目录
 │   └── amis_jenkins/      # Amis Jenkins相关模板
 │       ├── forms.html     # 表单列表页面
-│       ├── form.html      # Amis表单渲染页面
-│       └── pending.html   # 待执行任务页面（审批后执行）
+│       ├── form.html      # Amis表单渲染页面（Submit + History Tab）
+│       ├── pending.html   # 待执行任务页面（跨表单总览）
+│       └── _execute_modal.html  # 执行确认弹窗（共享模板片段）
 ├── static/                # 静态资源目录（前端资源）
+│   ├── js/                # 自定义JavaScript
+│   │   └── amis_jenkins_common.js  # Amis Jenkins共享模块（同步/执行/弹窗）
 │   └── plugin/            # 前端插件库
 │       ├── fomantic-ui-2.9.4/    # UI框架
 │       ├── jquery-3.1.1/         # jQuery库
@@ -224,6 +227,15 @@ webhook-proxy/
     - 支持审批状态同步和审批后手动执行
   - 用户飞书 ID 映射：通过 `user_feishu_mapping` 配置，未配置时默认使用登录用户名
   - **合并历史查询**：`get_form_history` 合并 AmisJenkinsReqLog 和 PendingJenkinsJob 按时间倒序展示
+    - History Tab 内嵌同步审批状态和执行功能（无需跳转 Pending 页面）
+    - 返回 `can_execute`、`execution_form_schema`、`approval_status` 等字段
+  - **Jenkins Build URL 解析**：触发构建后自动解析 Build URL
+    - 从 Jenkins 响应中捕获 queue URL（Generic Webhook: response body `jobs[].url`; Remote API: `Location` header）
+    - 内联等待后查询 Jenkins queue API (`/queue/item/{id}/api/json`) 获取 build number
+    - 支持 Console Output 和 Blue Ocean 两种 URL 格式
+    - 解析结果以 `_queue_url`、`_build_number`、`_build_url` 存入 `jenkins_response` JSON
+    - 支持手动重试解析（前端 "Get Build URL" 按钮）
+    - 等待时间和 URL 格式支持全局配置和表单级别覆盖
   - **表单级别权限控制**：通过 `permissions` 配置实现 RBAC
     - 权限检查逻辑集中在 `app/services/amis_jenkins_permissions.py`
     - 支持 `allowed_roles`/`allowed_users`（查看+提交）和 `execute_roles`/`execute_users`（执行）
@@ -298,7 +310,7 @@ webhook-proxy/
 **Amis Jenkins 表单模块 (`/amis-jenkins/*`)**
 
 - `GET /amis-jenkins/forms` - 表单列表页面（HTML，需要认证）
-- `GET /amis-jenkins/forms/{form_id}` - Amis 表单页面（HTML，需要认证，Tab 切换：Submit 提交表单 / History 提交历史）
+- `GET /amis-jenkins/forms/{form_id}` - Amis 表单页面（HTML，需要认证，Tab 切换：Submit 提交表单 / History 提交历史+同步+执行）
 - `GET /amis-jenkins/api/forms` - 获取所有表单列表（API，需要认证）
 - `GET /amis-jenkins/api/schema/{form_id}` - 获取表单 Amis Schema（API，需要认证）
 - `POST /amis-jenkins/api/submit/{form_id}` - 提交表单到 Jenkins（API，需要认证）
@@ -318,6 +330,10 @@ webhook-proxy/
 - `GET /amis-jenkins/api/pending/{job_id}` - 获取特定待执行任务详情（需要认证）
 - `POST /amis-jenkins/api/pending/{job_id}/sync` - 同步审批状态（从飞书获取最新状态）
 - `POST /amis-jenkins/api/pending/{job_id}/execute` - 执行已审批任务（触发 Jenkins 构建）
+- `POST /amis-jenkins/api/resolve-build-url` - 手动重试解析 Jenkins Build URL
+  - Query 参数：`source`（`log` 或 `pending`）、`id`（记录 ID）
+  - 从已存储的 queue URL 查询 Jenkins queue API 获取 build number 并构建 Build URL
+  - 成功后自动更新数据库记录的 `jenkins_response` 中的 `_build_number` 和 `_build_url`
 
 **Harbor Artifacts 模块 (`/harbor-artifacts/*`)**
 
@@ -446,8 +462,10 @@ webhook-proxy/
 
 - `jenkins_base_url`: Jenkins 服务器 URL（全局配置）
 - `jenkins_default_token`: 默认 Jenkins Generic Webhook 触发 Token
-- `jenkins_default_user`: 默认 Jenkins 用户名（用于 Remote API）
-- `jenkins_default_api_token`: 默认 Jenkins API Token（用于 Remote API）
+- `jenkins_default_user`: 默认 Jenkins 用户名（用于 Remote API 触发和 Queue API 查询）
+- `jenkins_default_api_token`: 默认 Jenkins API Token（用于 Remote API 触发和 Queue API 查询）
+- `jenkins_build_url_format`: Build URL 格式（`console` 或 `blueocean`，默认: `console`）
+- `jenkins_queue_resolve_delay`: 触发构建后等待几秒再查询 Queue API 获取 build number（默认: 3，0 = 禁用）
 - `user_feishu_mapping`: 用户名到飞书用户 ID 的映射（用于审批功能）
   - 未配置的用户默认使用登录用户名作为飞书用户 ID
 - 支持多个表单定义，每个表单包含：
@@ -455,10 +473,12 @@ webhook-proxy/
   - `description`: 表单描述
   - `jenkins_job`: Jenkins 任务路径
   - `trigger_type`: 触发类型 (`generic_webhook` 或 `remote_api`)
-  - `jenkins_token`: 表单级别的 Jenkins Token（可选，覆盖全局配置）
-  - `jenkins_user`: 表单级别的 Jenkins 用户（可选，覆盖全局配置）
-  - `jenkins_api_token`: 表单级别的 Jenkins API Token（可选，覆盖全局配置）
+  - `jenkins_token`: 表单级别的 Jenkins Token（可选，覆盖全局配置，用于 Generic Webhook 触发）
+  - `jenkins_user`: 表单级别的 Jenkins 用户（可选，覆盖全局配置，用于 Remote API 触发和 Queue API 查询）
+  - `jenkins_api_token`: 表单级别的 Jenkins API Token（可选，覆盖全局配置，用于 Remote API 触发和 Queue API 查询）
   - `jenkins_base_url`: 表单级别的 Jenkins URL（可选，覆盖全局配置）
+  - `jenkins_build_url_format`: 表单级别的 Build URL 格式（可选，覆盖全局配置）
+  - `jenkins_queue_resolve_delay`: 表单级别的 Queue API 等待时间（可选，覆盖全局配置）
   - `approval`: 飞书审批配置（可选）
     - `enabled`: 是否启用审批（true/false）
     - `feishu_app`: 飞书应用名称（对应 `feishu_approval_config.yaml` 中的配置）
@@ -591,6 +611,27 @@ forms:
 | `expired` | 已过期 |
 | `rejected` | 审批被拒绝 |
 | `canceled` | 审批被取消 |
+
+**Jenkins Build URL 解析说明:**
+
+触发 Jenkins 构建后，系统自动尝试解析 Build URL 并存储到 `jenkins_response` 中：
+
+- 触发构建时捕获 queue URL（Generic Webhook: 从 response body `jobs` 字段; Remote API: 从 `Location` header）
+- 等待 `jenkins_queue_resolve_delay` 秒后查询 Jenkins Queue API (`/queue/item/{id}/api/json`)
+- 从 `executable.number` 获取 build number，拼接为 Console Output 或 Blue Ocean URL
+- 解析结果存入 `jenkins_response` JSON（使用 `_` 前缀与 Jenkins 原始响应区分）：
+  - `_queue_url`: Jenkins queue item URL
+  - `_build_number`: 构建编号
+  - `_build_url`: 完整的 Jenkins 构建 URL
+- 若内联解析失败（构建尚未开始），前端显示 "Get Build URL" 按钮供手动重试
+- Queue API 查询需要 Basic Auth（`jenkins_user` + `jenkins_api_token`），无论 `trigger_type` 是 `generic_webhook` 还是 `remote_api`
+
+**Build URL 格式:**
+
+| 格式 | URL 模式 |
+|------|----------|
+| `console` | `{base}/job/{path}/{number}/console` |
+| `blueocean` | `{base}/blue/organizations/jenkins/{pipeline}/detail/{name}/{number}/pipeline` |
 
 **form_data_template 占位符说明:**
 
