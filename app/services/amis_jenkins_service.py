@@ -247,6 +247,7 @@ async def enrich_jenkins_response(
     jenkins_job: str,
     jenkins_user: Optional[str] = None,
     jenkins_api_token: Optional[str] = None,
+    form_config: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """
     Enrich jenkins_response body with _queue_url and _build_url.
@@ -260,6 +261,7 @@ async def enrich_jenkins_response(
         jenkins_job: Jenkins job path
         jenkins_user: Jenkins username for queue API auth
         jenkins_api_token: Jenkins API token for queue API auth
+        form_config: Form config dict (for form-level overrides of delay/url_format)
 
     Returns:
         Enriched response body dict (same as jenkins_result["body"] but with _queue_url, _build_url etc.)
@@ -267,6 +269,14 @@ async def enrich_jenkins_response(
     body = jenkins_result.get("body") or {}
     if not isinstance(body, dict):
         body = {"raw": str(body)}
+
+    fc = form_config or {}
+    url_format = fc.get("jenkins_build_url_format") or get_jenkins_build_url_format()
+    delay = fc.get("jenkins_queue_resolve_delay")
+    if delay is not None:
+        delay = float(delay)
+    else:
+        delay = get_jenkins_queue_resolve_delay()
 
     queue_url = jenkins_result.get("queue_url")
     if queue_url:
@@ -280,11 +290,15 @@ async def enrich_jenkins_response(
                 queue_url,
                 jenkins_user=jenkins_user,
                 jenkins_api_token=jenkins_api_token,
+                delay=delay,
             )
             if build_info:
                 body["_build_number"] = build_info["build_number"]
                 body["_build_url"] = build_jenkins_url(
-                    jenkins_base_url, jenkins_job, build_info["build_number"]
+                    jenkins_base_url,
+                    jenkins_job,
+                    build_info["build_number"],
+                    url_format=url_format,
                 )
 
     return body
@@ -913,6 +927,7 @@ async def process_form_submit(
             jenkins_api_token=(
                 form_config.get("jenkins_api_token") if trigger_type == "remote_api" else None
             ),
+            form_config=form_config,
         )
 
         log_entry.status = jenkins_result["status_code"]
@@ -1446,6 +1461,7 @@ async def execute_pending_job(
                 if job.trigger_type == "remote_api"
                 else None
             ),
+            form_config=form_config,
         )
 
         job.jenkins_response = enriched_response

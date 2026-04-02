@@ -504,10 +504,12 @@ async def api_resolve_build_url(
     if not build_info:
         return {"status": 1, "msg": "Build not started yet, please try again later"}
 
-    # Update record
+    # Update record — use form-level url_format if configured
+    url_format = (form_config or {}).get("jenkins_build_url_format")
     jenkins_response["_build_number"] = build_info["build_number"]
     jenkins_response["_build_url"] = build_jenkins_url(
-        jenkins_base_url, jenkins_job, build_info["build_number"]
+        jenkins_base_url, jenkins_job, build_info["build_number"],
+        url_format=url_format,
     )
     record.jenkins_response = jenkins_response
     session.add(record)
