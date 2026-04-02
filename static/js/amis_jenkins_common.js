@@ -175,7 +175,14 @@ var AmisJenkins = (function () {
         $("#modal-execute-btn").removeClass("loading disabled");
         if (result.status === 0) {
           $("#execute-modal").modal("hide");
-          alert("Jenkins build triggered successfully!\nExecution count: " + result.data.execution_count);
+          var msg = "Jenkins build triggered successfully!\nExecution count: " + result.data.execution_count;
+          var jr = result.data.jenkins_response || {};
+          if (jr._build_url) {
+            msg += "\n\nBuild URL:\n" + jr._build_url;
+          } else if (jr._queue_url) {
+            msg += "\n\nQueue URL (build not yet started):\n" + jr._queue_url;
+          }
+          alert(msg);
           if (_onSuccess) _onSuccess();
         } else {
           alert("Failed to execute: " + result.msg);

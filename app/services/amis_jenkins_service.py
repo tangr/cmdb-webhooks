@@ -11,6 +11,7 @@ from app.dependencies import SessionDep, User
 from app.services.feishu_approval_service import FeishuApprovalService
 from config.config import settings
 from typing import Dict, Any, Optional, List
+import asyncio
 import httpx
 import json
 import base64
@@ -132,6 +133,161 @@ def get_user_feishu_id(username: str) -> str:
     """
     mapping = get_user_feishu_mapping()
     return mapping.get(username, username)
+
+
+def get_jenkins_build_url_format() -> str:
+    """Get Jenkins build URL format from YAML configuration: 'console' or 'blueocean'"""
+    return _amis_jenkins_mapping.get("jenkins_build_url_format", "console")
+
+
+def get_jenkins_queue_resolve_delay() -> float:
+    """Get delay in seconds before querying Jenkins queue API for build number"""
+    return float(_amis_jenkins_mapping.get("jenkins_queue_resolve_delay", 3))
+
+
+def build_jenkins_url(
+    jenkins_base_url: str,
+    jenkins_job: str,
+    build_number: int,
+    url_format: Optional[str] = None,
+) -> str:
+    """
+    Construct a Jenkins build URL.
+
+    Args:
+        jenkins_base_url: Jenkins server base URL
+        jenkins_job: Job path (e.g., "folder/job-name")
+        build_number: Build number
+        url_format: "console" or "blueocean" (default from config)
+
+    Returns:
+        Full Jenkins build URL
+    """
+    base = jenkins_base_url.rstrip("/")
+    fmt = url_format or get_jenkins_build_url_format()
+
+    if fmt == "blueocean":
+        pipeline = jenkins_job.replace("/", "%2F")
+        job_name = jenkins_job.split("/")[-1]
+        return f"{base}/blue/organizations/jenkins/{pipeline}/detail/{job_name}/{build_number}/pipeline"
+    else:
+        job_path = jenkins_job.replace("/", "/job/")
+        return f"{base}/job/{job_path}/{build_number}/console"
+
+
+async def resolve_build_from_queue(
+    jenkins_base_url: str,
+    queue_url: str,
+    jenkins_user: Optional[str] = None,
+    jenkins_api_token: Optional[str] = None,
+    delay: Optional[float] = None,
+) -> Optional[Dict[str, Any]]:
+    """
+    Query Jenkins queue API to resolve build number.
+
+    Args:
+        jenkins_base_url: Jenkins server base URL
+        queue_url: Queue item URL (absolute or relative, e.g., "queue/item/123/")
+        jenkins_user: Jenkins username for auth (optional, uses default)
+        jenkins_api_token: Jenkins API token for auth (optional, uses default)
+        delay: Seconds to wait before querying (None = use config value)
+
+    Returns:
+        Dict with build_number and build_url, or None if not resolved
+    """
+    wait = delay if delay is not None else get_jenkins_queue_resolve_delay()
+    if wait <= 0:
+        return None
+
+    # Build full API URL
+    if queue_url.startswith("http"):
+        api_url = f"{queue_url.rstrip('/')}api/json"
+    else:
+        api_url = (
+            f"{jenkins_base_url.rstrip('/')}/{queue_url.strip('/')}api/json"
+        )
+
+    # Build auth header
+    headers = {}
+    user = jenkins_user or get_jenkins_default_user()
+    token = jenkins_api_token or get_jenkins_default_api_token()
+    if user and token:
+        auth_bytes = base64.b64encode(f"{user}:{token}".encode("utf-8")).decode(
+            "utf-8"
+        )
+        headers["Authorization"] = f"Basic {auth_bytes}"
+
+    await asyncio.sleep(wait)
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.get(api_url, headers=headers)
+            if response.status_code != 200:
+                logger.warning(
+                    f"Queue API returned {response.status_code}: {api_url}"
+                )
+                return None
+
+            data = response.json()
+            executable = data.get("executable")
+            if executable and executable.get("number"):
+                return {
+                    "build_number": executable["number"],
+                }
+            return None
+
+    except Exception as e:
+        logger.warning(f"Failed to resolve build from queue: {e}")
+        return None
+
+
+async def enrich_jenkins_response(
+    jenkins_result: Dict[str, Any],
+    jenkins_base_url: str,
+    jenkins_job: str,
+    jenkins_user: Optional[str] = None,
+    jenkins_api_token: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Enrich jenkins_response body with _queue_url and _build_url.
+
+    Attempts to resolve build number from queue URL inline.
+    Modifies and returns the response body dict.
+
+    Args:
+        jenkins_result: Result from send_to_jenkins_* (has status_code, body, queue_url)
+        jenkins_base_url: Jenkins server base URL
+        jenkins_job: Jenkins job path
+        jenkins_user: Jenkins username for queue API auth
+        jenkins_api_token: Jenkins API token for queue API auth
+
+    Returns:
+        Enriched response body dict (same as jenkins_result["body"] but with _queue_url, _build_url etc.)
+    """
+    body = jenkins_result.get("body") or {}
+    if not isinstance(body, dict):
+        body = {"raw": str(body)}
+
+    queue_url = jenkins_result.get("queue_url")
+    if queue_url:
+        body["_queue_url"] = queue_url
+
+        # Try to resolve build number
+        is_success = jenkins_result["status_code"] in [200, 201, 202]
+        if is_success:
+            build_info = await resolve_build_from_queue(
+                jenkins_base_url,
+                queue_url,
+                jenkins_user=jenkins_user,
+                jenkins_api_token=jenkins_api_token,
+            )
+            if build_info:
+                body["_build_number"] = build_info["build_number"]
+                body["_build_url"] = build_jenkins_url(
+                    jenkins_base_url, jenkins_job, build_info["build_number"]
+                )
+
+    return body
 
 
 def get_form_config(form_id: str) -> Optional[Dict[str, Any]]:
@@ -498,9 +654,18 @@ async def send_to_jenkins_generic_webhook(
         except Exception:
             response_body = {"raw": response.text}
 
+        # Extract queue URL from response body (Generic Webhook returns jobs info)
+        queue_url = None
+        if isinstance(response_body, dict) and "jobs" in response_body:
+            for job_info in response_body["jobs"].values():
+                if isinstance(job_info, dict) and job_info.get("url"):
+                    queue_url = job_info["url"]
+                    break
+
         return {
             "status_code": response.status_code,
             "body": response_body,
+            "queue_url": queue_url,
         }
 
 
@@ -548,7 +713,7 @@ async def send_to_jenkins_remote_api(
         else:
             form_data[key] = str(value) if value is not None else ""
 
-    async with httpx.AsyncClient(timeout=30.0) as client:
+    async with httpx.AsyncClient(timeout=30.0, follow_redirects=False) as client:
         response = await client.post(
             jenkins_url,
             data=form_data,
@@ -561,9 +726,13 @@ async def send_to_jenkins_remote_api(
         except Exception:
             response_body = {"raw": response.text}
 
+        # Extract queue URL from Location header (buildWithParameters returns it)
+        queue_url = response.headers.get("location")
+
         return {
             "status_code": response.status_code,
             "body": response_body,
+            "queue_url": queue_url,
         }
 
 
@@ -733,8 +902,21 @@ async def process_form_submit(
                 detail=f"Unknown trigger type: {trigger_type}. Use 'generic_webhook' or 'remote_api'",
             )
 
+        # Enrich response with queue URL and build URL
+        enriched_response = await enrich_jenkins_response(
+            jenkins_result,
+            jenkins_base_url,
+            jenkins_job,
+            jenkins_user=(
+                form_config.get("jenkins_user") if trigger_type == "remote_api" else None
+            ),
+            jenkins_api_token=(
+                form_config.get("jenkins_api_token") if trigger_type == "remote_api" else None
+            ),
+        )
+
         log_entry.status = jenkins_result["status_code"]
-        log_entry.jenkins_response = jenkins_result["body"]
+        log_entry.jenkins_response = enriched_response
 
         # Log request
         log_amis_jenkins_request(session, log_entry)
@@ -755,7 +937,7 @@ async def process_form_submit(
                 "data": {},
                 "debug": {
                     "jenkins_status": jenkins_result["status_code"],
-                    "jenkins_response": jenkins_result["body"],
+                    "jenkins_response": enriched_response,
                     "form_id": form_id,
                     "trigger_type": trigger_type,
                 },
@@ -1249,7 +1431,24 @@ async def execute_pending_job(
             job.status = "approved"
             job.error_message = f"Jenkins returned status {jenkins_result['status_code']}"
 
-        job.jenkins_response = jenkins_result["body"]
+        # Enrich response with queue URL and build URL
+        enriched_response = await enrich_jenkins_response(
+            jenkins_result,
+            jenkins_base_url,
+            job.jenkins_job,
+            jenkins_user=(
+                form_config.get("jenkins_user")
+                if job.trigger_type == "remote_api"
+                else None
+            ),
+            jenkins_api_token=(
+                form_config.get("jenkins_api_token")
+                if job.trigger_type == "remote_api"
+                else None
+            ),
+        )
+
+        job.jenkins_response = enriched_response
         job.updated_at = current_time
         session.add(job)
         session.commit()
@@ -1264,7 +1463,7 @@ async def execute_pending_job(
             clientip=job.clientip,
             username=job.username,
             status=jenkins_result["status_code"],
-            jenkins_response=jenkins_result["body"],
+            jenkins_response=enriched_response,
             error_message=None if is_success else job.error_message,
         )
         log_amis_jenkins_request(session, log_entry)
@@ -1277,7 +1476,7 @@ async def execute_pending_job(
             "max_executions": job.max_executions,
             "expire_at": job.expire_at,
             "jenkins_status": jenkins_result["status_code"],
-            "jenkins_response": jenkins_result["body"],
+            "jenkins_response": enriched_response,
             "executed_params": execution_params,
         }
 

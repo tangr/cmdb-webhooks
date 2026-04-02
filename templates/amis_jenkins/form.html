@@ -354,6 +354,15 @@
         if (hasError) {
           html += '<div class="ui red message" style="margin-bottom: 1em;"><i class="exclamation triangle icon"></i><strong>Error:</strong> ' + escapeHtml(item.error_message) + '</div>';
         }
+        // Jenkins build URL
+        var jenkinsResponse = item.jenkins_response || {};
+        if (jenkinsResponse._build_url) {
+          html += '<div style="margin-bottom: 0.5em;"><i class="linkify icon"></i><strong>Jenkins Build:</strong> <a href="' + escapeHtml(jenkinsResponse._build_url) + '" target="_blank">' + escapeHtml(jenkinsResponse._build_url) + '</a></div>';
+        } else if (jenkinsResponse._queue_url) {
+          html += '<div style="margin-bottom: 0.5em;" id="build-url-' + rowId + '"><i class="linkify icon"></i><strong>Jenkins Queue:</strong> <a href="' + escapeHtml(jenkinsResponse._queue_url) + '" target="_blank">' + escapeHtml(jenkinsResponse._queue_url) + '</a> ';
+          html += '<a href="javascript:void(0)" class="ui tiny basic blue button" onclick="resolveBuildUrl(\'' + item.source + '\', ' + item.id + ', \'' + rowId + '\')"><i class="redo icon"></i>Get Build URL</a>';
+          html += '</div>';
+        }
         if (item.source === "pending" && item.execution_count !== undefined) {
           html += '<div style="margin-bottom: 0.5em;">';
           html += '<span class="ui blue mini label"><i class="redo icon"></i> Executed: ' + item.execution_count + '</span>';
@@ -386,6 +395,32 @@
       } else {
         row.show();
       }
+    }
+
+    function resolveBuildUrl(source, id, rowId) {
+      var btn = $("#build-url-" + rowId + " .button");
+      btn.addClass("loading disabled");
+
+      fetch("/amis-jenkins/api/resolve-build-url?source=" + source + "&id=" + id, {
+        method: "POST",
+        credentials: "include"
+      })
+        .then(function (response) { return response.json(); })
+        .then(function (result) {
+          btn.removeClass("loading disabled");
+          if (result.status === 0) {
+            var url = escapeHtml(result.data.build_url);
+            $("#build-url-" + rowId).html(
+              '<i class="linkify icon"></i><strong>Jenkins Build:</strong> <a href="' + url + '" target="_blank">' + url + '</a>'
+            );
+          } else {
+            alert(result.msg);
+          }
+        })
+        .catch(function (error) {
+          btn.removeClass("loading disabled");
+          alert("Error: " + error.message);
+        });
     }
 
     function updatePagination() {

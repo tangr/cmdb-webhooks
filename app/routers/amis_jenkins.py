@@ -21,6 +21,9 @@ from app.services.amis_jenkins_service import (
     sync_pending_job_status,
     execute_pending_job,
     get_form_history,
+    resolve_build_from_queue,
+    build_jenkins_url,
+    get_jenkins_base_url,
 )
 from app.services.amis_jenkins_permissions import (
     can_view_form,
@@ -439,3 +442,82 @@ async def api_execute_pending_job(
         raise HTTPException(
             status_code=500, detail=f"Failed to execute job: {str(e)}"
         )
+
+
+@router.post("/api/resolve-build-url")
+async def api_resolve_build_url(
+    source: str,
+    id: int,
+    session: SessionDep,
+    current_user: User = Depends(get_current_user_any_required),
+):
+    """
+    Manually retry resolving Jenkins build URL from stored queue URL.
+
+    Query params:
+    - source: "log" (AmisJenkinsReqLog) or "pending" (PendingJenkinsJob)
+    - id: Record ID
+    """
+    # Fetch the record
+    if source == "log":
+        record = session.get(AmisJenkinsReqLog, id)
+    elif source == "pending":
+        record = session.get(PendingJenkinsJob, id)
+    else:
+        raise HTTPException(status_code=400, detail="source must be 'log' or 'pending'")
+
+    if not record:
+        raise HTTPException(status_code=404, detail="Record not found")
+
+    jenkins_response = record.jenkins_response or {}
+    queue_url = jenkins_response.get("_queue_url")
+    if not queue_url:
+        return {"status": 1, "msg": "No queue URL available for this record"}
+
+    # Already resolved
+    if jenkins_response.get("_build_url"):
+        return {
+            "status": 0,
+            "msg": "Build URL already resolved",
+            "data": {
+                "build_url": jenkins_response["_build_url"],
+                "build_number": jenkins_response.get("_build_number"),
+            },
+        }
+
+    # Get jenkins config for this record
+    jenkins_job = record.jenkins_job if hasattr(record, "jenkins_job") else ""
+    form_config = get_form_config(record.form_id) if record.form_id else {}
+    jenkins_base_url = (
+        (form_config or {}).get("jenkins_base_url") or get_jenkins_base_url()
+    )
+
+    # Resolve with no delay (user is explicitly retrying)
+    build_info = await resolve_build_from_queue(
+        jenkins_base_url,
+        queue_url,
+        jenkins_user=(form_config or {}).get("jenkins_user"),
+        jenkins_api_token=(form_config or {}).get("jenkins_api_token"),
+        delay=0.5,
+    )
+
+    if not build_info:
+        return {"status": 1, "msg": "Build not started yet, please try again later"}
+
+    # Update record
+    jenkins_response["_build_number"] = build_info["build_number"]
+    jenkins_response["_build_url"] = build_jenkins_url(
+        jenkins_base_url, jenkins_job, build_info["build_number"]
+    )
+    record.jenkins_response = jenkins_response
+    session.add(record)
+    session.commit()
+
+    return {
+        "status": 0,
+        "msg": "Build URL resolved",
+        "data": {
+            "build_url": jenkins_response["_build_url"],
+            "build_number": build_info["build_number"],
+        },
+    }
