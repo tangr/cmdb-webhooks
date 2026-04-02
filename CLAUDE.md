@@ -470,8 +470,8 @@ webhook-proxy/
   - `permissions`: 表单级别权限控制（可选，未配置时仅 admin 可访问）
     - `allowed_roles`: 可查看和提交的角色列表（主要方式，角色在 `oidc_role_mapping` 中定义）
     - `allowed_users`: 可查看和提交的用户列表（补充方式）
-    - `execute_roles`: 可执行待审批任务的角色列表（可选，扩展默认的提交者+admin）
-    - `execute_users`: 可执行待审批任务的用户列表（可选，扩展默认的提交者+admin）
+    - `execute_roles`: 可执行他人待审批任务的角色列表（可选，需同时在 `allowed_roles` 中）
+    - `execute_users`: 可执行他人待审批任务的用户列表（可选，需同时在 `allowed_users` 中）
     - 注意：admin 角色始终拥有所有表单的完整权限，无需配置
   - `schema`: Amis 表单 Schema（JSON/YAML 格式）
 
@@ -535,7 +535,7 @@ forms:
 - **未配置 `permissions`** 的表单默认仅 admin 可访问
 - **`allowed_roles`**（主要方式）：角色在 `oidc_role_mapping` 中定义，映射到用户列表
 - **`allowed_users`**（补充方式）：直接指定用户名，用于个别特殊用户
-- **`execute_roles` / `execute_users`**：扩展执行权限（默认：提交者 + admin 可执行）
+- **`execute_roles` / `execute_users`**：扩展执行权限（默认：提交者 + admin 可执行），前提是用户同时在 `allowed_roles`/`allowed_users` 中（需要能看到任务才能执行）
 - 有表单权限的用户可以查看该表单的全部提交历史
 
 **Amis Jenkins 审批配置示例:**
