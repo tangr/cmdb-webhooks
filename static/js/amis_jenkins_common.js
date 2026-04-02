@@ -225,10 +225,37 @@ var AmisJenkins = (function () {
   }
 
   // ==================== Utility Functions ====================
+  var _weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
   function formatTimestamp(ts) {
     if (!ts) return "N/A";
     var date = new Date(ts * 1000);
-    return date.toLocaleString();
+    var now = new Date();
+    var diffMs = now - date;
+    var diffSec = Math.floor(diffMs / 1000);
+    var diffMin = Math.floor(diffSec / 60);
+    var diffHour = Math.floor(diffMin / 60);
+    var diffDay = Math.floor(diffHour / 24);
+
+    var relative;
+    if (diffSec < 60) {
+      relative = "just now";
+    } else if (diffMin < 60) {
+      relative = diffMin + (diffMin === 1 ? " minute ago" : " minutes ago");
+    } else if (diffHour < 24) {
+      relative = diffHour + (diffHour === 1 ? " hour ago" : " hours ago");
+    } else if (diffDay < 7) {
+      relative = diffDay + (diffDay === 1 ? " day ago" : " days ago") + " (" + _weekdays[date.getDay()] + ")";
+    } else {
+      relative = _weekdays[date.getDay()] + " " + date.toLocaleString();
+    }
+    return relative;
+  }
+
+  function formatTimestampFull(ts) {
+    if (!ts) return "N/A";
+    var date = new Date(ts * 1000);
+    return _weekdays[date.getDay()] + " " + date.toLocaleString();
   }
 
   function escapeHtml(text) {
@@ -244,6 +271,7 @@ var AmisJenkins = (function () {
     syncJobStatus: syncJobStatus,
     openExecuteModal: openExecuteModal,
     formatTimestamp: formatTimestamp,
+    formatTimestampFull: formatTimestampFull,
     escapeHtml: escapeHtml
   };
 })();

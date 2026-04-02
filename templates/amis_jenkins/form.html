@@ -328,6 +328,7 @@
 
       items.forEach(function (item) {
         var timeStr = formatTimestamp(item.created_at);
+        var fullTimeStr = AmisJenkins.formatTimestampFull(item.created_at);
         var hasError = item.error_message ? true : false;
         var rowId = item.source + "-" + item.id;
 
@@ -335,7 +336,7 @@
         html += '<td>' + escapeHtml(item.username) + '</td>';
         html += '<td>' + getTypeBadge(item) + '</td>';
         html += '<td>' + getStatusBadge(item) + '</td>';
-        html += '<td data-tooltip="' + escapeHtml(timeStr) + '">' + escapeHtml(timeStr) + '</td>';
+        html += '<td data-tooltip="' + escapeHtml(fullTimeStr) + '">' + escapeHtml(timeStr) + '</td>';
         html += '<td>';
         html += '<a href="javascript:void(0)" class="ui tiny basic button" onclick="toggleDetail(\'' + rowId + '\')"><i class="eye icon"></i>Detail</a> ';
         if (item.source === "pending") {
