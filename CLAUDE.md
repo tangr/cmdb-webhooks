@@ -1063,6 +1063,14 @@ def test_with_logging():
 
 ## 重要说明
 
+### Amis SDK embed 注意事项
+
+- **不要覆盖 `env.confirm` 和 `env.alert`**：Amis SDK 通过 `preset.tsx` 自动注册了 React 渲染的 styled Modal 对话框（`amis-ui/components/Alert.tsx`）。在 `amis.embed()` 的选项中传入自定义 `confirm`/`alert` 函数会覆盖内置实现，导致退化为浏览器原生弹窗
+- **`confirmText` 是 action/button 组件的属性，不是 form 组件的属性**：要在表单提交前弹出确认框，应在 form 的 `actions` 中自定义提交按钮并设置 `confirmText`，而不是在 form 节点上设置。支持 `${xxx}` 模板语法。`confirmTitle` 可设置对话框标题
+- **表单提交确认的两种方式**：
+  1. **简单确认**：在 submit 按钮上设置 `confirmText`（推荐，配置简单）
+  2. **自定义确认弹窗**：使用 `actionType: "dialog"` 弹出自定义对话框，在对话框中通过 `actionType: "ajax"` 提交（适合需要展示参数摘要等复杂场景）
+
 ### 代码注释规范
 
 - 所有代码内的注释必须使用英文
