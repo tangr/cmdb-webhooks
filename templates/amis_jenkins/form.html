@@ -222,14 +222,7 @@
               notify: function (type, msg) {
                 if (type === "error") {
                   console.error("[Amis Error]", msg);
-                  alert("Error: " + msg);
                 }
-              },
-              alert: function (msg) {
-                alert(msg);
-              },
-              confirm: function (msg) {
-                return confirm(msg);
               }
             }
           );

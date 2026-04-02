@@ -211,7 +211,11 @@ forms:
           url: "/amis-jenkins/api/submit/deploy-test1a"
           messages:
             success: "提交成功"
-        confirmText: "确认要提交此表单吗？"   # 提交前弹窗确认
+        actions:
+          - type: "submit"
+            label: "提交1a"
+            level: "primary"
+            confirmText: "确认要提交此表单1a吗？"
         body:
           - type: "select"
             name: "project"
@@ -416,7 +420,7 @@ forms:
               title: "确认提交"
               body:
                 - type: "tpl"
-                  tpl: "项目: ${project}\n环境: ${environment}\n确认提交？"
+                  tpl: "<p>项目: <b>${project}</b></p><p>环境: <b>${environment}</b></p><p>确认提交？</p>"
               actions:
                 - type: "button"
                   label: "取消"
@@ -427,7 +431,8 @@ forms:
                   actionType: "ajax"
                   api:
                     method: "post"
-                    url: "/amis-jenkins/api/submit/${form_id}"
+                    url: "/amis-jenkins/api/submit/deploy-test1c"
+                    dataType: "json"
                   close: true
         body:
           - type: "select"
