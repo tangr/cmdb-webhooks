@@ -363,14 +363,14 @@
         html += '<td>' + getStatusBadge(item) + '</td>';
         html += '<td data-tooltip="' + escapeHtml(timeStr) + '">' + escapeHtml(timeStr) + '</td>';
         html += '<td>';
-        html += '<a href="javascript:void(0)" onclick="toggleDetail(\'' + rowId + '\')"><i class="eye icon"></i>Detail</a> ';
+        html += '<a href="javascript:void(0)" class="ui tiny basic button" onclick="toggleDetail(\'' + rowId + '\')"><i class="eye icon"></i>Detail</a> ';
         // Action buttons for pending jobs
         if (item.source === "pending") {
           if (item.status === "pending_approval") {
-            html += '<a href="javascript:void(0)" class="ui tiny blue button" onclick="syncJobStatus(' + item.id + ')"><i class="sync icon"></i>Sync</a> ';
+            html += '<a href="javascript:void(0)" class="ui tiny basic blue button" onclick="syncJobStatus(' + item.id + ')"><i class="sync icon"></i>Sync</a> ';
           }
           if (item.status === "approved" && item.can_execute !== false) {
-            html += '<a href="javascript:void(0)" class="ui tiny green button" onclick="openExecuteModal(' + item.id + ')"><i class="play icon"></i>Execute</a> ';
+            html += '<a href="javascript:void(0)" class="ui tiny basic green button" onclick="openExecuteModal(' + item.id + ')"><i class="play icon"></i>Execute</a> ';
           }
         }
         html += '</td>';
