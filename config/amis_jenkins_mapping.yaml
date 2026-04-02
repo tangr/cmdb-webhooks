@@ -43,6 +43,12 @@ user_feishu_mapping:
 #           These fields' options will be saved at submission time
 #       - max_executions: Maximum number of executions allowed (0 = unlimited, default: 0)
 #       - expire_hours: Hours until approval expires (0 = never, default: 0)
+#   - permissions: Form-level access control (optional)
+#       - allowed_roles: Roles that can view + submit the form (primary)
+#       - allowed_users: Users that can view + submit the form (supplementary)
+#       - execute_roles: Roles that can execute pending jobs (extends default: submitter + admin)
+#       - execute_users: Users that can execute pending jobs (extends default: submitter + admin)
+#       Note: admin role always has full access. No permissions block = admin-only.
 #   - schema: Amis form schema (JSON/YAML format)
 #
 # =============================================================================
@@ -52,6 +58,8 @@ forms:
   deploy-app:
     title: "Deploy Application"
     description: "Deploy application to specified environment"
+    permissions:
+      allowed_roles: ["user"]
     jenkins_job: "deploy/app-deploy"
     trigger_type: "generic_webhook"
     jenkins_token: "deploy-token"
@@ -89,6 +97,8 @@ forms:
   build-image:
     title: "Build Docker Image"
     description: "Build and push Docker image to registry"
+    permissions:
+      allowed_roles: ["user"]
     jenkins_job: "pipelines/build-image"
     trigger_type: "remote_api"
     # Optional: override global Jenkins config for this form
@@ -132,6 +142,8 @@ forms:
   run-tests:
     title: "Run Tests"
     description: "Execute test suite on specified branch"
+    permissions:
+      allowed_roles: ["user"]
     jenkins_job: "ci/run-tests"
     trigger_type: "generic_webhook"
     jenkins_token: "test-token"
@@ -166,6 +178,8 @@ forms:
   deploy-test1a:
     title: "Deploy test1a"
     description: "Deploy test1a for development"
+    permissions:
+      allowed_roles: ["user"]
     jenkins_base_url: "https://jenkins-dev1.exodushk.com"
     # jenkins_base_url: "https://echoserver-test.exodushk.com"
     jenkins_job: "pipelines/pipeline-k8s-image-deploy-noinput"
@@ -261,6 +275,8 @@ forms:
   deploy-test1b:
     title: "Deploy test1b"
     description: "Deploy test1b for development"
+    permissions:
+      allowed_roles: ["user"]
     jenkins_base_url: "https://jenkins-dev1.exodushk.com"
     # jenkins_base_url: "https://echoserver-test.exodushk.com"
     jenkins_job: "pipelines/pipeline-k8s-image-deploy-noinput"
@@ -357,6 +373,8 @@ forms:
   deploy-test2:
     title: "Deploy test2"
     description: "Deploy test2 for development"
+    permissions:
+      allowed_roles: ["user"]
     jenkins_job: "pipelines/pipeline-k8s-image-deploy-noinput"
     trigger_type: "remote_api"
     # Optional: override global Jenkins config for this form
@@ -437,6 +455,8 @@ forms:
   deploy-test1:
     title: "Deploy test1"
     description: "Deploy test1 for development"
+    permissions:
+      allowed_roles: ["user"]
     jenkins_base_url: "https://jenkins-dev1.exodushk.com"
     # jenkins_base_url: "https://echoserver-test.exodushk.com"
     jenkins_job: "pipelines/pipeline-k8s-image-deploy-noinput"

@@ -22,6 +22,11 @@ from app.services.amis_jenkins_service import (
     execute_pending_job,
     get_form_history,
 )
+from app.services.amis_jenkins_permissions import (
+    can_view_form,
+    can_submit_form,
+    can_execute_pending_job,
+)
 from app.utils.template_filters import time_to_str, time_diff_now
 import json
 
@@ -51,7 +56,7 @@ async def forms_list_page(
     Display list of available Amis forms.
     Requires web authentication.
     """
-    forms = get_all_forms()
+    forms = get_all_forms(current_user=current_user)
     return templates.TemplateResponse(
         "amis_jenkins/forms.html",
         {
@@ -76,6 +81,12 @@ async def form_page(
     form_config = get_form_config(form_id)
     if not form_config:
         raise HTTPException(status_code=404, detail=f"Form not found: {form_id}")
+
+    if not can_view_form(current_user, form_id):
+        raise HTTPException(
+            status_code=403,
+            detail="You don't have permission to access this form",
+        )
 
     schema = form_config.get("schema", {})
 
@@ -102,7 +113,7 @@ async def api_get_forms(
     Get list of all available forms.
     Requires authentication.
     """
-    forms = get_all_forms()
+    forms = get_all_forms(current_user=current_user)
     return {"status": 0, "msg": "success", "data": forms}
 
 
@@ -115,6 +126,12 @@ async def api_get_form_schema(
     Get Amis schema for a specific form.
     Requires authentication.
     """
+    if not can_view_form(current_user, form_id):
+        raise HTTPException(
+            status_code=403,
+            detail="You don't have permission to access this form",
+        )
+
     schema = get_form_schema(form_id)
     if not schema:
         raise HTTPException(status_code=404, detail=f"Form not found: {form_id}")
@@ -137,6 +154,12 @@ async def api_submit_form(
     - generic_webhook: POST to Jenkins Generic Webhook Trigger
     - remote_api: POST to Jenkins buildWithParameters API
     """
+    if not can_submit_form(current_user, form_id):
+        raise HTTPException(
+            status_code=403,
+            detail="You don't have permission to submit this form",
+        )
+
     return await process_form_submit(request, session, form_id, current_user)
 
 
@@ -153,6 +176,12 @@ def api_get_form_history(
     Get merged history for a form: executed logs + pending jobs, sorted by time desc.
     Returns a unified list with a 'source' field ('log' or 'pending') to distinguish record types.
     """
+    if not can_view_form(current_user, form_id):
+        raise HTTPException(
+            status_code=403,
+            detail="You don't have permission to view this form's history",
+        )
+
     limit = min(limit, 100)
     result = get_form_history(session=session, form_id=form_id, skip=skip, limit=limit)
     return {"status": 0, "msg": "success", **result}
@@ -173,6 +202,11 @@ def get_amis_jenkins_logs(
 
     # Get logs with pagination (fetch limit+1 to check if there are more records)
     statement = select(AmisJenkinsReqLog)
+    # Non-admin users only see their own logs
+    if "admin" not in current_user.roles:
+        statement = statement.where(
+            AmisJenkinsReqLog.username == current_user.username
+        )
     if form_id:
         statement = statement.where(AmisJenkinsReqLog.form_id == form_id)
     statement = (
@@ -239,6 +273,12 @@ def get_amis_jenkins_log(
     log = session.get(AmisJenkinsReqLog, log_id)
     if not log:
         raise HTTPException(status_code=404, detail="Log not found")
+    # Non-admin users can only view their own logs
+    if "admin" not in current_user.roles and log.username != current_user.username:
+        raise HTTPException(
+            status_code=403,
+            detail="You don't have permission to view this log",
+        )
     return log
 
 
@@ -288,6 +328,7 @@ def api_get_pending_jobs(
         status=status,
         limit=limit,
         offset=skip,
+        current_user=current_user,
     )
     return {"status": 0, "msg": "success", "data": jobs}
 
@@ -305,6 +346,15 @@ def api_get_pending_job(
     job = session.get(PendingJenkinsJob, job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Pending job not found")
+    # Permission check: admin, submitter, or users with execute permission
+    if "admin" not in current_user.roles:
+        if current_user.username != job.username and not can_execute_pending_job(
+            current_user, job.username, job.form_id
+        ):
+            raise HTTPException(
+                status_code=403,
+                detail="You don't have permission to view this job",
+            )
     return {"status": 0, "msg": "success", "data": job}
 
 
@@ -318,6 +368,18 @@ async def api_sync_pending_job(
     Sync pending job status from Feishu approval.
     Requires authentication.
     """
+    # Permission check: admin, submitter, or users with execute permission
+    job = session.get(PendingJenkinsJob, job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Pending job not found")
+    if "admin" not in current_user.roles:
+        if current_user.username != job.username and not can_execute_pending_job(
+            current_user, job.username, job.form_id
+        ):
+            raise HTTPException(
+                status_code=403,
+                detail="You don't have permission to sync this job",
+            )
     try:
         result = await sync_pending_job_status(session, job_id)
         return {"status": 0, "msg": "Status synced successfully", "data": result}
@@ -350,7 +412,9 @@ async def api_execute_pending_job(
     """
     try:
         modified_fields = body.modified_fields if body else None
-        result = await execute_pending_job(session, job_id, modified_fields)
+        result = await execute_pending_job(
+            session, job_id, modified_fields, current_user=current_user
+        )
         if result["success"]:
             return {
                 "status": 0,

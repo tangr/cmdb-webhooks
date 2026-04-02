@@ -180,9 +180,12 @@ def is_approval_enabled(form_id: str) -> bool:
     return approval_config.get("enabled", False)
 
 
-def get_all_forms() -> List[Dict[str, Any]]:
+def get_all_forms(current_user: Optional["User"] = None) -> List[Dict[str, Any]]:
     """
     Get all form configurations with their IDs.
+
+    Args:
+        current_user: If provided, filter forms by user permissions
 
     Returns:
         List of form configs with form_id added
@@ -190,6 +193,13 @@ def get_all_forms() -> List[Dict[str, Any]]:
     forms = _amis_jenkins_mapping.get("forms") or {}
     result = []
     for form_id, config in forms.items():
+        # Permission check: filter by user access if current_user is provided
+        if current_user is not None:
+            from app.services.amis_jenkins_permissions import can_view_form
+
+            if not can_view_form(current_user, form_id):
+                continue
+
         approval_config = config.get("approval") or {}
         form_info = {
             "form_id": form_id,
@@ -969,6 +979,7 @@ def get_pending_jobs(
     status: Optional[str] = None,
     limit: int = 50,
     offset: int = 0,
+    current_user: Optional["User"] = None,
 ) -> List[Dict[str, Any]]:
     """
     Get pending Jenkins jobs with optional filters.
@@ -979,6 +990,7 @@ def get_pending_jobs(
         status: Filter by status (None for all statuses)
         limit: Max records to return
         offset: Offset for pagination
+        current_user: If provided, filter jobs by user permissions
 
     Returns:
         List of pending job records with approval info
@@ -1003,6 +1015,29 @@ def get_pending_jobs(
         if approval_log:
             job_dict["approval_status"] = approval_log.status
             job_dict["feishu_instance_code"] = approval_log.feishu_instance_code
+
+        # Add can_execute flag for frontend
+        if current_user is not None:
+            from app.services.amis_jenkins_permissions import (
+                can_view_form,
+                can_execute_pending_job,
+            )
+
+            # Non-admin users: only see jobs they submitted (for forms they can view)
+            # or jobs they can execute
+            if "admin" not in current_user.roles:
+                is_own_job = current_user.username == job.username and can_view_form(
+                    current_user, job.form_id
+                )
+                can_execute = can_execute_pending_job(
+                    current_user, job.username, job.form_id
+                )
+                if not is_own_job and not can_execute:
+                    continue
+
+            job_dict["can_execute"] = can_execute_pending_job(
+                current_user, job.username, job.form_id
+            )
         result.append(job_dict)
 
     return result
@@ -1057,6 +1092,7 @@ async def execute_pending_job(
     session: SessionDep,
     job_id: int,
     modified_fields: Optional[Dict[str, Any]] = None,
+    current_user: Optional["User"] = None,
 ) -> Dict[str, Any]:
     """
     Execute a pending Jenkins job after approval.
@@ -1068,6 +1104,7 @@ async def execute_pending_job(
         session: Database session
         job_id: Pending job ID
         modified_fields: Optional dict of field values to override (must be in modifiable_fields list)
+        current_user: If provided, check execution permission
 
     Returns:
         Dict with execution result
@@ -1075,6 +1112,13 @@ async def execute_pending_job(
     job = session.get(PendingJenkinsJob, job_id)
     if not job:
         raise ValueError(f"Pending job not found: {job_id}")
+
+    # Permission check
+    if current_user is not None:
+        from app.services.amis_jenkins_permissions import can_execute_pending_job
+
+        if not can_execute_pending_job(current_user, job.username, job.form_id):
+            raise ValueError("You don't have permission to execute this job")
 
     # Sync status first to ensure we have latest approval status
     await sync_pending_job_status(session, job_id)

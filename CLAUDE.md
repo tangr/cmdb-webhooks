@@ -62,6 +62,7 @@ webhook-proxy/
 │   │   ├── feishu_bot_service.py    # 飞书机器人服务逻辑
 │   │   ├── gitlab_hook_service.py    # GitLab Hook到Jenkins转发服务
 │   │   ├── amis_jenkins_service.py  # Amis Jenkins表单到Jenkins转发服务
+│   │   ├── amis_jenkins_permissions.py # Amis Jenkins表单级别权限控制
 │   │   ├── harbor_artifacts_service.py # Harbor镜像Artifacts查询服务
 │   │   ├── feishu_client.py     # 飞书开放平台API客户端
 │   │   ├── feishu_approval_service.py # 飞书审批代理服务
@@ -223,6 +224,11 @@ webhook-proxy/
     - 支持审批状态同步和审批后手动执行
   - 用户飞书 ID 映射：通过 `user_feishu_mapping` 配置，未配置时默认使用登录用户名
   - **合并历史查询**：`get_form_history` 合并 AmisJenkinsReqLog 和 PendingJenkinsJob 按时间倒序展示
+  - **表单级别权限控制**：通过 `permissions` 配置实现 RBAC
+    - 权限检查逻辑集中在 `app/services/amis_jenkins_permissions.py`
+    - 支持 `allowed_roles`/`allowed_users`（查看+提交）和 `execute_roles`/`execute_users`（执行）
+    - admin 角色自动绕过所有权限检查
+    - 未配置 `permissions` 的表单默认仅 admin 可访问
 
 - **HarborArtifactsService** (`app/services/harbor_artifacts_service.py`):
   - 代理 Harbor Registry API 获取镜像 Artifacts 列表
@@ -461,6 +467,12 @@ webhook-proxy/
     - `modifiable_fields`: 可修改字段列表（审批后执行时可修改的字段）
     - `max_executions`: 最大执行次数（0 = 无限制，默认: 0）
     - `expire_hours`: 审批过期时间（小时，0 = 永不过期，默认: 0）
+  - `permissions`: 表单级别权限控制（可选，未配置时仅 admin 可访问）
+    - `allowed_roles`: 可查看和提交的角色列表（主要方式，角色在 `oidc_role_mapping` 中定义）
+    - `allowed_users`: 可查看和提交的用户列表（补充方式）
+    - `execute_roles`: 可执行待审批任务的角色列表（可选，扩展默认的提交者+admin）
+    - `execute_users`: 可执行待审批任务的用户列表（可选，扩展默认的提交者+admin）
+    - 注意：admin 角色始终拥有所有表单的完整权限，无需配置
   - `schema`: Amis 表单 Schema（JSON/YAML 格式）
 
 **Harbor 配置 (`config/harbor_config.yaml`):**
@@ -484,6 +496,47 @@ webhook-proxy/
   required: true
   source: "/harbor-artifacts?instance=prod&project=${project}&repo=${service}"
 ```
+
+**Amis Jenkins 权限配置示例:**
+
+```yaml
+# config/config.py 或 .env 中定义角色映射
+oidc_role_mapping:
+  admin: ["admin", "tangshoubin"]
+  deploy-prod: ["alice", "bob", "charlie"]   # 生产部署角色
+  deploy-staging: ["alice", "bob", "dev1"]   # 预发布部署角色
+
+# config/amis_jenkins_mapping.yaml 中表单权限配置
+forms:
+  deploy-prod:
+    title: "Deploy to Production"
+    permissions:
+      allowed_roles: ["deploy-prod"]          # 主要方式：按角色授权
+      allowed_users: ["emergency-user"]       # 补充方式：直接指定用户
+      execute_roles: ["deploy-prod"]          # 可执行待审批任务的角色
+      execute_users: []                       # 可执行待审批任务的用户
+    # ... jenkins_job, schema 等配置
+
+  deploy-staging:
+    title: "Deploy to Staging"
+    permissions:
+      allowed_roles: ["deploy-staging", "deploy-prod"]  # 多个角色
+    # ... 其他配置
+
+  admin-only-form:
+    title: "Admin Tool"
+    # 不配置 permissions = 仅 admin 可访问
+    # ...
+```
+
+**权限规则说明：**
+
+- **admin 角色**始终拥有所有表单的完整权限（查看、提交、执行），无需配置
+- **未配置 `permissions`** 的表单默认仅 admin 可访问
+- **`allowed_roles`**（主要方式）：角色在 `oidc_role_mapping` 中定义，映射到用户列表
+- **`allowed_users`**（补充方式）：直接指定用户名，用于个别特殊用户
+- **`execute_roles` / `execute_users`**：扩展执行权限（默认：提交者 + admin 可执行）
+- 有表单权限的用户可以查看该表单的全部提交历史
 
 **Amis Jenkins 审批配置示例:**
 

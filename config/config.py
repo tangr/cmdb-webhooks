@@ -84,6 +84,8 @@ class Settings(BaseSettings):
             # Add regular user usernames here (optional, as "user" is default)
             # "user@example.com",
         ],
+        # Custom roles for form-level access control in amis-jenkins
+        # Example: "deploy-prod": ["alice", "bob"]
     }
 
     # Mock user database configuration

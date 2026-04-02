@@ -213,7 +213,7 @@
         var statusColor = getStatusColor(job.status);
         var statusLabel = getStatusLabel(job.status);
         var approvalStatus = job.approval_status || 'unknown';
-        var canExecute = job.status === 'approved';
+        var canExecute = job.status === 'approved' && job.can_execute !== false;
         var canSync = job.status === 'pending_approval';
 
         html += '<div class="ui fluid card job-card">';
