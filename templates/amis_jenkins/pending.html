@@ -45,20 +45,6 @@
   .execution-info .label {
     margin-right: 0.5em;
   }
-
-  #amis-form-container {
-    min-height: 100px;
-    position: relative;
-  }
-
-  #amis-form-container .cxd-Page {
-    padding: 0;
-  }
-
-  /* Ensure dropdowns appear above modal content */
-  #amis-form-container .cxd-PopOver {
-    z-index: 1060;
-  }
 </style>
 
 <body>
@@ -110,7 +96,7 @@
               <button class="ui primary button" type="submit">
                 <i class="filter icon"></i> Filter
               </button>
-              <button class="ui button" type="button" onclick="refreshAllJobs()">
+              <button class="ui button" type="button" onclick="loadPendingJobs()">
                 <i class="sync icon"></i> Refresh All
               </button>
             </div>
@@ -125,42 +111,26 @@
 
     </div>
 
-    <!-- Execution Modal -->
-    <div class="ui modal" id="execute-modal">
-      <i class="close icon"></i>
-      <div class="header">
-        <i class="play icon"></i> Execute Jenkins Job
-      </div>
-      <div class="content">
-        <div id="modal-job-info">
-          <!-- Job info will be populated dynamically -->
-        </div>
-        <div class="ui divider"></div>
-        <h4 class="ui header">
-          <i class="wpforms icon"></i> Execution Parameters
-          <div class="sub header">Fields marked as static are locked, others can be modified</div>
-        </h4>
-        <div id="amis-form-container">
-          <!-- Amis will render all fields here (static + editable) -->
-        </div>
-      </div>
-      <div class="actions">
-        <div class="ui cancel button">Cancel</div>
-        <div class="ui green approve button" id="modal-execute-btn">
-          <i class="play icon"></i> Execute
-        </div>
-      </div>
-    </div>
+    {% include "amis_jenkins/_execute_modal.html" %}
 
     {% include "base_foot.html" %}
   </div>
 
   <!-- Amis SDK JS -->
   <script src="/static/plugin/amis-6.13.0/sdk.js"></script>
+  <script src="/static/js/amis_jenkins_common.js"></script>
 
   <script type="text/javascript">
+    // Shorthand references to common functions
+    var formatTimestamp = AmisJenkins.formatTimestamp;
+    var escapeHtml = AmisJenkins.escapeHtml;
+
     $(document).ready(function () {
       $('.ui.dropdown').dropdown();
+
+      // Register reload callback for sync/execute success
+      AmisJenkins.init(function () { loadPendingJobs(); });
+
       loadPendingJobs();
 
       $('#filter-form').on('submit', function (e) {
@@ -254,13 +224,13 @@
         html += '</div>';
         html += '</div>';
         html += '<div class="extra content action-buttons">';
+        html += '<button class="ui basic button" onclick="viewJobDetails(' + job.id + ')"><i class="eye icon"></i> Details</button>';
         if (canSync) {
-          html += '<button class="ui blue button" onclick="syncJobStatus(' + job.id + ')"><i class="sync icon"></i> Sync Status</button>';
+          html += '<button class="ui basic blue button" onclick="AmisJenkins.syncJobStatus(' + job.id + ')"><i class="sync icon"></i> Sync Status</button>';
         }
         if (canExecute) {
-          html += '<button class="ui green button" onclick="openExecuteModal(' + job.id + ')"><i class="play icon"></i> Execute</button>';
+          html += '<button class="ui basic green button" onclick="AmisJenkins.openExecuteModal(' + job.id + ')"><i class="play icon"></i> Execute</button>';
         }
-        html += '<button class="ui button" onclick="viewJobDetails(' + job.id + ')"><i class="eye icon"></i> Details</button>';
         html += '</div>';
         html += '</div>';
       });
@@ -295,190 +265,6 @@
       }
     }
 
-    function syncJobStatus(jobId) {
-      fetch('/amis-jenkins/api/pending/' + jobId + '/sync', {
-        method: 'POST',
-        credentials: 'include'
-      })
-        .then(function (response) { return response.json(); })
-        .then(function (result) {
-          if (result.status === 0) {
-            alert('Status synced: ' + result.data.job_status);
-            loadPendingJobs();
-          } else {
-            alert('Failed to sync: ' + result.msg);
-          }
-        })
-        .catch(function (error) {
-          alert('Error: ' + error.message);
-        });
-    }
-
-    // Store current job data and Amis instance for modal
-    var currentModalJobId = null;
-    var currentModalJobData = null;
-    var amisFormInstance = null;
-    var amisFormData = {};  // Track Amis form data
-
-    function openExecuteModal(jobId) {
-      // Fetch job details first
-      fetch('/amis-jenkins/api/pending/' + jobId, { credentials: 'include' })
-        .then(function (response) { return response.json(); })
-        .then(function (result) {
-          if (result.status !== 0) {
-            alert('Failed to load job details: ' + result.msg);
-            return;
-          }
-          currentModalJobId = jobId;
-          currentModalJobData = result.data;
-          populateExecuteModal(result.data);
-          $('#execute-modal').modal({
-            closable: true,
-            onApprove: function () {
-              executeJobFromModal();
-              return false; // Prevent modal from closing automatically
-            },
-            onHidden: function () {
-              // Clean up Amis instance when modal closes
-              if (amisFormInstance) {
-                amisFormInstance.unmount();
-                amisFormInstance = null;
-              }
-              $('#amis-form-container').html('');
-            }
-          }).modal('show');
-        })
-        .catch(function (error) {
-          alert('Error loading job: ' + error.message);
-        });
-    }
-
-    function populateExecuteModal(job) {
-      // Job info
-      var infoHtml = '<div class="ui list">';
-      infoHtml += '<div class="item"><strong>Form:</strong> ' + escapeHtml(job.form_title) + '</div>';
-      infoHtml += '<div class="item"><strong>Jenkins Job:</strong> ' + escapeHtml(job.jenkins_job) + '</div>';
-      infoHtml += '<div class="item"><strong>Submitted by:</strong> ' + escapeHtml(job.username) + '</div>';
-      if (job.execution_count > 0) {
-        infoHtml += '<div class="item"><strong>Executed:</strong> ' + job.execution_count + ' time(s)</div>';
-      }
-      if (job.max_executions > 0) {
-        infoHtml += '<div class="item"><strong>Max executions:</strong> ' + job.max_executions + '</div>';
-      }
-      if (job.expire_at > 0) {
-        infoHtml += '<div class="item"><strong>Expires:</strong> ' + formatTimestamp(job.expire_at) + '</div>';
-      }
-      infoHtml += '</div>';
-      $('#modal-job-info').html(infoHtml);
-
-      // Get field schema (includes all fields, non-modifiable marked as static)
-      var formSchemaConfig = job.execution_form_schema || {};
-      var fieldSchema = formSchemaConfig.schema || [];
-      var requestParams = job.request_params || {};
-
-      // Clean up previous Amis instance
-      if (amisFormInstance) {
-        amisFormInstance.unmount();
-        amisFormInstance = null;
-      }
-
-      if (fieldSchema.length > 0) {
-        $('#amis-form-container').html(''); // Clear previous content
-
-        // Build Amis schema (all fields, static + editable)
-        var amisSchema = {
-          type: 'page',
-          body: {
-            type: 'form',
-            name: 'executeForm',
-            mode: 'horizontal',
-            wrapWithPanel: false,
-            submitOnChange: false,
-            actions: [],  // Hide default submit button
-            body: fieldSchema
-          }
-        };
-
-        // Initialize form data from request_params
-        amisFormData = Object.assign({}, requestParams);
-
-        // Render Amis form
-        var amis = amisRequire('amis/embed');
-        amisFormInstance = amis.embed(
-          '#amis-form-container',
-          amisSchema,
-          {
-            data: amisFormData,
-            onDataChange: function (data) {
-              // Track form data changes (only modifiable fields will change)
-              Object.assign(amisFormData, data);
-            }
-          },
-          {
-            theme: 'cxd',
-            locale: 'zh-CN',
-            // Fix dropdown positioning in modal - mount popover to the container instead of body
-            getModalContainer: function () {
-              return document.getElementById('amis-form-container');
-            }
-          }
-        );
-      } else {
-        $('#amis-form-container').html('<p>No parameters to display</p>');
-      }
-    }
-
-    function executeJobFromModal() {
-      if (!currentModalJobId) {
-        alert('No job selected');
-        return;
-      }
-
-      // Collect modified field values from Amis
-      var modifiedFields = {};
-      var formSchemaConfig = currentModalJobData.execution_form_schema || {};
-      var modifiableFields = formSchemaConfig.fields || [];
-
-      if (modifiableFields.length > 0) {
-        // Get current form data from tracked amisFormData
-        modifiableFields.forEach(function (fieldName) {
-          if (amisFormData.hasOwnProperty(fieldName)) {
-            modifiedFields[fieldName] = amisFormData[fieldName];
-          }
-        });
-      }
-
-      // Disable execute button
-      $('#modal-execute-btn').addClass('loading disabled');
-
-      var requestBody = {};
-      if (Object.keys(modifiedFields).length > 0) {
-        requestBody.modified_fields = modifiedFields;
-      }
-
-      fetch('/amis-jenkins/api/pending/' + currentModalJobId + '/execute', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestBody)
-      })
-        .then(function (response) { return response.json(); })
-        .then(function (result) {
-          $('#modal-execute-btn').removeClass('loading disabled');
-          if (result.status === 0) {
-            $('#execute-modal').modal('hide');
-            alert('Jenkins build triggered successfully!\nExecution count: ' + result.data.execution_count);
-            loadPendingJobs();
-          } else {
-            alert('Failed to execute: ' + result.msg);
-          }
-        })
-        .catch(function (error) {
-          $('#modal-execute-btn').removeClass('loading disabled');
-          alert('Error: ' + error.message);
-        });
-    }
-
     function viewJobDetails(jobId) {
       fetch('/amis-jenkins/api/pending/' + jobId, { credentials: 'include' })
         .then(function (response) { return response.json(); })
@@ -492,23 +278,6 @@
         .catch(function (error) {
           alert('Error: ' + error.message);
         });
-    }
-
-    function refreshAllJobs() {
-      loadPendingJobs();
-    }
-
-    function formatTimestamp(ts) {
-      if (!ts) return 'N/A';
-      var date = new Date(ts * 1000);
-      return date.toLocaleString();
-    }
-
-    function escapeHtml(text) {
-      if (text === null || text === undefined) return '';
-      var div = document.createElement('div');
-      div.textContent = text;
-      return div.innerHTML;
     }
   </script>
 

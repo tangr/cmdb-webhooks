@@ -1,0 +1,42 @@
+<!-- Shared Execute Modal for Amis Jenkins pages -->
+<style>
+  #amis-form-container {
+    min-height: 100px;
+    position: relative;
+  }
+
+  #amis-form-container .cxd-Page {
+    padding: 0;
+  }
+
+  /* Ensure dropdowns appear above modal content */
+  #amis-form-container .cxd-PopOver {
+    z-index: 1060;
+  }
+</style>
+
+<div class="ui modal" id="execute-modal">
+  <i class="close icon"></i>
+  <div class="header">
+    <i class="play icon"></i> Execute Jenkins Job
+  </div>
+  <div class="content">
+    <div id="modal-job-info">
+      <!-- Job info will be populated dynamically -->
+    </div>
+    <div class="ui divider"></div>
+    <h4 class="ui header">
+      <i class="wpforms icon"></i> Execution Parameters
+      <div class="sub header">Fields marked as static are locked, others can be modified</div>
+    </h4>
+    <div id="amis-form-container">
+      <!-- Amis will render all fields here (static + editable) -->
+    </div>
+  </div>
+  <div class="actions">
+    <div class="ui cancel button">Cancel</div>
+    <div class="ui green approve button" id="modal-execute-btn">
+      <i class="play icon"></i> Execute
+    </div>
+  </div>
+</div>
