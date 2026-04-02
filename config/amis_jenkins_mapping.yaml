@@ -6,8 +6,8 @@
 # =============================================================================
 jenkins_base_url: "https://jenkins.example.com"  # Jenkins server URL
 jenkins_default_token: ""  # Default trigger token for Generic Webhook Trigger
-jenkins_default_user: ""   # Default Jenkins user for Remote API
-jenkins_default_api_token: ""  # Default Jenkins API token for Remote API
+jenkins_default_user: "admin"   # Default Jenkins user for Remote API
+jenkins_default_api_token: "11ca0b07c650ba82d99b017ab5884ed501"  # Default Jenkins API token for Remote API
 jenkins_build_url_format: "console"  # Build URL format: "console" or "blueocean"
 jenkins_queue_resolve_delay: 3  # Seconds to wait before querying queue API for build number (0 to disable)
 

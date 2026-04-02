@@ -201,10 +201,10 @@ async def resolve_build_from_queue(
 
     # Build full API URL
     if queue_url.startswith("http"):
-        api_url = f"{queue_url.rstrip('/')}api/json"
+        api_url = f"{queue_url.rstrip('/')}/api/json"
     else:
         api_url = (
-            f"{jenkins_base_url.rstrip('/')}/{queue_url.strip('/')}api/json"
+            f"{jenkins_base_url.rstrip('/')}/{queue_url.strip('/')}/api/json"
         )
 
     # Build auth header
@@ -921,12 +921,8 @@ async def process_form_submit(
             jenkins_result,
             jenkins_base_url,
             jenkins_job,
-            jenkins_user=(
-                form_config.get("jenkins_user") if trigger_type == "remote_api" else None
-            ),
-            jenkins_api_token=(
-                form_config.get("jenkins_api_token") if trigger_type == "remote_api" else None
-            ),
+            jenkins_user=form_config.get("jenkins_user"),
+            jenkins_api_token=form_config.get("jenkins_api_token"),
             form_config=form_config,
         )
 
@@ -1451,16 +1447,8 @@ async def execute_pending_job(
             jenkins_result,
             jenkins_base_url,
             job.jenkins_job,
-            jenkins_user=(
-                form_config.get("jenkins_user")
-                if job.trigger_type == "remote_api"
-                else None
-            ),
-            jenkins_api_token=(
-                form_config.get("jenkins_api_token")
-                if job.trigger_type == "remote_api"
-                else None
-            ),
+            jenkins_user=form_config.get("jenkins_user"),
+            jenkins_api_token=form_config.get("jenkins_api_token"),
             form_config=form_config,
         )
 
