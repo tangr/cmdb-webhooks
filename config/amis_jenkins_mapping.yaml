@@ -413,20 +413,20 @@ forms:
           url: "/amis-jenkins/api/submit/deploy-test1c"
         actions:
           - type: "button"
-            label: "提交"
+            label: "提交1c"
             level: "primary"
             actionType: "dialog"
             dialog:
-              title: "确认提交"
+              title: "确认提交1c"
               body:
                 - type: "tpl"
                   tpl: "<p>项目: <b>${project}</b></p><p>环境: <b>${environment}</b></p><p>确认提交？</p>"
               actions:
                 - type: "button"
-                  label: "取消"
+                  label: "取消1c"
                   actionType: "close"
                 - type: "button"
-                  label: "确认"
+                  label: "确认1c"
                   level: "primary"
                   actionType: "ajax"
                   api:
