@@ -24,14 +24,14 @@ var AmisJenkins = (function () {
       .then(function (response) { return response.json(); })
       .then(function (result) {
         if (result.status === 0) {
-          alert("Status synced: " + result.data.job_status);
+          $("body").toast({ class: "success", message: "Status synced: " + escapeHtml(result.data.job_status), displayTime: 5000 });
           if (_onSuccess) _onSuccess();
         } else {
-          alert("Failed to sync: " + result.msg);
+          $("body").toast({ class: "error", message: "Failed to sync: " + escapeHtml(result.msg), displayTime: 6000 });
         }
       })
       .catch(function (error) {
-        alert("Error: " + error.message);
+        $("body").toast({ class: "error", message: "Sync error: " + escapeHtml(error.message), displayTime: 6000 });
       });
   }
 
@@ -40,7 +40,7 @@ var AmisJenkins = (function () {
       .then(function (response) { return response.json(); })
       .then(function (result) {
         if (result.status !== 0) {
-          alert("Failed to load job details: " + result.msg);
+          $("body").toast({ class: "error", message: "Failed to load job details: " + escapeHtml(result.msg), displayTime: 6000 });
           return;
         }
         _populateExecuteModal(jobId, result.data);
@@ -57,15 +57,14 @@ var AmisJenkins = (function () {
           }
         }).modal("show");
         // Bind execute button to trigger Amis form submit via hidden button
+        // Amis confirmText on the hidden button handles the confirmation dialog
         $("#modal-execute-btn").off("click").on("click", function () {
-          if (!confirm("Are you sure you want to execute this Jenkins job?")) return;
-          $("#modal-execute-btn").addClass("loading disabled");
           var hiddenBtn = document.querySelector("#amis-form-container .amis-hidden-submit");
           if (hiddenBtn) hiddenBtn.click();
         });
       })
       .catch(function (error) {
-        alert("Error loading job: " + error.message);
+        $("body").toast({ class: "error", message: "Error loading job: " + escapeHtml(error.message), displayTime: 6000 });
       });
   }
 
@@ -116,18 +115,23 @@ var AmisJenkins = (function () {
         }
       };
 
-      // Build success message script
-      // Amis puts response.data into event.data, so fields like execution_count, jenkins_response are directly accessible
+      // Build success handler script
+      // Amis submitSucc: response.data is in event.data.result or event.data
       var successScript =
-        '$("#modal-execute-btn").removeClass("loading disabled");' +
-        'var d = event.data || {};' +
-        'var msg = "Jenkins build triggered successfully!\\nExecution count: " + (d.execution_count || "");' +
-        'var jr = d.jenkins_response || {};' +
-        'if (jr._build_url) { msg += "\\n\\nBuild URL:\\n" + jr._build_url; }' +
-        'else if (jr._queue_url) { msg += "\\n\\nQueue URL (build not yet started):\\n" + jr._queue_url; }' +
-        'alert(msg);' +
+        'var result = (event.data || {}).result || event.data || {};' +
+        'var msg = "Execution count: " + (result.execution_count || "N/A");' +
+        'var jr = result.jenkins_response || {};' +
+        'if (jr._build_url) { msg += "<br><a href=\'" + jr._build_url + "\' target=\'_blank\'>Open Build Console</a>"; }' +
+        'else if (jr._queue_url) { msg += "<br>Queued (build not yet started)"; }' +
+        'doAction({actionType:"toast",args:{msgType:"success",msg:msg,position:"top-center",timeout:10000}});' +
         '$("#execute-modal").modal("hide");' +
         'if (window.__amisOnExecuteSuccess) { window.__amisOnExecuteSuccess(); }';
+
+      // Build failure handler script
+      var failScript =
+        'var d = event.data || {};' +
+        'var msg = d.msg || d.detail || "Unknown error";' +
+        'doAction({actionType:"toast",args:{msgType:"error",msg:msg,position:"top-center",timeout:8000}});';
 
       var amisSchema = {
         type: "page",
@@ -149,7 +153,7 @@ var AmisJenkins = (function () {
             submitFail: {
               actions: [{
                 actionType: "custom",
-                script: '$("#modal-execute-btn").removeClass("loading disabled"); var d = event.data || {}; var msg = d.msg || d.detail || "Unknown error"; alert("Failed to execute: " + msg);'
+                script: failScript
               }]
             }
           },
@@ -158,6 +162,7 @@ var AmisJenkins = (function () {
               type: "button",
               actionType: "submit",
               label: "",
+              confirmText: "Are you sure you want to execute this Jenkins job?",
               className: "amis-hidden-submit",
               style: { position: "absolute", width: 0, height: 0, overflow: "hidden", opacity: 0 }
             }
