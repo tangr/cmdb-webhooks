@@ -286,11 +286,33 @@ var AmisJenkins = (function () {
       });
   }
 
+  function completeJob(jobId) {
+    if (!confirm("Are you sure you want to mark this job as completed?")) return;
+
+    fetch("/amis-jenkins/api/pending/" + jobId + "/complete", {
+      method: "POST",
+      credentials: "include"
+    })
+      .then(function (response) { return response.json(); })
+      .then(function (result) {
+        if (result.status === 0) {
+          $("body").toast({ class: "success", message: "Job completed successfully", displayTime: 5000 });
+          if (_onSuccess) _onSuccess();
+        } else {
+          $("body").toast({ class: "error", message: "Failed to complete: " + escapeHtml(result.detail || result.msg), displayTime: 6000 });
+        }
+      })
+      .catch(function (error) {
+        $("body").toast({ class: "error", message: "Complete error: " + escapeHtml(error.message), displayTime: 6000 });
+      });
+  }
+
   // Public API
   return {
     init: init,
     syncJobStatus: syncJobStatus,
     cancelJob: cancelJob,
+    completeJob: completeJob,
     openExecuteModal: openExecuteModal,
     formatTimestamp: formatTimestamp,
     formatTimestampFull: formatTimestampFull,
