@@ -65,50 +65,6 @@ class Settings(BaseSettings):
     enable_database_logging: bool = False
     enable_console_logging: bool = False
 
-    # Role mapping configuration for OIDC users
-    # Map usernames to roles - users not in any list get default "user" role
-    oidc_role_mapping: Dict[str, List[str]] = {
-        "admin": [
-            # Add admin usernames here
-            "admin@example.com",
-            "administrator",
-            "root",
-            "tangshoubin",
-        ],
-        "user": [
-            # Add regular user usernames here (optional, as "user" is default)
-            # "user@example.com",
-        ],
-        "jenkins-form-role1": [
-            "tangshoubin",
-        ],
-        # Custom roles for form-level access control in amis-jenkins
-        # Example: "deploy-prod": ["alice", "bob"]
-    }
-
-    # Mock user database configuration
-    mock_users: Dict[str, Dict[str, Any]] = {
-        "testuser": {
-            "user_id": "1",
-            "username": "testuser",
-            "password": "testpass",  # In production, use hashed passwords
-            "roles": ["user"],
-        },
-        "admin": {
-            "user_id": "2",
-            "username": "admin",
-            "password": "admin123",
-            "roles": ["admin", "user"],
-        },
-    }
-
-    # Menu Visibility Configuration
-    # Map menu_id to list of allowed roles - menu items not listed are hidden
-    menu_visibility: Dict[str, List[str]] = {
-        "cmdb": ["admin"],
-        "amis_jenkins": ["admin"],
-    }
-
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

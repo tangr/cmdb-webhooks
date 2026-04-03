@@ -17,6 +17,7 @@ from .services.gitlab_hook_service import init_gitlab_jenkins_config
 from .services.amis_jenkins_service import init_amis_jenkins_config
 from .services.harbor_artifacts_service import init_harbor_config
 from .services.feishu_bot_service import init_feishu_bot_config
+from .services.users_roles_service import init_users_roles_config
 from fastapi.staticfiles import StaticFiles
 
 
@@ -27,6 +28,7 @@ async def lifespan(app: FastAPI):
     from app.utils.logger import setup_logging
 
     setup_logging()
+    init_users_roles_config()
     init_gitlab_jenkins_config()
     init_amis_jenkins_config()
     init_harbor_config()

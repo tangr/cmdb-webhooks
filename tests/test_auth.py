@@ -304,7 +304,24 @@ class TestRootRedirect:
 class TestAuthenticationHelpers:
     """Test authentication helper functions"""
 
-    def test_authenticate_user_valid(self):
+    @patch(
+        "app.services.users_roles_service.get_mock_users",
+        return_value={
+            "testuser": {
+                "user_id": "1",
+                "username": "testuser",
+                "password": "testpass",
+                "roles": ["user"],
+            },
+            "admin": {
+                "user_id": "2",
+                "username": "admin",
+                "password": "admin123",
+                "roles": ["admin", "user"],
+            },
+        },
+    )
+    def test_authenticate_user_valid(self, mock_get_users):
         """Test user authentication with valid credentials"""
         from app.routers.auth import authenticate_user
 
@@ -312,14 +329,36 @@ class TestAuthenticationHelpers:
         assert user is not None
         assert user["username"] == "testuser"
 
-    def test_authenticate_user_invalid_username(self):
+    @patch(
+        "app.services.users_roles_service.get_mock_users",
+        return_value={
+            "testuser": {
+                "user_id": "1",
+                "username": "testuser",
+                "password": "testpass",
+                "roles": ["user"],
+            },
+        },
+    )
+    def test_authenticate_user_invalid_username(self, mock_get_users):
         """Test user authentication with invalid username"""
         from app.routers.auth import authenticate_user
 
         user = authenticate_user("nonexistent", "testpass")
         assert user is None
 
-    def test_authenticate_user_invalid_password(self):
+    @patch(
+        "app.services.users_roles_service.get_mock_users",
+        return_value={
+            "testuser": {
+                "user_id": "1",
+                "username": "testuser",
+                "password": "testpass",
+                "roles": ["user"],
+            },
+        },
+    )
+    def test_authenticate_user_invalid_password(self, mock_get_users):
         """Test user authentication with invalid password"""
         from app.routers.auth import authenticate_user
 

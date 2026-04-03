@@ -7,7 +7,6 @@ so that all routers use the same configuration.
 
 from fastapi.templating import Jinja2Templates
 from app.utils.template_filters import time_to_str, time_diff_now
-from config.config import settings
 from typing import Optional
 
 
@@ -17,7 +16,7 @@ def _can_see_menu(user: Optional[object], menu_id: str) -> bool:
 
     Args:
         user: User object with .roles attribute, or None if not authenticated.
-        menu_id: The menu identifier to check (must exist in settings.menu_visibility).
+        menu_id: The menu identifier to check.
 
     Returns:
         True if user has a matching role; False otherwise.
@@ -25,7 +24,9 @@ def _can_see_menu(user: Optional[object], menu_id: str) -> bool:
     if user is None:
         return False
 
-    allowed_roles = settings.menu_visibility.get(menu_id)
+    from app.services.users_roles_service import get_menu_visibility
+
+    allowed_roles = get_menu_visibility().get(menu_id)
     if not allowed_roles:
         return False
 

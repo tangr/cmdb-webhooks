@@ -357,7 +357,9 @@ async def verify_oidc_token(token: str) -> Optional[dict]:
         roles_assigned = set(["user"])  # Always include user role
 
         # Check username-based role mapping
-        for role, usernames in settings.oidc_role_mapping.items():
+        from app.services.users_roles_service import get_oidc_role_mapping
+
+        for role, usernames in get_oidc_role_mapping().items():
             if username in usernames:
                 roles_assigned.add(role)
                 logger.info(

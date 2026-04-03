@@ -52,7 +52,9 @@ class UserResponse(BaseModel):
 
 def authenticate_user(username: str, password: str) -> dict:
     """Authenticate user credentials (mock implementation)"""
-    user = settings.mock_users.get(username)
+    from app.services.users_roles_service import get_mock_users
+
+    user = get_mock_users().get(username)
     if not user or user["password"] != password:
         return None
     return user

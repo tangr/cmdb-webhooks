@@ -1,0 +1,65 @@
+# Users, Roles, and Permissions Configuration
+# This file manages user definitions, role assignments, and menu visibility
+
+# =============================================================================
+# OIDC Role Mapping
+# =============================================================================
+# Map role names to lists of usernames
+# Users not in any list get default "user" role
+# The "admin" role grants full access to all features
+
+oidc_role_mapping:
+  admin:
+    - "admin@example.com"
+    - "administrator"
+    - "root"
+    - "tangshoubin"
+  user: []
+    # Add regular user usernames here (optional, as "user" is default)
+    # - "user@example.com"
+  jenkins-form-role1:
+    - "tangshoubin"
+  # Custom roles for form-level access control in amis-jenkins
+  # Example:
+  # deploy-prod:
+  #   - "alice"
+  #   - "bob"
+
+# =============================================================================
+# Mock User Database
+# =============================================================================
+# Used for username/password login (development and testing)
+# In production, use OIDC authentication instead
+
+mock_users:
+  testuser:
+    user_id: "1"
+    username: "testuser"
+    password: "testpass"    # In production, use hashed passwords
+    roles:
+      - "user"
+  admin:
+    user_id: "2"
+    username: "admin"
+    password: "admin123"
+    roles:
+      - "admin"
+      - "user"
+
+# =============================================================================
+# Menu Visibility
+# =============================================================================
+# Map menu_id to list of allowed roles
+# Menu items not listed here are hidden
+# The "admin" role can always see all menus
+
+menu_visibility:
+  cmdb:
+    - "admin"
+  amis_jenkins:
+    - "admin"
+  # Example: allow multiple roles to see amis_jenkins menu
+  # amis_jenkins:
+  #   - "admin"
+  #   - "deploy-prod"
+  #   - "deploy-staging"

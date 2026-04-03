@@ -66,7 +66,8 @@ webhook-proxy/
 │   │   ├── harbor_artifacts_service.py # Harbor镜像Artifacts查询服务
 │   │   ├── feishu_client.py     # 飞书开放平台API客户端
 │   │   ├── feishu_approval_service.py # 飞书审批代理服务
-│   │   └── redis_session.py     # Redis会话管理服务
+│   │   ├── redis_session.py     # Redis会话管理服务
+│   │   └── users_roles_service.py # 用户角色配置服务
 │   └── utils/             # 工具模块
 │       ├── logger.py            # 日志工具
 │       ├── template_filters.py  # Jinja2模板过滤器
@@ -100,7 +101,8 @@ webhook-proxy/
 │   ├── amis_jenkins_config.yaml # Amis表单到Jenkins映射配置文件
 │   ├── feishu_bot_config.yaml # 飞书机器人Webhook代理配置文件
 │   ├── harbor_config.yaml # Harbor多实例配置文件
-│   └── feishu_approval_config.yaml # 飞书审批应用配置文件
+│   ├── feishu_approval_config.yaml # 飞书审批应用配置文件
+│   └── users_roles_config.yaml # 用户角色权限配置文件
 ├── sql/                   # 数据库脚本
 │   └── db.sql            # 数据库初始化脚本
 ├── requirements.txt       # Python依赖包
@@ -421,18 +423,13 @@ webhook-proxy/
 - `oidc_username_attribute`: 用户名属性字段 (默认: "preferred_username")
 - `oidc_login_button_text`: OIDC 登录按钮文本 (默认: "Sign in with OIDC")
 
-**角色映射配置:**
+**用户角色配置 (`config/users_roles_config.yaml`):**
 
-- `oidc_role_mapping`: OIDC 用户角色映射（用户名到角色的映射字典）
+- `oidc_role_mapping`: OIDC 用户角色映射（角色名到用户名列表的映射）
 - `mock_users`: 模拟用户数据库（用于开发和测试环境）
-
-**菜单可见性配置:**
-
 - `menu_visibility`: 菜单项可见性配置（菜单 ID 到允许角色列表的映射）
-  - 格式：`{menu_id: [allowed_role_1, allowed_role_2, ...]}`
   - 未配置的菜单项默认隐藏
-  - 默认值：`{"cmdb": ["admin"], "amis_jenkins": ["admin"]}`
-  - 示例：`{"cmdb": ["admin"], "amis_jenkins": ["admin", "deploy-prod", "deploy-staging"]}`
+  - 示例：`{"cmdb": ["admin"], "amis_jenkins": ["admin", "deploy-prod"]}`
 
 **GitLab-Jenkins 配置 (`config/gitlab_jenkins_config.yaml`):**
 
