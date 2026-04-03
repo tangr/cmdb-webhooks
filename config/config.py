@@ -78,7 +78,7 @@ class Settings(BaseSettings):
             "admin@example.com",
             "administrator",
             "root",
-            # "tangshoubin",
+            "tangshoubin",
         ],
         "user": [
             # Add regular user usernames here (optional, as "user" is default)
