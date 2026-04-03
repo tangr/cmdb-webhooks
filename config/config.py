@@ -12,15 +12,10 @@ class Settings(BaseSettings):
     database_url: str = "mysql+pymysql://root:mypassword@127.0.0.1/test2"
     database_echo: bool = True
 
-    feishu_webhook_base_url: str = "https://open.feishu.cn/open-apis/bot/v2/hook/"
-
     # X-API-Key
     # Webhook Security Configuration - API Key based authentication (supports multiple keys for rotation)
     cmdb_trigger_webhook_api_keys: str = (
         "QNbl7W9Ez7hVkR44ja93"  # Comma-separated API keys for CMDB Trigger webhook verification (empty = no verification)
-    )
-    feishu_bot_webhook_api_keys: str = (
-        ""  # Comma-separated API keys for Feishu Bot webhook verification (empty = no verification)
     )
     webhook_ip_whitelist: List[str] = [
         "0.0.0.0/0",

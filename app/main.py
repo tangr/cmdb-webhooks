@@ -9,6 +9,7 @@ from .services.webhook_mapping import init_webhook_mapping
 from .services.gitlab_hook_service import init_gitlab_jenkins_mapping
 from .services.amis_jenkins_service import init_amis_jenkins_mapping
 from .services.harbor_artifacts_service import init_harbor_config
+from .services.feishu_bot_service import init_feishu_bot_config
 from fastapi.staticfiles import StaticFiles
 
 
@@ -23,6 +24,7 @@ async def lifespan(app: FastAPI):
     init_gitlab_jenkins_mapping()
     init_amis_jenkins_mapping()
     init_harbor_config()
+    init_feishu_bot_config()
     yield
     # Shutdown (if needed)
 

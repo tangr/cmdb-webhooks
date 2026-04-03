@@ -100,6 +100,7 @@ webhook-proxy/
 │   ├── webhook_mapping.yaml # 飞书Webhook映射配置文件
 │   ├── gitlab_jenkins_mapping.yaml # GitLab到Jenkins映射配置文件
 │   ├── amis_jenkins_mapping.yaml # Amis表单到Jenkins映射配置文件
+│   ├── feishu_bot_config.yaml # 飞书机器人Webhook代理配置文件
 │   ├── harbor_config.yaml # Harbor多实例配置文件
 │   └── feishu_approval_config.yaml # 飞书审批应用配置文件
 ├── sql/                   # 数据库脚本
@@ -398,7 +399,6 @@ webhook-proxy/
 **Webhook 安全配置:**
 
 - `cmdb_trigger_webhook_api_keys`: CMDB Trigger Webhook API Keys（逗号分隔，空值表示不验证）
-- `feishu_bot_webhook_api_keys`: 飞书机器人 Webhook API Keys（逗号分隔，空值表示不验证）
 - `webhook_ip_whitelist`: Webhook 请求 IP 白名单（支持单 IP 和 CIDR 格式）
 
 **登录选项配置:**
@@ -504,6 +504,11 @@ webhook-proxy/
     - `execute_users`: 可执行他人待审批任务的用户列表（可选，需同时在 `allowed_users` 中）
     - 注意：admin 角色始终拥有所有表单的完整权限，无需配置
   - `schema`: Amis 表单 Schema（JSON/YAML 格式）
+
+**飞书机器人配置 (`config/feishu_bot_config.yaml`):**
+
+- `webhook_base_url`: 飞书机器人 Webhook 基础 URL（默认: `https://open.feishu.cn/open-apis/bot/v2/hook/`）
+- `api_keys`: Webhook API Keys 列表（列表格式，空列表表示不验证）
 
 **Harbor 配置 (`config/harbor_config.yaml`):**
 

@@ -7,12 +7,69 @@ from app.utils.webhook_security import (
     verify_feishu_bot_webhook,
     verify_webhook_ip_whitelist,
 )
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
+from pathlib import Path
 import httpx
 import json
+import yaml
 import logging
 
 logger = logging.getLogger(__name__)
+
+# Global feishu bot configuration storage
+_feishu_bot_config: Dict[str, Any] = {}
+
+
+def _find_project_root() -> Path:
+    """Find the project root directory by looking for requirements.txt"""
+    current_path = Path(__file__).resolve()
+    for parent in current_path.parents:
+        if (parent / "requirements.txt").exists():
+            return parent
+    return current_path.parent.parent.parent
+
+
+def load_feishu_bot_config() -> Dict[str, Any]:
+    """Load Feishu Bot configuration from YAML file"""
+    project_root = _find_project_root()
+    config_path = project_root / "config" / "feishu_bot_config.yaml"
+
+    try:
+        with open(config_path, "r", encoding="utf-8") as file:
+            config = yaml.safe_load(file)
+            return config or {}
+    except FileNotFoundError:
+        logger.warning(f"Feishu Bot config file not found at {config_path}")
+        return {}
+    except yaml.YAMLError as e:
+        logger.error(f"Error parsing Feishu Bot config YAML: {e}")
+        return {}
+
+
+def init_feishu_bot_config():
+    """Initialize Feishu Bot configuration on startup"""
+    global _feishu_bot_config
+    _feishu_bot_config = load_feishu_bot_config()
+    api_keys = _feishu_bot_config.get("api_keys") or []
+    logger.info(
+        f"Loaded Feishu Bot config: webhook_base_url={_feishu_bot_config.get('webhook_base_url', 'N/A')}, "
+        f"api_keys={len(api_keys)} key(s)"
+    )
+
+
+def get_feishu_bot_webhook_base_url() -> str:
+    """Get the Feishu Bot webhook base URL"""
+    return _feishu_bot_config.get(
+        "webhook_base_url", "https://open.feishu.cn/open-apis/bot/v2/hook/"
+    )
+
+
+def get_feishu_bot_api_keys() -> List[str]:
+    """Get the list of Feishu Bot API keys for webhook verification"""
+    keys = _feishu_bot_config.get("api_keys") or []
+    if isinstance(keys, list):
+        return [str(k).strip() for k in keys if str(k).strip()]
+    return []
 
 
 def log_feishu_bot_request(session: SessionDep, log_entry: FeishuBotReqLogCreate):
@@ -128,7 +185,7 @@ async def process_webhook_request(
         body = convert_grafana_to_feishu(body)
 
     # Feishu API URL
-    feishu_url = f"{settings.feishu_webhook_base_url}{webhook_id}"
+    feishu_url = f"{get_feishu_bot_webhook_base_url()}{webhook_id}"
 
     # Initialize log entry with original body for logging
     log_entry = FeishuBotReqLogCreate(

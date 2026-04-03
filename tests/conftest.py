@@ -34,7 +34,6 @@ def test_settings():
         oidc_client_id="test-client",
         oidc_client_secret="test-secret",
         cmdb_webhook_api_keys="test-api-key",
-        feishu_bot_webhook_api_keys="",
     )
 
 

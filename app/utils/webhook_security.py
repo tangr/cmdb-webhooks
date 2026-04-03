@@ -78,8 +78,10 @@ def verify_feishu_bot_webhook(
     Raises:
         HTTPException: If verification fails
     """
-    # Get configured API keys
-    configured_keys = get_api_keys_list(settings.feishu_bot_webhook_api_keys)
+    # Get configured API keys from feishu_bot config YAML
+    from app.services.feishu_bot_service import get_feishu_bot_api_keys
+
+    configured_keys = get_feishu_bot_api_keys()
 
     # If no keys configured, skip verification
     if not configured_keys:

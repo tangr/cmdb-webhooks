@@ -244,11 +244,11 @@ class TestFeishuBotService:
     @patch("app.services.feishu_bot_service.verify_feishu_bot_webhook")
     @patch("app.services.feishu_bot_service.log_feishu_bot_request")
     @patch(
-        "config.config.settings.feishu_webhook_base_url",
-        "https://open.feishu.cn/open-apis/bot/v2/hook/",
+        "app.services.feishu_bot_service.get_feishu_bot_webhook_base_url",
+        return_value="https://open.feishu.cn/open-apis/bot/v2/hook/",
     )
     async def test_process_webhook_request_success(
-        self, mock_log, mock_verify_feishu, mock_verify_ip, mock_request, mock_session
+        self, mock_base_url, mock_log, mock_verify_feishu, mock_verify_ip, mock_request, mock_session
     ):
         """Test successful webhook processing"""
         # Mock httpx client response

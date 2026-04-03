@@ -78,8 +78,8 @@ class TestWebhookSecurity:
         mock_request.headers = {"X-API-Key": "valid-feishu-key"}
 
         with patch(
-            "config.config.settings.feishu_bot_webhook_api_keys",
-            "valid-feishu-key,another-key",
+            "app.services.feishu_bot_service.get_feishu_bot_api_keys",
+            return_value=["valid-feishu-key", "another-key"],
         ):
             # Should not raise any exception
             verify_feishu_bot_webhook(mock_request, "valid-feishu-key")
@@ -89,7 +89,8 @@ class TestWebhookSecurity:
         mock_request.headers = {"X-API-Key": "invalid-key"}
 
         with patch(
-            "config.config.settings.feishu_bot_webhook_api_keys", "valid-key1,valid-key2"
+            "app.services.feishu_bot_service.get_feishu_bot_api_keys",
+            return_value=["valid-key1", "valid-key2"],
         ):
             with pytest.raises(HTTPException) as exc_info:
                 verify_feishu_bot_webhook(mock_request, "invalid-key")
@@ -101,7 +102,10 @@ class TestWebhookSecurity:
         """Test Feishu Bot webhook verification when no API keys are configured"""
         mock_request.headers = {}
 
-        with patch("config.config.settings.feishu_bot_webhook_api_keys", ""):
+        with patch(
+            "app.services.feishu_bot_service.get_feishu_bot_api_keys",
+            return_value=[],
+        ):
             # Should not raise any exception when no keys are configured
             verify_feishu_bot_webhook(mock_request, None)
 
@@ -232,7 +236,10 @@ class TestWebhookSecurity:
         special_key = "key-with_special.chars@123!"
         mock_request.headers = {"X-API-Key": special_key}
 
-        with patch("config.config.settings.feishu_bot_webhook_api_keys", special_key):
+        with patch(
+            "app.services.feishu_bot_service.get_feishu_bot_api_keys",
+            return_value=[special_key],
+        ):
             # Should handle special characters in API keys
             verify_feishu_bot_webhook(mock_request, special_key)
 

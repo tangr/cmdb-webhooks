@@ -1,0 +1,22 @@
+# Feishu Bot Webhook Proxy Configuration
+# This file configures the Feishu Bot webhook proxy service
+
+# =============================================================================
+# Feishu Webhook Configuration
+# =============================================================================
+
+# Feishu Bot Webhook base URL (the webhook ID will be appended)
+webhook_base_url: "https://open.feishu.cn/open-apis/bot/v2/hook/"
+
+# =============================================================================
+# Security Configuration
+# =============================================================================
+
+# API keys for Feishu Bot webhook verification
+# Requests must include a matching X-API-Key header when keys are configured
+# Empty list = no verification (all requests accepted)
+# Example:
+#   api_keys:
+#     - "key1-for-alertmanager"
+#     - "key2-for-monitoring"
+api_keys: []
