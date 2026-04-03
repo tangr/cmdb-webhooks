@@ -10,7 +10,7 @@ from app.utils.logger import get_logger
 logger = get_logger(__name__)
 
 # Global configuration storage
-_harbor_config: Dict[str, Any] = {}
+_harbor_artifacts_config: Dict[str, Any] = {}
 
 
 def _find_project_root() -> Path:
@@ -22,10 +22,10 @@ def _find_project_root() -> Path:
     return current_path.parent.parent.parent
 
 
-def load_harbor_config() -> Dict[str, Any]:
+def load_harbor_artifacts_config() -> Dict[str, Any]:
     """Load Harbor configuration from YAML file"""
     project_root = _find_project_root()
-    config_path = project_root / "config" / "harbor_config.yaml"
+    config_path = project_root / "config" / "harbor_artifacts_config.yaml"
 
     try:
         with open(config_path, "r", encoding="utf-8") as file:
@@ -39,17 +39,17 @@ def load_harbor_config() -> Dict[str, Any]:
         return {}
 
 
-def init_harbor_config():
+def init_harbor_artifacts_config():
     """Initialize Harbor configuration on startup"""
-    global _harbor_config
-    _harbor_config = load_harbor_config()
-    instances = _harbor_config.get("instances") or {}
+    global _harbor_artifacts_config
+    _harbor_artifacts_config = load_harbor_artifacts_config()
+    instances = _harbor_artifacts_config.get("instances") or {}
     logger.info(f"Loaded {len(instances)} Harbor instances")
 
 
-def get_harbor_config() -> Dict[str, Any]:
+def get_harbor_artifacts_config() -> Dict[str, Any]:
     """Get the current Harbor configuration"""
-    return _harbor_config
+    return _harbor_artifacts_config
 
 
 def get_harbor_instance(instance_id: Optional[str] = None) -> Optional[Dict[str, Any]]:
@@ -64,28 +64,28 @@ def get_harbor_instance(instance_id: Optional[str] = None) -> Optional[Dict[str,
         Instance configuration dict or None if not found
     """
     if not instance_id:
-        instance_id = _harbor_config.get("default_instance", "")
+        instance_id = _harbor_artifacts_config.get("default_instance", "")
 
     if not instance_id:
         return None
 
-    instances = _harbor_config.get("instances") or {}
+    instances = _harbor_artifacts_config.get("instances") or {}
     return instances.get(instance_id)
 
 
 def get_default_page_size() -> int:
     """Get default page size from config"""
-    return _harbor_config.get("default_page_size", 50)
+    return _harbor_artifacts_config.get("default_page_size", 50)
 
 
 def get_max_page_size() -> int:
     """Get max page size from config"""
-    return _harbor_config.get("max_page_size", 100)
+    return _harbor_artifacts_config.get("max_page_size", 100)
 
 
 def get_default_timeout() -> int:
     """Get default timeout from config"""
-    return _harbor_config.get("default_timeout", 30)
+    return _harbor_artifacts_config.get("default_timeout", 30)
 
 
 def _build_auth_header(robot_token: str) -> str:
@@ -157,7 +157,7 @@ async def fetch_artifacts(
     # Get instance configuration
     instance = get_harbor_instance(instance_id)
     if not instance:
-        available = list((_harbor_config.get("instances") or {}).keys())
+        available = list((_harbor_artifacts_config.get("instances") or {}).keys())
         return {
             "error": f"Harbor instance '{instance_id or 'default'}' not found",
             "available_instances": available,

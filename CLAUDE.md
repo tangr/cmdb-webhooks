@@ -100,7 +100,7 @@ webhook-proxy/
 │   ├── gitlab_jenkins_config.yaml # GitLab到Jenkins映射配置文件
 │   ├── amis_jenkins_config.yaml # Amis表单到Jenkins映射配置文件
 │   ├── feishu_bot_config.yaml # 飞书机器人Webhook代理配置文件
-│   ├── harbor_config.yaml # Harbor多实例配置文件
+│   ├── harbor_artifacts_config.yaml # Harbor镜像Artifacts配置文件
 │   ├── feishu_approval_config.yaml # 飞书审批应用配置文件
 │   └── users_roles_config.yaml # 用户角色权限配置文件
 ├── sql/                   # 数据库脚本
@@ -499,7 +499,7 @@ webhook-proxy/
 - `feishu_bot_webhook_api_keys`: Webhook API Keys 列表（列表格式，空列表表示不验证）
 - `feishu_bot_webhook_mappings`: Webhook ID 到名称的映射（用于 `/webhook/alias/{webhook_name}` 别名路由）
 
-**Harbor 配置 (`config/harbor_config.yaml`):**
+**Harbor 配置 (`config/harbor_artifacts_config.yaml`):**
 
 - `instances`: Harbor 实例配置（支持多实例）
   - 每个实例包含：

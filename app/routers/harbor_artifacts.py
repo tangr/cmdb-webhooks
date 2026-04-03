@@ -5,7 +5,7 @@ from app.services.harbor_artifacts_service import (
     format_artifacts_for_amis,
     get_default_page_size,
     get_max_page_size,
-    get_harbor_config,
+    get_harbor_artifacts_config,
 )
 from typing import Optional
 from app.utils.logger import get_logger
@@ -129,7 +129,7 @@ async def list_instances(
 
     Returns list of configured Harbor instance IDs.
     """
-    config = get_harbor_config()
+    config = get_harbor_artifacts_config()
     instances = config.get("instances") or {}
     default_instance = config.get("default_instance", "")
 
