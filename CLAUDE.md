@@ -507,8 +507,8 @@ webhook-proxy/
 
 **飞书机器人配置 (`config/feishu_bot_config.yaml`):**
 
-- `webhook_base_url`: 飞书机器人 Webhook 基础 URL（默认: `https://open.feishu.cn/open-apis/bot/v2/hook/`）
-- `api_keys`: Webhook API Keys 列表（列表格式，空列表表示不验证）
+- `feishu_bot_webhook_base_url`: 飞书机器人 Webhook 基础 URL（默认: `https://open.feishu.cn/open-apis/bot/v2/hook/`）
+- `feishu_bot_webhook_api_keys`: Webhook API Keys 列表（列表格式，空列表表示不验证）
 
 **Harbor 配置 (`config/harbor_config.yaml`):**
 

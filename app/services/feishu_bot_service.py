@@ -50,23 +50,23 @@ def init_feishu_bot_config():
     """Initialize Feishu Bot configuration on startup"""
     global _feishu_bot_config
     _feishu_bot_config = load_feishu_bot_config()
-    api_keys = _feishu_bot_config.get("api_keys") or []
+    api_keys = _feishu_bot_config.get("feishu_bot_webhook_api_keys") or []
     logger.info(
-        f"Loaded Feishu Bot config: webhook_base_url={_feishu_bot_config.get('webhook_base_url', 'N/A')}, "
-        f"api_keys={len(api_keys)} key(s)"
+        f"Loaded Feishu Bot config: feishu_bot_webhook_base_url={_feishu_bot_config.get('feishu_bot_webhook_base_url', 'N/A')}, "
+        f"feishu_bot_webhook_api_keys={len(api_keys)} key(s)"
     )
 
 
 def get_feishu_bot_webhook_base_url() -> str:
     """Get the Feishu Bot webhook base URL"""
     return _feishu_bot_config.get(
-        "webhook_base_url", "https://open.feishu.cn/open-apis/bot/v2/hook/"
+        "feishu_bot_webhook_base_url", "https://open.feishu.cn/open-apis/bot/v2/hook/"
     )
 
 
 def get_feishu_bot_api_keys() -> List[str]:
     """Get the list of Feishu Bot API keys for webhook verification"""
-    keys = _feishu_bot_config.get("api_keys") or []
+    keys = _feishu_bot_config.get("feishu_bot_webhook_api_keys") or []
     if isinstance(keys, list):
         return [str(k).strip() for k in keys if str(k).strip()]
     return []

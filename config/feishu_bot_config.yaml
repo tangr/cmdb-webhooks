@@ -6,7 +6,7 @@
 # =============================================================================
 
 # Feishu Bot Webhook base URL (the webhook ID will be appended)
-webhook_base_url: "https://open.feishu.cn/open-apis/bot/v2/hook/"
+feishu_bot_webhook_base_url: "https://open.feishu.cn/open-apis/bot/v2/hook/"
 
 # =============================================================================
 # Security Configuration
@@ -16,7 +16,7 @@ webhook_base_url: "https://open.feishu.cn/open-apis/bot/v2/hook/"
 # Requests must include a matching X-API-Key header when keys are configured
 # Empty list = no verification (all requests accepted)
 # Example:
-#   api_keys:
+#   feishu_bot_webhook_api_keys:
 #     - "key1-for-alertmanager"
 #     - "key2-for-monitoring"
-api_keys: []
+feishu_bot_webhook_api_keys: []
