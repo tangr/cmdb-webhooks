@@ -107,6 +107,13 @@ class Settings(BaseSettings):
         },
     }
 
+    # Menu Visibility Configuration
+    # Map menu_id to list of allowed roles - menu items not listed are hidden
+    menu_visibility: Dict[str, List[str]] = {
+        "cmdb": ["admin"],
+        "amis_jenkins": ["admin"],
+    }
+
     # GitLab Hook Webhook Configuration
     gitlab_hook_webhook_secret_tokens: str = (
         ""  # Comma-separated GitLab secret tokens (empty = no verification)

@@ -5,14 +5,18 @@
     <i class="home icon"></i>
     Dashboard
   </a>
+  {% if can_see_menu(current_user, 'cmdb') %}
   <a class="item" href="/cmdb-trigger/">
     <i class="list icon"></i>
     CMDB
   </a>
+  {% endif %}
+  {% if can_see_menu(current_user, 'amis_jenkins') %}
   <a class="item" href="/amis-jenkins/forms">
     <i class="wpforms icon"></i>
     Amis Jenkins
   </a>
+  {% endif %}
 
 
   <div class="right menu">

@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Response, Request, Cookie
 from typing import Optional
 from fastapi.security import OAuth2PasswordRequestForm
-from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse, RedirectResponse
 from pydantic import BaseModel
 from datetime import datetime, timedelta
@@ -24,16 +23,12 @@ import secrets
 from urllib.parse import urlencode
 
 
-# Import and register custom time filters
-from app.utils.template_filters import time_to_str, time_diff_now
+from app.utils.templates import create_templates
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
-templates = Jinja2Templates(directory="templates")
-
-templates.env.filters["timeToStr"] = time_to_str
-templates.env.filters["timeDiffNow"] = time_diff_now
+templates = create_templates()
 
 router = APIRouter()
 

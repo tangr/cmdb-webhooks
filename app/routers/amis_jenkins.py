@@ -1,5 +1,4 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
 from sqlmodel import select
 from pydantic import BaseModel
@@ -32,7 +31,7 @@ from app.services.amis_jenkins_permissions import (
     can_submit_form,
     can_execute_pending_job,
 )
-from app.utils.template_filters import time_to_str, time_diff_now
+from app.utils.templates import create_templates
 import json
 
 router = APIRouter()
@@ -45,10 +44,7 @@ class ExecuteJobRequest(BaseModel):
     modified_fields: Optional[Dict[str, Any]] = None
 
 
-# Setup templates
-templates = Jinja2Templates(directory="templates")
-templates.env.filters["timeToStr"] = time_to_str
-templates.env.filters["timeDiffNow"] = time_diff_now
+templates = create_templates()
 
 
 # ==================== HTML Pages ====================

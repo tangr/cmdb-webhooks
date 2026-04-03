@@ -20,19 +20,14 @@ from app.dependencies import (
 from typing import List, Optional
 import time
 import json
-from fastapi.templating import Jinja2Templates
-from app.utils.template_filters import time_to_str, time_diff_now
+from app.utils.templates import create_templates
 from app.utils.webhook_security import (
     verify_cmdb_trigger_webhook,
     verify_webhook_ip_whitelist,
 )
 from config.config import settings
 
-templates = Jinja2Templates(directory="templates")
-
-# Register custom filters
-templates.env.filters["timeToStr"] = time_to_str
-templates.env.filters["timeDiffNow"] = time_diff_now
+templates = create_templates()
 
 router = APIRouter()
 

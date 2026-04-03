@@ -432,6 +432,14 @@ webhook-proxy/
 - `oidc_role_mapping`: OIDC 用户角色映射（用户名到角色的映射字典）
 - `mock_users`: 模拟用户数据库（用于开发和测试环境）
 
+**菜单可见性配置:**
+
+- `menu_visibility`: 菜单项可见性配置（菜单 ID 到允许角色列表的映射）
+  - 格式：`{menu_id: [allowed_role_1, allowed_role_2, ...]}`
+  - 未配置的菜单项默认隐藏
+  - 默认值：`{"cmdb": ["admin"], "amis_jenkins": ["admin"]}`
+  - 示例：`{"cmdb": ["admin"], "amis_jenkins": ["admin", "deploy-prod", "deploy-staging"]}`
+
 **GitLab Webhook 配置:**
 
 - `gitlab_hook_webhook_secret_tokens`: GitLab Secret Token（逗号分隔，空值表示不验证）
