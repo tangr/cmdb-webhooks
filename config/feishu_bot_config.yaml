@@ -20,3 +20,22 @@ feishu_bot_webhook_base_url: "https://open.feishu.cn/open-apis/bot/v2/hook/"
 #     - "key1-for-alertmanager"
 #     - "key2-for-monitoring"
 feishu_bot_webhook_api_keys: []
+
+# =============================================================================
+# Webhook ID to Name Mapping
+# =============================================================================
+# Maps Feishu webhook IDs to human-readable names
+# Used by the /webhook/alias/{webhook_name} endpoint
+# Format: webhook_id: webhook_name
+
+feishu_bot_webhook_mappings:
+  # Example mappings - replace with your actual webhook configurations
+  xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx: alert-system
+  yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy: monitoring
+  zzzzzzzz-zzzz-zzzz-zzzz-zzzzzzzzzzzz: notification
+  3be4839b-e0e6-4e1c-8f51-0bfd6051fd9d: tang-mytest-bot
+
+  # Add more webhook mappings as needed
+  # your-webhook-id-here: grafana-alerts
+  # your-webhook-id-here: jenkins-ci
+  # your-webhook-id-here: system-alerts

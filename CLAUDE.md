@@ -66,8 +66,7 @@ webhook-proxy/
 │   │   ├── harbor_artifacts_service.py # Harbor镜像Artifacts查询服务
 │   │   ├── feishu_client.py     # 飞书开放平台API客户端
 │   │   ├── feishu_approval_service.py # 飞书审批代理服务
-│   │   ├── redis_session.py     # Redis会话管理服务
-│   │   └── webhook_mapping.py   # Webhook映射服务
+│   │   └── redis_session.py     # Redis会话管理服务
 │   └── utils/             # 工具模块
 │       ├── logger.py            # 日志工具
 │       ├── template_filters.py  # Jinja2模板过滤器
@@ -97,7 +96,6 @@ webhook-proxy/
 │       └── amis-6.13.0/          # Amis低代码框架
 ├── config/                # 配置模块
 │   ├── config.py          # Pydantic设置配置
-│   ├── webhook_mapping.yaml # 飞书Webhook映射配置文件
 │   ├── gitlab_jenkins_mapping.yaml # GitLab到Jenkins映射配置文件
 │   ├── amis_jenkins_mapping.yaml # Amis表单到Jenkins映射配置文件
 │   ├── feishu_bot_config.yaml # 飞书机器人Webhook代理配置文件
@@ -204,10 +202,6 @@ webhook-proxy/
   - 包含安全验证和请求转发功能
   - 支持 Grafana 告警格式自动转换为飞书卡片格式
   - 记录请求/响应日志
-
-- **WebHookMapping** (`app/services/webhook_mapping.py`):
-  - 处理 Webhook 请求的路由和映射逻辑
-  - 支持配置文件驱动的映射规则
 
 - **GitlabHookService** (`app/services/gitlab_hook_service.py`):
   - 处理 GitLab System Hook 到 Jenkins Generic Webhook Trigger 的转发
@@ -509,6 +503,7 @@ webhook-proxy/
 
 - `feishu_bot_webhook_base_url`: 飞书机器人 Webhook 基础 URL（默认: `https://open.feishu.cn/open-apis/bot/v2/hook/`）
 - `feishu_bot_webhook_api_keys`: Webhook API Keys 列表（列表格式，空列表表示不验证）
+- `feishu_bot_webhook_mappings`: Webhook ID 到名称的映射（用于 `/webhook/alias/{webhook_name}` 别名路由）
 
 **Harbor 配置 (`config/harbor_config.yaml`):**
 
@@ -820,7 +815,7 @@ tests/
 ├── test_services/             # 服务层单元测试
 │   ├── test_redis_session.py # Redis 会话服务测试
 │   ├── test_feishu_bot_service.py # 飞书机器人服务测试
-│   ├── test_webhook_mapping.py # Webhook 映射测试
+│   ├── test_feishu_bot_webhook_mapping.py # 飞书机器人 Webhook 映射测试
 │   └── test_login_config.py  # 登录配置测试
 ├── test_utils/               # 工具类测试
 │   └── test_logger.py        # 日志工具测试

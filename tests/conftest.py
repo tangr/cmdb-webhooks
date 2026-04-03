@@ -102,12 +102,10 @@ def client(override_get_session, mock_redis, test_settings):
         with patch(
             "app.services.redis_session.get_redis_connection", return_value=mock_redis
         ):
-            # Mock webhook mapping initialization
-            with patch("app.services.webhook_mapping.init_webhook_mapping"):
-                # Mock logging setup
-                with patch("app.utils.logger.setup_logging"):
-                    with TestClient(app) as test_client:
-                        yield test_client
+            # Mock logging setup
+            with patch("app.utils.logger.setup_logging"):
+                with TestClient(app) as test_client:
+                    yield test_client
 
     # Clean up overrides
     app.dependency_overrides.clear()
@@ -125,15 +123,13 @@ async def async_client(override_get_session, mock_redis, test_settings):
         with patch(
             "app.services.redis_session.get_redis_connection", return_value=mock_redis
         ):
-            # Mock webhook mapping initialization
-            with patch("app.services.webhook_mapping.init_webhook_mapping"):
-                # Mock logging setup
-                with patch("app.utils.logger.setup_logging"):
-                    transport = ASGITransport(app=app)
-                    async with AsyncClient(
-                        transport=transport, base_url="http://test"
-                    ) as ac:
-                        yield ac
+            # Mock logging setup
+            with patch("app.utils.logger.setup_logging"):
+                transport = ASGITransport(app=app)
+                async with AsyncClient(
+                    transport=transport, base_url="http://test"
+                ) as ac:
+                    yield ac
 
     # Clean up overrides
     app.dependency_overrides.clear()

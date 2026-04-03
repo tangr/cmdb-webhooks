@@ -13,7 +13,6 @@ from .routers import (
 )
 from .dependencies import AuthenticationRequiredException
 from config.config import settings
-from .services.webhook_mapping import init_webhook_mapping
 from .services.gitlab_hook_service import init_gitlab_jenkins_mapping
 from .services.amis_jenkins_service import init_amis_jenkins_mapping
 from .services.harbor_artifacts_service import init_harbor_config
@@ -28,7 +27,6 @@ async def lifespan(app: FastAPI):
     from app.utils.logger import setup_logging
 
     setup_logging()
-    init_webhook_mapping()
     init_gitlab_jenkins_mapping()
     init_amis_jenkins_mapping()
     init_harbor_config()

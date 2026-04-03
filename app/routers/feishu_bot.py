@@ -2,8 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Header
 from sqlmodel import select
 from app.models.feishu_bot_reqlog import FeishuBotReqLog
 from app.dependencies import SessionDep, get_current_user_any_required, User
-from app.services.webhook_mapping import get_webhook_id_by_name
-from app.services.feishu_bot_service import process_webhook_request
+from app.services.feishu_bot_service import process_webhook_request, get_webhook_id_by_name
 from typing import Optional
 
 router = APIRouter()

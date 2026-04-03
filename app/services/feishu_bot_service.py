@@ -51,9 +51,11 @@ def init_feishu_bot_config():
     global _feishu_bot_config
     _feishu_bot_config = load_feishu_bot_config()
     api_keys = _feishu_bot_config.get("feishu_bot_webhook_api_keys") or []
+    mappings = _feishu_bot_config.get("feishu_bot_webhook_mappings") or {}
     logger.info(
         f"Loaded Feishu Bot config: feishu_bot_webhook_base_url={_feishu_bot_config.get('feishu_bot_webhook_base_url', 'N/A')}, "
-        f"feishu_bot_webhook_api_keys={len(api_keys)} key(s)"
+        f"feishu_bot_webhook_api_keys={len(api_keys)} key(s), "
+        f"feishu_bot_webhook_mappings={len(mappings)} mapping(s)"
     )
 
 
@@ -70,6 +72,20 @@ def get_feishu_bot_api_keys() -> List[str]:
     if isinstance(keys, list):
         return [str(k).strip() for k in keys if str(k).strip()]
     return []
+
+
+def get_webhook_id_by_name(webhook_name: str) -> Optional[str]:
+    """Get webhook ID by webhook name"""
+    mappings = _feishu_bot_config.get("feishu_bot_webhook_mappings") or {}
+    # Create reverse mapping (name -> id)
+    name_to_id = {name: webhook_id for webhook_id, name in mappings.items()}
+    return name_to_id.get(webhook_name)
+
+
+def get_webhook_name_by_id(webhook_id: str) -> Optional[str]:
+    """Get webhook name by webhook ID"""
+    mappings = _feishu_bot_config.get("feishu_bot_webhook_mappings") or {}
+    return mappings.get(webhook_id)
 
 
 def log_feishu_bot_request(session: SessionDep, log_entry: FeishuBotReqLogCreate):
