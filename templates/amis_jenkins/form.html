@@ -226,9 +226,33 @@
                   fetchOptions.headers = headers;
                 }
 
+                var isSubmitApi = method === "POST" && options.url && options.url.indexOf("/api/submit/") !== -1;
+
                 return fetch(options.url, fetchOptions)
                   .then(function (response) {
                     return response.json().then(function (data) {
+                      // After successful submit, show toast and switch to History tab
+                      if (isSubmitApi && data && data.status === 0) {
+                        var debug = data.debug || {};
+                        var jr = debug.jenkins_response || {};
+                        var toastMsg = escapeHtml(data.msg);
+                        if (jr._build_url) {
+                          toastMsg += '<br><a href="' + escapeHtml(jr._build_url) + '" target="_blank">Open Build Console</a>';
+                        } else if (jr._queue_url) {
+                          toastMsg += '<br>Queued (build not yet started)';
+                        } else if (debug.pending_job_id) {
+                          toastMsg += '<br>Approval ID: ' + debug.pending_job_id;
+                        }
+                        $("body").toast({ class: "success", message: toastMsg, displayTime: 8000 });
+
+                        // Switch to History tab after a short delay
+                        setTimeout(function () {
+                          historyLoaded = false;
+                          $(".menu .item").tab("change tab", "history");
+                        }, 500);
+                      } else if (isSubmitApi && data && data.status !== 0) {
+                        $("body").toast({ class: "error", message: escapeHtml(data.msg || "Submit failed"), displayTime: 8000 });
+                      }
                       return {
                         status: response.status,
                         data: data
