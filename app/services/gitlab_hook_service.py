@@ -18,7 +18,7 @@ from app.utils.logger import get_logger
 logger = get_logger(__name__)
 
 # Global mapping storage
-_gitlab_jenkins_mapping: Dict[str, Any] = {}
+_gitlab_jenkins_config: Dict[str, Any] = {}
 
 
 def _find_project_root() -> Path:
@@ -30,10 +30,10 @@ def _find_project_root() -> Path:
     return current_path.parent.parent.parent
 
 
-def load_gitlab_jenkins_mapping() -> Dict[str, Any]:
+def load_gitlab_jenkins_config() -> Dict[str, Any]:
     """Load GitLab to Jenkins mapping from YAML file"""
     project_root = _find_project_root()
-    config_path = project_root / "config" / "gitlab_jenkins_mapping.yaml"
+    config_path = project_root / "config" / "gitlab_jenkins_config.yaml"
 
     try:
         with open(config_path, "r", encoding="utf-8") as file:
@@ -47,23 +47,23 @@ def load_gitlab_jenkins_mapping() -> Dict[str, Any]:
         return {}
 
 
-def init_gitlab_jenkins_mapping():
+def init_gitlab_jenkins_config():
     """Initialize GitLab-Jenkins mapping on startup"""
-    global _gitlab_jenkins_mapping
-    _gitlab_jenkins_mapping = load_gitlab_jenkins_mapping()
+    global _gitlab_jenkins_config
+    _gitlab_jenkins_config = load_gitlab_jenkins_config()
     # Use 'or {}' because YAML returns None when key exists but has no value
-    mappings = _gitlab_jenkins_mapping.get("mappings") or {}
+    mappings = _gitlab_jenkins_config.get("mappings") or {}
     logger.info(f"Loaded {len(mappings)} GitLab-Jenkins mappings")
 
 
 def get_jenkins_base_url() -> str:
     """Get Jenkins base URL from YAML configuration"""
-    return _gitlab_jenkins_mapping.get("jenkins_base_url", "")
+    return _gitlab_jenkins_config.get("jenkins_base_url", "")
 
 
 def get_jenkins_default_token() -> str:
     """Get Jenkins default token from YAML configuration"""
-    return _gitlab_jenkins_mapping.get("jenkins_default_token", "")
+    return _gitlab_jenkins_config.get("jenkins_default_token", "")
 
 
 def get_jenkins_config(project_path: str) -> Optional[Dict[str, Any]]:
@@ -78,7 +78,7 @@ def get_jenkins_config(project_path: str) -> Optional[Dict[str, Any]]:
         Jenkins configuration dict or None if no match
     """
     # Use 'or {}' because YAML returns None when key exists but has no value
-    mappings = _gitlab_jenkins_mapping.get("mappings") or {}
+    mappings = _gitlab_jenkins_config.get("mappings") or {}
 
     # Try exact match first
     if project_path in mappings:
@@ -90,7 +90,7 @@ def get_jenkins_config(project_path: str) -> Optional[Dict[str, Any]]:
             return config
 
     # Use default configuration if enabled
-    default_config = _gitlab_jenkins_mapping.get("default") or {}
+    default_config = _gitlab_jenkins_config.get("default") or {}
     if default_config.get("enabled", False):
         return default_config
 
@@ -589,7 +589,7 @@ async def process_gitlab_hook_webhook(
         log_gitlab_hook_request(session, log_entry)
         raise HTTPException(
             status_code=500,
-            detail="Jenkins base URL not configured in gitlab_jenkins_mapping.yaml",
+            detail="Jenkins base URL not configured in gitlab_jenkins_config.yaml",
         )
 
     # Preprocess payload to get standardized fields

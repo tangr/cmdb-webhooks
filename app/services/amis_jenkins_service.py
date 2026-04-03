@@ -24,7 +24,7 @@ from app.utils.logger import get_logger
 logger = get_logger(__name__)
 
 # Global mapping storage
-_amis_jenkins_mapping: Dict[str, Any] = {}
+_amis_jenkins_config: Dict[str, Any] = {}
 _amis_jenkins_config_version: str = ""
 
 
@@ -38,9 +38,9 @@ def _find_project_root() -> Path:
 
 
 def _get_config_path() -> Path:
-    """Get the path to amis_jenkins_mapping.yaml"""
+    """Get the path to amis_jenkins_config.yaml"""
     project_root = _find_project_root()
-    return project_root / "config" / "amis_jenkins_mapping.yaml"
+    return project_root / "config" / "amis_jenkins_config.yaml"
 
 
 def _calculate_config_version(config_path: Path) -> str:
@@ -61,7 +61,7 @@ def _calculate_config_version(config_path: Path) -> str:
         return "unknown"
 
 
-def load_amis_jenkins_mapping() -> Dict[str, Any]:
+def load_amis_jenkins_config() -> Dict[str, Any]:
     """Load Amis Jenkins mapping from YAML file"""
     config_path = _get_config_path()
 
@@ -77,12 +77,12 @@ def load_amis_jenkins_mapping() -> Dict[str, Any]:
         return {}
 
 
-def init_amis_jenkins_mapping():
+def init_amis_jenkins_config():
     """Initialize Amis-Jenkins mapping on startup"""
-    global _amis_jenkins_mapping, _amis_jenkins_config_version
-    _amis_jenkins_mapping = load_amis_jenkins_mapping()
+    global _amis_jenkins_config, _amis_jenkins_config_version
+    _amis_jenkins_config = load_amis_jenkins_config()
     _amis_jenkins_config_version = _calculate_config_version(_get_config_path())
-    forms = _amis_jenkins_mapping.get("forms") or {}
+    forms = _amis_jenkins_config.get("forms") or {}
     logger.info(
         f"Loaded {len(forms)} Amis-Jenkins form mappings (version: {_amis_jenkins_config_version})"
     )
@@ -95,27 +95,27 @@ def get_config_version() -> str:
 
 def get_jenkins_base_url() -> str:
     """Get Jenkins base URL from YAML configuration"""
-    return _amis_jenkins_mapping.get("jenkins_base_url", "")
+    return _amis_jenkins_config.get("jenkins_base_url", "")
 
 
 def get_jenkins_default_token() -> str:
     """Get Jenkins default token from YAML configuration"""
-    return _amis_jenkins_mapping.get("jenkins_default_token", "")
+    return _amis_jenkins_config.get("jenkins_default_token", "")
 
 
 def get_jenkins_default_user() -> str:
     """Get Jenkins default user from YAML configuration"""
-    return _amis_jenkins_mapping.get("jenkins_default_user", "")
+    return _amis_jenkins_config.get("jenkins_default_user", "")
 
 
 def get_jenkins_default_api_token() -> str:
     """Get Jenkins default API token from YAML configuration"""
-    return _amis_jenkins_mapping.get("jenkins_default_api_token", "")
+    return _amis_jenkins_config.get("jenkins_default_api_token", "")
 
 
 def get_user_feishu_mapping() -> Dict[str, str]:
     """Get user to Feishu ID mapping from YAML configuration"""
-    return _amis_jenkins_mapping.get("user_feishu_mapping") or {}
+    return _amis_jenkins_config.get("user_feishu_mapping") or {}
 
 
 def get_user_feishu_id(username: str) -> str:
@@ -137,12 +137,12 @@ def get_user_feishu_id(username: str) -> str:
 
 def get_jenkins_build_url_format() -> str:
     """Get Jenkins build URL format from YAML configuration: 'console' or 'blueocean'"""
-    return _amis_jenkins_mapping.get("jenkins_build_url_format", "console")
+    return _amis_jenkins_config.get("jenkins_build_url_format", "console")
 
 
 def get_jenkins_queue_resolve_delay() -> float:
     """Get delay in seconds before querying Jenkins queue API for build number"""
-    return float(_amis_jenkins_mapping.get("jenkins_queue_resolve_delay", 3))
+    return float(_amis_jenkins_config.get("jenkins_queue_resolve_delay", 3))
 
 
 def build_jenkins_url(
@@ -314,7 +314,7 @@ def get_form_config(form_id: str) -> Optional[Dict[str, Any]]:
     Returns:
         Form configuration dict or None if not found
     """
-    forms = _amis_jenkins_mapping.get("forms") or {}
+    forms = _amis_jenkins_config.get("forms") or {}
     return forms.get(form_id)
 
 
@@ -360,7 +360,7 @@ def get_all_forms(current_user: Optional["User"] = None) -> List[Dict[str, Any]]
     Returns:
         List of form configs with form_id added
     """
-    forms = _amis_jenkins_mapping.get("forms") or {}
+    forms = _amis_jenkins_config.get("forms") or {}
     result = []
     for form_id, config in forms.items():
         # Permission check: filter by user access if current_user is provided
@@ -839,7 +839,7 @@ async def process_form_submit(
         log_amis_jenkins_request(session, log_entry)
         raise HTTPException(
             status_code=500,
-            detail="Jenkins base URL not configured in amis_jenkins_mapping.yaml",
+            detail="Jenkins base URL not configured in amis_jenkins_config.yaml",
         )
 
     # Check Jenkins job configuration
@@ -1063,7 +1063,7 @@ async def _process_form_submit_with_approval(
         return JSONResponse(
             content={
                 "status": 1,
-                "msg": "Feishu approval form_data_template not configured. Please configure approval.form_data_template in amis_jenkins_mapping.yaml with your Feishu approval widget IDs.",
+                "msg": "Feishu approval form_data_template not configured. Please configure approval.form_data_template in amis_jenkins_config.yaml with your Feishu approval widget IDs.",
                 "data": {
                     "error_type": "FORM_DATA_TEMPLATE_REQUIRED",
                     "hint": "Example: form_data_template: {\"widget-id1\": \"Job: {jenkins_job}\", \"widget-id2\": \"{request_params_json}\"}",

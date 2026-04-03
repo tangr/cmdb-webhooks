@@ -96,8 +96,8 @@ webhook-proxy/
 │       └── amis-6.13.0/          # Amis低代码框架
 ├── config/                # 配置模块
 │   ├── config.py          # Pydantic设置配置
-│   ├── gitlab_jenkins_mapping.yaml # GitLab到Jenkins映射配置文件
-│   ├── amis_jenkins_mapping.yaml # Amis表单到Jenkins映射配置文件
+│   ├── gitlab_jenkins_config.yaml # GitLab到Jenkins映射配置文件
+│   ├── amis_jenkins_config.yaml # Amis表单到Jenkins映射配置文件
 │   ├── feishu_bot_config.yaml # 飞书机器人Webhook代理配置文件
 │   ├── harbor_config.yaml # Harbor多实例配置文件
 │   └── feishu_approval_config.yaml # 飞书审批应用配置文件
@@ -441,7 +441,7 @@ webhook-proxy/
 - `gitlab_hook_enable_tag_push_events`: 启用 Tag Push 事件处理 (默认: false，预留)
 - `gitlab_hook_enable_merge_request_events`: 启用 Merge Request 事件处理 (默认: false，预留)
 
-**GitLab-Jenkins 映射配置 (`config/gitlab_jenkins_mapping.yaml`):**
+**GitLab-Jenkins 映射配置 (`config/gitlab_jenkins_config.yaml`):**
 
 - `jenkins_base_url`: Jenkins 服务器 URL（全局配置）
 - `jenkins_default_token`: 默认 Jenkins 触发 Token（映射中未配置 token 时使用）
@@ -462,7 +462,7 @@ webhook-proxy/
 - `enable_database_logging`: 启用数据库日志记录 (默认: true)
 - `enable_console_logging`: 启用控制台日志输出 (默认: false)
 
-**Amis-Jenkins 映射配置 (`config/amis_jenkins_mapping.yaml`):**
+**Amis-Jenkins 映射配置 (`config/amis_jenkins_config.yaml`):**
 
 - `jenkins_base_url`: Jenkins 服务器 URL（全局配置）
 - `jenkins_default_token`: 默认 Jenkins Generic Webhook 触发 Token
@@ -536,7 +536,7 @@ oidc_role_mapping:
   deploy-prod: ["alice", "bob", "charlie"]   # 生产部署角色
   deploy-staging: ["alice", "bob", "dev1"]   # 预发布部署角色
 
-# config/amis_jenkins_mapping.yaml 中表单权限配置
+# config/amis_jenkins_config.yaml 中表单权限配置
 forms:
   deploy-prod:
     title: "Deploy to Production"

@@ -7,7 +7,7 @@ import time
 class PendingJenkinsJobBase(SQLModel):
     """Base model for pending Jenkins job"""
 
-    form_id: str = Field(description="Form ID from amis_jenkins_mapping")
+    form_id: str = Field(description="Form ID from amis_jenkins_config")
     form_title: str = Field(description="Form display title")
     trigger_type: str = Field(description="Jenkins trigger type: generic_webhook or remote_api")
     jenkins_job: str = Field(description="Jenkins job path")
