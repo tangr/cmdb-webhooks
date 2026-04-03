@@ -326,9 +326,11 @@ webhook-proxy/
 - `GET /amis-jenkins/pending` - 待执行任务页面（HTML，需要认证）
 - `GET /amis-jenkins/api/pending` - 获取待执行任务列表（API，需要认证）
   - Query 参数：`username`、`status`、`skip`、`limit`
-  - status 可选值：`pending_approval`、`approved`、`executed`、`rejected`、`canceled`
+  - status 可选值：`pending_approval`、`approved`、`completed`、`exhausted`、`expired`、`executed`、`rejected`、`canceled`
 - `GET /amis-jenkins/api/pending/{job_id}` - 获取特定待执行任务详情（需要认证）
 - `POST /amis-jenkins/api/pending/{job_id}/sync` - 同步审批状态（从飞书获取最新状态）
+- `POST /amis-jenkins/api/pending/{job_id}/cancel` - 手动取消任务（仅 `pending_approval` 状态）
+- `POST /amis-jenkins/api/pending/{job_id}/complete` - 手动完成任务（仅 `approved` 状态）
 - `POST /amis-jenkins/api/pending/{job_id}/execute` - 执行已审批任务（触发 Jenkins 构建）
 - `POST /amis-jenkins/api/resolve-build-url` - 手动重试解析 Jenkins Build URL
   - Query 参数：`source`（`log` 或 `pending`）、`id`（记录 ID）
@@ -607,10 +609,11 @@ forms:
 |------|------|
 | `pending_approval` | 等待审批 |
 | `approved` | 已审批，可执行 |
+| `completed` | 手动标记完成（审批通过后不再需要执行） |
 | `exhausted` | 已达到最大执行次数 |
 | `expired` | 已过期 |
 | `rejected` | 审批被拒绝 |
-| `canceled` | 审批被取消 |
+| `canceled` | 审批前手动取消 |
 
 **Jenkins Build URL 解析说明:**
 
