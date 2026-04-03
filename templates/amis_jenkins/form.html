@@ -134,7 +134,7 @@
 
   <!-- Amis SDK JS -->
   <script src="/static/plugin/amis-6.13.0/sdk.js"></script>
-  <script src="/static/js/amis_jenkins_common.js?v=2"></script>
+  <script src="/static/js/amis_jenkins_common.js?v=3"></script>
 
   <script type="text/javascript">
     var historySkip = 0;
@@ -148,6 +148,7 @@
     var escapeHtml = AmisJenkins.escapeHtml;
     var syncJobStatus = AmisJenkins.syncJobStatus;
     var cancelJob = AmisJenkins.cancelJob;
+    var completeJob = AmisJenkins.completeJob;
     var openExecuteModal = AmisJenkins.openExecuteModal;
 
     $(document).ready(function () {
@@ -316,6 +317,7 @@
       var map = {
         "pending_approval": { color: "yellow", text: "Pending Approval" },
         "approved": { color: "green", text: "Approved" },
+        "completed": { color: "blue", text: "Completed" },
         "exhausted": { color: "teal", text: "Exhausted" },
         "expired": { color: "orange", text: "Expired" },
         "rejected": { color: "red", text: "Rejected" },
@@ -367,12 +369,13 @@
         if (item.source === "pending") {
           if (item.status === "pending_approval") {
             html += '<a href="javascript:void(0)" class="ui tiny basic blue button" onclick="syncJobStatus(' + item.id + ')"><i class="sync icon"></i>Sync</a> ';
+            html += '<a href="javascript:void(0)" class="ui tiny basic red button" onclick="cancelJob(' + item.id + ')"><i class="ban icon"></i>Cancel</a> ';
           }
           if (item.status === "approved" && item.can_execute !== false) {
             html += '<a href="javascript:void(0)" class="ui tiny basic green button" onclick="openExecuteModal(' + item.id + ')"><i class="play icon"></i>Execute</a> ';
           }
-          if (item.status === "pending_approval" || item.status === "approved") {
-            html += '<a href="javascript:void(0)" class="ui tiny basic red button" onclick="cancelJob(' + item.id + ')"><i class="ban icon"></i>Cancel</a> ';
+          if (item.status === "approved") {
+            html += '<a href="javascript:void(0)" class="ui tiny basic button" onclick="completeJob(' + item.id + ')"><i class="check icon"></i>Complete</a> ';
           }
         }
         html += '</td>';

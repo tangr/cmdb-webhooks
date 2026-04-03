@@ -20,6 +20,7 @@ from app.services.amis_jenkins_service import (
     get_pending_jobs,
     sync_pending_job_status,
     cancel_pending_job,
+    complete_pending_job,
     execute_pending_job,
     get_form_history,
     resolve_build_from_queue,
@@ -327,7 +328,7 @@ def api_get_pending_jobs(
 
     Query parameters:
     - username: Filter by username (default: None for all users)
-    - status: Filter by status (pending_approval, approved, executed, rejected, canceled)
+    - status: Filter by status (pending_approval, approved, completed, exhausted, expired, rejected, canceled)
     - skip: Offset for pagination
     - limit: Max records to return
     """
@@ -407,7 +408,7 @@ def api_cancel_pending_job(
 ):
     """
     Manually cancel a pending job.
-    Requires authentication. Only pending_approval or approved jobs can be canceled.
+    Requires authentication. Only pending_approval jobs can be canceled.
     Permission: job submitter, users with execute permission, or admin.
     """
     try:
@@ -417,6 +418,26 @@ def api_cancel_pending_job(
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to cancel job: {str(e)}")
+
+
+@router.post("/api/pending/{job_id}/complete")
+def api_complete_pending_job(
+    job_id: int,
+    session: SessionDep,
+    current_user: User = Depends(get_current_user_any_required),
+):
+    """
+    Manually complete an approved job.
+    Requires authentication. Only approved jobs can be completed.
+    Permission: job submitter, users with execute permission, or admin.
+    """
+    try:
+        result = complete_pending_job(session, job_id, current_user=current_user)
+        return {"status": 0, "msg": "Job completed successfully", "data": result}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to complete job: {str(e)}")
 
 
 @router.post("/api/pending/{job_id}/execute")
