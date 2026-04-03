@@ -98,7 +98,7 @@ CREATE TABLE IF NOT EXISTS `feishu_approval_reqlog` (
 
 CREATE TABLE IF NOT EXISTS `pending_jenkins_jobs` (
   `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
-  `form_id` varchar(100) NOT NULL COMMENT 'Form ID from amis_jenkins_mapping',
+  `form_id` varchar(100) NOT NULL COMMENT 'Form ID from amis_jenkins_config',
   `form_title` varchar(255) NOT NULL COMMENT 'Form display title',
   `trigger_type` varchar(50) NOT NULL COMMENT 'Jenkins trigger type: generic_webhook or remote_api',
   `jenkins_job` varchar(255) NOT NULL COMMENT 'Jenkins job path',
