@@ -109,16 +109,6 @@ class Settings(BaseSettings):
         "amis_jenkins": ["admin"],
     }
 
-    # GitLab Hook Webhook Configuration
-    gitlab_hook_webhook_secret_tokens: str = (
-        ""  # Comma-separated GitLab secret tokens (empty = no verification)
-    )
-
-    # GitLab Hook Event Support Configuration
-    gitlab_hook_enable_push_events: bool = True
-    gitlab_hook_enable_tag_push_events: bool = False  # Reserved for future support
-    gitlab_hook_enable_merge_request_events: bool = False  # Reserved for future support
-
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

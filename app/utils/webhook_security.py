@@ -124,8 +124,10 @@ def verify_gitlab_hook_webhook(
     Raises:
         HTTPException: If verification fails
     """
-    # Get configured GitLab secret tokens
-    configured_tokens = get_api_keys_list(settings.gitlab_hook_webhook_secret_tokens)
+    # Get configured GitLab secret tokens from gitlab_jenkins config YAML
+    from app.services.gitlab_hook_service import get_gitlab_hook_secret_tokens
+
+    configured_tokens = get_gitlab_hook_secret_tokens()
 
     # If no tokens configured, skip verification
     if not configured_tokens:

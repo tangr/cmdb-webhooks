@@ -66,6 +66,31 @@ def get_jenkins_default_token() -> str:
     return _gitlab_jenkins_config.get("jenkins_default_token", "")
 
 
+def get_gitlab_hook_secret_tokens() -> List[str]:
+    """Get the list of GitLab Hook secret tokens for webhook verification"""
+    tokens = _gitlab_jenkins_config.get("gitlab_hook_webhook_secret_tokens") or []
+    if isinstance(tokens, list):
+        return [str(t).strip() for t in tokens if str(t).strip()]
+    return []
+
+
+def get_gitlab_hook_enable_push_events() -> bool:
+    """Get whether push events are enabled"""
+    return bool(_gitlab_jenkins_config.get("gitlab_hook_enable_push_events", True))
+
+
+def get_gitlab_hook_enable_tag_push_events() -> bool:
+    """Get whether tag push events are enabled"""
+    return bool(_gitlab_jenkins_config.get("gitlab_hook_enable_tag_push_events", False))
+
+
+def get_gitlab_hook_enable_merge_request_events() -> bool:
+    """Get whether merge request events are enabled"""
+    return bool(
+        _gitlab_jenkins_config.get("gitlab_hook_enable_merge_request_events", False)
+    )
+
+
 def get_jenkins_config(project_path: str) -> Optional[Dict[str, Any]]:
     """
     Get Jenkins configuration for a GitLab project path.
@@ -538,13 +563,13 @@ async def process_gitlab_hook_webhook(
 
     # Check if event type is enabled
     event_enabled = False
-    if event_type == "push" and settings.gitlab_hook_enable_push_events:
+    if event_type == "push" and get_gitlab_hook_enable_push_events():
         event_enabled = True
-    elif event_type == "tag_push" and settings.gitlab_hook_enable_tag_push_events:
+    elif event_type == "tag_push" and get_gitlab_hook_enable_tag_push_events():
         event_enabled = True
     elif (
         event_type == "merge_request"
-        and settings.gitlab_hook_enable_merge_request_events
+        and get_gitlab_hook_enable_merge_request_events()
     ):
         event_enabled = True
 

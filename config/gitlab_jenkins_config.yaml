@@ -8,6 +8,24 @@ jenkins_base_url: "https://jenkins-dev1.exodushk.com"  # Jenkins server URL
 jenkins_default_token: ""  # Default trigger token (used when mapping has no token)
 
 # =============================================================================
+# GitLab Hook Webhook Security
+# =============================================================================
+# Secret tokens for X-Gitlab-Token verification
+# Empty list = no verification (all requests accepted)
+# Example:
+#   gitlab_hook_webhook_secret_tokens:
+#     - "token1-for-system-hook"
+#     - "token2-for-project-hook"
+gitlab_hook_webhook_secret_tokens: []
+
+# =============================================================================
+# GitLab Hook Event Support
+# =============================================================================
+gitlab_hook_enable_push_events: true
+gitlab_hook_enable_tag_push_events: false           # Reserved for future support
+gitlab_hook_enable_merge_request_events: false       # Reserved for future support
+
+# =============================================================================
 # Predefined Fields (automatically extracted from GitLab payload)
 # =============================================================================
 #

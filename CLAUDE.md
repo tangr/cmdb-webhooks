@@ -434,17 +434,14 @@ webhook-proxy/
   - 默认值：`{"cmdb": ["admin"], "amis_jenkins": ["admin"]}`
   - 示例：`{"cmdb": ["admin"], "amis_jenkins": ["admin", "deploy-prod", "deploy-staging"]}`
 
-**GitLab Webhook 配置:**
-
-- `gitlab_hook_webhook_secret_tokens`: GitLab Secret Token（逗号分隔，空值表示不验证）
-- `gitlab_hook_enable_push_events`: 启用 Push 事件处理 (默认: true)
-- `gitlab_hook_enable_tag_push_events`: 启用 Tag Push 事件处理 (默认: false，预留)
-- `gitlab_hook_enable_merge_request_events`: 启用 Merge Request 事件处理 (默认: false，预留)
-
-**GitLab-Jenkins 映射配置 (`config/gitlab_jenkins_config.yaml`):**
+**GitLab-Jenkins 配置 (`config/gitlab_jenkins_config.yaml`):**
 
 - `jenkins_base_url`: Jenkins 服务器 URL（全局配置）
 - `jenkins_default_token`: 默认 Jenkins 触发 Token（映射中未配置 token 时使用）
+- `gitlab_hook_webhook_secret_tokens`: GitLab Secret Token 列表（列表格式，空列表表示不验证）
+- `gitlab_hook_enable_push_events`: 启用 Push 事件处理 (默认: true)
+- `gitlab_hook_enable_tag_push_events`: 启用 Tag Push 事件处理 (默认: false，预留)
+- `gitlab_hook_enable_merge_request_events`: 启用 Merge Request 事件处理 (默认: false，预留)
 - 支持按项目路径配置 Jenkins 任务映射
 - 支持通配符模式匹配（如 `group/*`）
 - 映射中可覆盖 `jenkins_base_url` 和 `jenkins_token`（指向不同 Jenkins 服务器）
