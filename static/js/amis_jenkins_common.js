@@ -265,10 +265,32 @@ var AmisJenkins = (function () {
     return div.innerHTML;
   }
 
+  function cancelJob(jobId) {
+    if (!confirm("Are you sure you want to cancel this job?")) return;
+
+    fetch("/amis-jenkins/api/pending/" + jobId + "/cancel", {
+      method: "POST",
+      credentials: "include"
+    })
+      .then(function (response) { return response.json(); })
+      .then(function (result) {
+        if (result.status === 0) {
+          $("body").toast({ class: "success", message: "Job canceled successfully", displayTime: 5000 });
+          if (_onSuccess) _onSuccess();
+        } else {
+          $("body").toast({ class: "error", message: "Failed to cancel: " + escapeHtml(result.detail || result.msg), displayTime: 6000 });
+        }
+      })
+      .catch(function (error) {
+        $("body").toast({ class: "error", message: "Cancel error: " + escapeHtml(error.message), displayTime: 6000 });
+      });
+  }
+
   // Public API
   return {
     init: init,
     syncJobStatus: syncJobStatus,
+    cancelJob: cancelJob,
     openExecuteModal: openExecuteModal,
     formatTimestamp: formatTimestamp,
     formatTimestampFull: formatTimestampFull,

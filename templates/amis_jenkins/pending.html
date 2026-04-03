@@ -228,6 +228,7 @@
         }
         html += '</div>';
         html += '</div>';
+        var canCancel = job.status === 'pending_approval' || job.status === 'approved';
         html += '<div class="extra content action-buttons">';
         html += '<button class="ui basic button" onclick="viewJobDetails(' + job.id + ')"><i class="eye icon"></i> Details</button>';
         if (canSync) {
@@ -235,6 +236,9 @@
         }
         if (canExecute) {
           html += '<button class="ui basic green button" onclick="AmisJenkins.openExecuteModal(' + job.id + ')"><i class="play icon"></i> Execute</button>';
+        }
+        if (canCancel) {
+          html += '<button class="ui basic red button" onclick="AmisJenkins.cancelJob(' + job.id + ')"><i class="ban icon"></i> Cancel</button>';
         }
         html += '</div>';
         html += '</div>';

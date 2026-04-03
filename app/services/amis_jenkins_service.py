@@ -1275,6 +1275,62 @@ async def sync_pending_job_status(session: SessionDep, job_id: int) -> Dict[str,
     }
 
 
+def cancel_pending_job(
+    session: SessionDep,
+    job_id: int,
+    current_user: Optional["User"] = None,
+) -> Dict[str, Any]:
+    """
+    Manually cancel a pending job (set status to 'canceled').
+
+    Only jobs in 'pending_approval' or 'approved' status can be canceled.
+    Permission: job submitter, users with execute permission, or admin.
+
+    Args:
+        session: Database session
+        job_id: Pending job ID
+        current_user: If provided, check permission
+
+    Returns:
+        Dict with canceled job info
+    """
+    job = session.get(PendingJenkinsJob, job_id)
+    if not job:
+        raise ValueError(f"Pending job not found: {job_id}")
+
+    # Permission check
+    if current_user is not None:
+        from app.services.amis_jenkins_permissions import can_execute_pending_job
+
+        is_admin = "admin" in current_user.roles
+        is_submitter = current_user.username == job.username
+        has_execute_perm = can_execute_pending_job(
+            current_user, job.username, job.form_id
+        )
+        if not (is_admin or is_submitter or has_execute_perm):
+            raise ValueError("You don't have permission to cancel this job")
+
+    # Only allow canceling active jobs
+    if job.status not in ["pending_approval", "approved"]:
+        raise ValueError(
+            f"Cannot cancel job in '{job.status}' status. "
+            f"Only 'pending_approval' or 'approved' jobs can be canceled."
+        )
+
+    job.status = "canceled"
+    job.updated_at = int(time.time())
+    session.add(job)
+    session.commit()
+
+    logger.info(f"Pending job {job_id} canceled by {current_user.username if current_user else 'system'}")
+
+    return {
+        "job_id": job_id,
+        "job_status": job.status,
+        "previous_status": "pending_approval" if job.status == "canceled" else job.status,
+    }
+
+
 async def execute_pending_job(
     session: SessionDep,
     job_id: int,

@@ -147,6 +147,7 @@
     var formatTimestamp = AmisJenkins.formatTimestamp;
     var escapeHtml = AmisJenkins.escapeHtml;
     var syncJobStatus = AmisJenkins.syncJobStatus;
+    var cancelJob = AmisJenkins.cancelJob;
     var openExecuteModal = AmisJenkins.openExecuteModal;
 
     $(document).ready(function () {
@@ -369,6 +370,9 @@
           }
           if (item.status === "approved" && item.can_execute !== false) {
             html += '<a href="javascript:void(0)" class="ui tiny basic green button" onclick="openExecuteModal(' + item.id + ')"><i class="play icon"></i>Execute</a> ';
+          }
+          if (item.status === "pending_approval" || item.status === "approved") {
+            html += '<a href="javascript:void(0)" class="ui tiny basic red button" onclick="cancelJob(' + item.id + ')"><i class="ban icon"></i>Cancel</a> ';
           }
         }
         html += '</td>';
