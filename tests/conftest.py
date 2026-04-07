@@ -200,8 +200,8 @@ def mock_oidc_jwks():
 
 
 @pytest.fixture
-def sample_cmdb_request():
-    """Sample CMDB request data for testing"""
+def sample_http_relay_request():
+    """Sample HTTP Relay request data for testing"""
     return {
         "host": "http://127.0.0.1:8000",
         "method": "POST",

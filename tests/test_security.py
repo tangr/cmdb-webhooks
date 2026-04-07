@@ -23,13 +23,13 @@ class TestWebhookSecurity:
 
     def test_verify_http_relay_webhook_valid_api_key(self, mock_request):
         """Test HTTP Relay webhook verification with valid API key"""
-        mock_request.headers = {"X-API-Key": "valid-cmdb-key"}
+        mock_request.headers = {"X-API-Key": "valid-relay-key"}
 
         with patch(
-            "config.config.settings.http_relay_webhook_api_keys", "valid-cmdb-key,another-key"
+            "config.config.settings.http_relay_webhook_api_keys", "valid-relay-key,another-key"
         ):
             # Should not raise any exception
-            verify_http_relay_webhook(mock_request, "valid-cmdb-key")
+            verify_http_relay_webhook(mock_request, "valid-relay-key")
 
     def test_verify_http_relay_webhook_invalid_api_key(self, mock_request):
         """Test HTTP Relay webhook verification with invalid API key"""

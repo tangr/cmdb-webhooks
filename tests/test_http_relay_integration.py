@@ -13,7 +13,7 @@ class TestHttpRelayRoutes:
 
     @pytest.mark.asyncio
     async def test_create_http_relay_log_success(
-        self, async_client: AsyncClient, sample_cmdb_request, api_key_headers
+        self, async_client: AsyncClient, sample_http_relay_request, api_key_headers
     ):
         """Test successful HTTP Relay log creation via webhook"""
         with patch("app.services.http_relay_service.process_http_relay_request") as mock_process:
@@ -25,7 +25,7 @@ class TestHttpRelayRoutes:
             }
 
             response = await async_client.post(
-                "/http-relay/", json=sample_cmdb_request, headers=api_key_headers
+                "/http-relay/", json=sample_http_relay_request, headers=api_key_headers
             )
 
             assert response.status_code == status.HTTP_200_OK
@@ -55,29 +55,29 @@ class TestHttpRelayRoutes:
 
     @pytest.mark.asyncio
     async def test_create_http_relay_log_invalid_api_key(
-        self, async_client: AsyncClient, sample_cmdb_request
+        self, async_client: AsyncClient, sample_http_relay_request
     ):
         """Test HTTP Relay log creation with invalid API key"""
         invalid_headers = {"X-API-Key": "invalid-key"}
 
         response = await async_client.post(
-            "/http-relay/", json=sample_cmdb_request, headers=invalid_headers
+            "/http-relay/", json=sample_http_relay_request, headers=invalid_headers
         )
 
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
     @pytest.mark.asyncio
     async def test_create_http_relay_log_no_api_key(
-        self, async_client: AsyncClient, sample_cmdb_request
+        self, async_client: AsyncClient, sample_http_relay_request
     ):
         """Test HTTP Relay log creation without API key"""
-        response = await async_client.post("/http-relay/", json=sample_cmdb_request)
+        response = await async_client.post("/http-relay/", json=sample_http_relay_request)
 
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
     @pytest.mark.asyncio
     async def test_create_http_relay_log_timeout_error(
-        self, async_client: AsyncClient, sample_cmdb_request, api_key_headers
+        self, async_client: AsyncClient, sample_http_relay_request, api_key_headers
     ):
         """Test HTTP Relay log creation with timeout error"""
         with patch("app.services.http_relay_service.process_http_relay_request") as mock_process:
@@ -88,7 +88,7 @@ class TestHttpRelayRoutes:
             )
 
             response = await async_client.post(
-                "/http-relay/", json=sample_cmdb_request, headers=api_key_headers
+                "/http-relay/", json=sample_http_relay_request, headers=api_key_headers
             )
 
             assert response.status_code == status.HTTP_504_GATEWAY_TIMEOUT
@@ -96,7 +96,7 @@ class TestHttpRelayRoutes:
 
     @pytest.mark.asyncio
     async def test_create_http_relay_log_connection_error(
-        self, async_client: AsyncClient, sample_cmdb_request, api_key_headers
+        self, async_client: AsyncClient, sample_http_relay_request, api_key_headers
     ):
         """Test HTTP Relay log creation with connection error"""
         with patch("app.services.http_relay_service.process_http_relay_request") as mock_process:
@@ -107,7 +107,7 @@ class TestHttpRelayRoutes:
             )
 
             response = await async_client.post(
-                "/http-relay/", json=sample_cmdb_request, headers=api_key_headers
+                "/http-relay/", json=sample_http_relay_request, headers=api_key_headers
             )
 
             assert response.status_code == status.HTTP_502_BAD_GATEWAY
