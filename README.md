@@ -163,6 +163,7 @@ curl -u user:pswd http://localhost:8000/vecmdb-trigger/prometheus/sd/yax-dt2-ec2
 
 curl -X POST http://localhost:8000/vecmdb-trigger/jms/default1-add \
   -H "Content-Type: application/json" \
+  -H "X-API-Key: QNbl7W9Ez7hVkR44ja93" \
   -d '{
     "address": "192.168.1.100",
     "comment": "Test deployment",
