@@ -48,7 +48,8 @@ webhook-proxy/
 │   │   ├── gitlab_hook_reqlog.py # GitLab Hook请求日志模型
 │   │   ├── amis_jenkins_reqlog.py # Amis Jenkins请求日志模型
 │   │   ├── feishu_approval_reqlog.py # 飞书审批请求日志模型
-│   │   └── pending_jenkins_job.py # 待执行Jenkins任务模型（审批关联）
+│   │   ├── pending_jenkins_job.py # 待执行Jenkins任务模型（审批关联）
+│   │   └── vecmdb_trigger_models.py # VecMDB Trigger Pydantic模型（无数据库）
 │   ├── routers/           # API路由处理器
 │   │   ├── auth.py        # 认证相关路由（JWT + Session + OIDC）
 │   │   ├── http_relay.py        # HTTP Relay日志路由
@@ -56,7 +57,8 @@ webhook-proxy/
 │   │   ├── gitlab_hook.py      # GitLab Hook Webhook代理路由
 │   │   ├── amis_jenkins.py    # Amis Jenkins表单代理路由
 │   │   ├── harbor_artifacts.py # Harbor镜像Artifacts查询路由
-│   │   └── feishu_approval.py # 飞书审批代理路由
+│   │   ├── feishu_approval.py # 飞书审批代理路由
+│   │   └── vecmdb_trigger.py  # VecMDB Trigger代理路由（CMDB触发器+Prometheus SD）
 │   ├── services/          # 服务层模块
 │   │   ├── http_relay_service.py      # HTTP Relay代理请求处理服务
 │   │   ├── feishu_bot_service.py    # 飞书机器人服务逻辑
@@ -67,7 +69,10 @@ webhook-proxy/
 │   │   ├── feishu_client.py     # 飞书开放平台API客户端
 │   │   ├── feishu_approval_service.py # 飞书审批代理服务
 │   │   ├── redis_session.py     # Redis会话管理服务
-│   │   └── users_roles_service.py # 用户角色配置服务
+│   │   ├── users_roles_service.py # 用户角色配置服务
+│   │   ├── vecmdb_trigger_service.py    # VecMDB CMDB触发器代理服务（配置加载+请求转换+转发）
+│   │   ├── vecmdb_prometheus_service.py # VecMDB Prometheus SD服务（CMDB数据获取+格式转换）
+│   │   └── vecmdb_prometheus_auth.py    # VecMDB Prometheus端点认证（Basic/Bearer）
 │   └── utils/             # 工具模块
 │       ├── logger.py            # 日志工具
 │       ├── template_filters.py  # Jinja2模板过滤器
@@ -102,7 +107,8 @@ webhook-proxy/
 │   ├── feishu_bot_config.yaml # 飞书机器人Webhook代理配置文件
 │   ├── harbor_artifacts_config.yaml # Harbor镜像Artifacts配置文件
 │   ├── feishu_approval_config.yaml # 飞书审批应用配置文件
-│   └── users_roles_config.yaml # 用户角色权限配置文件
+│   ├── users_roles_config.yaml # 用户角色权限配置文件
+│   └── vecmdb_trigger_config.yaml # VecMDB触发器代理配置文件（CMDB目标+Prometheus SD）
 ├── sql/                   # 数据库脚本
 │   └── db.sql            # 数据库初始化脚本
 ├── requirements.txt       # Python依赖包
@@ -123,6 +129,7 @@ webhook-proxy/
 - **Amis Jenkins 表单代理**: 使用百度 Amis 低代码框架构建参数化表单 UI，替代 Jenkins 原生 parameters，支持动态表单渲染和 Jenkins 构建触发
 - **Harbor 镜像查询服务**: 代理 Harbor Registry API，获取镜像 Artifacts 列表，为 Amis Select 组件提供数据源，支持多 Harbor 实例
 - **飞书审批代理服务**: 代理飞书开放平台审批 API，支持发起审批单和查询审批状态，用于 DevOps CD 发布流程的审批关联
+- **VecMDB 触发器代理服务**: 接收 veops CMDB 触发器请求，转换字段后转发到目标 API（如 JumpServer），支持多目标配置；同时提供 Prometheus HTTP Service Discovery 端点，从 CMDB 拉取资源数据转换为 Prometheus SD 格式
 
 应用程序采用前后端分离的架构，后端提供 RESTful API，前端提供 Web 界面，具有清晰的关注点分离。
 
@@ -262,6 +269,21 @@ webhook-proxy/
   - 记录请求/响应日志到数据库
   - 支持按用户名、应用名、状态过滤审批记录
 
+- **VecmdbTriggerService** (`app/services/vecmdb_trigger_service.py`):
+  - 处理 veops CMDB 触发器代理请求的核心业务逻辑
+  - 从 YAML 配置文件加载多目标配置（`config/vecmdb_trigger_config.yaml`）
+  - 支持字段转换：nodes UUID 映射、nodes_display 名称映射、platform 映射
+  - 支持默认字段注入（protocols、accounts 等）
+  - 支持 API 路径模板变量替换（如 `{{id}}`）
+  - 转发 HTTP 请求到目标 API（支持 GET/POST/PUT/DELETE）
+  - 无状态服务，不写数据库
+
+- **VecmdbPrometheusService** (`app/services/vecmdb_prometheus_service.py`):
+  - 从 CMDB API 获取 CI 资源数据（SHA1 签名认证，自动分页）
+  - 转换为 Prometheus HTTP Service Discovery 格式
+  - 支持标签模板变量替换（如 `{{name}}`、`{{treenode}}`）
+  - 支持多配置，每个配置独立的 CMDB API 连接和标签映射
+
 ### API 结构
 
 应用程序提供多个功能模块的 API 端点：
@@ -353,6 +375,14 @@ webhook-proxy/
 - `GET /feishu-approval/logs` - 获取审批记录列表（需要认证）
   - Query 参数：`username`、`app_name`、`status`、`skip`、`limit`
 - `GET /feishu-approval/logs/{log_id}` - 获取特定审批记录（需要认证）
+
+**VecMDB 触发器代理模块 (`/vecmdb-trigger/*`)**
+
+- `POST /vecmdb-trigger/jms/{target_name}` - 接收 veops CMDB 触发器请求，转换后转发到目标 API（API Key + IP 白名单验证）
+- `GET /vecmdb-trigger/status` - 获取代理服务状态和可用目标/配置列表
+- `GET /vecmdb-trigger/targets` - 获取可用的 CMDB 触发器目标配置列表
+- `GET /vecmdb-trigger/prometheus/sd/{config_name}` - 生成 Prometheus HTTP Service Discovery 配置（可选 Basic/Bearer 认证）
+- `GET /vecmdb-trigger/prometheus/configs` - 获取可用的 Prometheus SD 配置列表
 
 **其他端点:**
 
@@ -706,6 +736,40 @@ curl http://localhost:8000/feishu-approval/status/1 \
 curl "http://localhost:8000/feishu-approval/status/instance/2B2ADE11-B477-4C84-A24E-706D3393B983?app_name=default" \
   -H "Cookie: session=xxx"
 ```
+
+**VecMDB 触发器配置 (`config/vecmdb_trigger_config.yaml`):**
+
+- `vecmdb_trigger_webhook_api_keys`: API Key 列表（列表格式，空列表表示不验证）
+- `default_headers`: 默认 HTTP 头（应用于所有目标 API 请求）
+- `cmdb_trigger_targets`: CMDB 触发器多目标配置
+  - 每个目标包含：
+    - `target_api_base_url`: 目标 API 基础 URL
+    - `target_api_path`: API 路径（支持 `{{id}}` 等模板变量）
+    - `target_api_method`: HTTP 方法（POST/PUT/DELETE/GET）
+    - `target_api_query`: 查询参数字符串
+    - `target_api_timeout`: 请求超时时间（默认: 30 秒）
+    - `target_api_headers`: 目标 API 请求头（与 default_headers 合并）
+    - `field_mappings`: 字段映射配置
+      - `nodes_mapping_uuid`: 节点名到 UUID 的映射
+      - `nodes_mapping_name`: 节点显示路径到短名称的映射
+      - `platform_mapping`: 平台字符串映射（如 Linux → 1）
+      - `default_fields`: 默认注入字段
+    - `default_output`: 成功时的响应消息
+    - `success_status_code`: 预期的成功状态码
+- `prometheus_sd_configs`: Prometheus Service Discovery 多配置
+  - 每个配置包含：
+    - `cmdb_api_base_url`: CMDB API 基础 URL
+    - `cmdb_api_path`: CMDB API 路径
+    - `cmdb_api_query`: 查询参数（包含过滤条件、字段列表、分页）
+    - `cmdb_api_headers`: CMDB API 请求头
+    - `cmdb_api_key`: CMDB API Key（用于 SHA1 签名认证）
+    - `cmdb_api_secret`: CMDB API Secret
+    - `cmdb_api_timeout`: 请求超时时间（默认: 30 秒）
+    - `target_port`: 监控端点端口（默认: 9100）
+    - `target_field`: IP 地址字段名（默认: privateIpAddress）
+    - `labels_mapping`: 标签映射（支持 `{{field}}` 模板变量）
+    - `default_labels`: 默认静态标签
+    - `http_config`: 可选的 HTTP 认证配置（Basic Auth 或 Bearer Token）
 
 ## 开发指南
 

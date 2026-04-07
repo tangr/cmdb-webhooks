@@ -1,0 +1,124 @@
+# VecMDB Trigger Proxy Configuration
+# This file configures the VecMDB trigger proxy and Prometheus service discovery
+
+# =============================================================================
+# Security Configuration
+# =============================================================================
+
+# API keys for VecMDB trigger webhook verification
+# Requests must include a matching X-API-Key header when keys are configured
+# Empty list = no verification (all requests accepted)
+# Example:
+#   vecmdb_trigger_webhook_api_keys:
+#     - "key1-for-cmdb"
+#     - "key2-for-monitoring"
+vecmdb_trigger_webhook_api_keys: []
+
+# Default HTTP headers applied to all target API requests
+default_headers:
+  Content-Type: "application/json"
+  User-Agent: "VecMDB-Trigger-Proxy/1.0"
+
+# =============================================================================
+# CMDB Trigger Multi-Target Configuration
+# =============================================================================
+# Each target defines: API endpoint, headers, field mappings, response config
+# Targets are accessed via POST /vecmdb-trigger/jms/{target_name}
+#
+# Supported field_mappings:
+#   nodes_mapping_uuid:  Maps node names to UUIDs (reverse lookup: name -> UUID)
+#   nodes_mapping_name:  Maps node display paths to short names
+#   platform_mapping:    Maps platform strings (e.g., "Linux" -> "1")
+#   default_fields:      Default fields merged into every request body
+#
+# Target API path supports template variables: {{id}}, {{name}}, etc.
+
+cmdb_trigger_targets:
+  # Example: Add host to JumpServer
+  # default1-add:
+  #   target_api_base_url: "https://jumpserver-test.exodushk.com"
+  #   target_api_path: "/api/v1/assets/hosts/"
+  #   target_api_method: "POST"
+  #   target_api_query: "source=cmdb&env=default"
+  #   target_api_timeout: 10
+  #   target_api_headers:
+  #     Authorization: "Token your-token-here"
+  #     X-JMS-ORG: "00000000-0000-0000-0000-000000000002"
+  #   field_mappings:
+  #     nodes_mapping_uuid:
+  #       "3fa85f64-5717-4562-b3fc-2c963f66afa6": "test-node"
+  #       "550e8400-e29b-41d4-a716-446655440000": "node-1"
+  #     nodes_mapping_name:
+  #       "/DEFAULT/test-node": "test-node"
+  #       "/DEFAULT/node-1": "node-1"
+  #     platform_mapping:
+  #       "Linux": "1"
+  #       "Windows": "windows-amd64"
+  #       "macOS": "darwin-arm64"
+  #     default_fields:
+  #       protocols:
+  #         - name: "ssh"
+  #           port: 22
+  #       accounts:
+  #         - username: "lhsa"
+  #           template: "ad453f3d-8489-4382-9ce6-3650daff1503"
+  #       is_active: true
+  #   default_output: "Request forwarded to default1 successfully"
+  #   success_status_code: 201
+
+  # Example: Delete host from JumpServer (uses {{id}} template in path)
+  # default1-del:
+  #   target_api_base_url: "https://jumpserver-test.exodushk.com"
+  #   target_api_path: "/api/v1/assets/hosts/{{id}}/"
+  #   target_api_method: "DELETE"
+  #   target_api_query: "source=cmdb&env=default"
+  #   target_api_timeout: 10
+  #   target_api_headers:
+  #     Authorization: "Token your-token-here"
+  #     X-JMS-ORG: "00000000-0000-0000-0000-000000000002"
+  #   default_output: "Request forwarded to default1 successfully"
+  #   success_status_code: 204
+
+# =============================================================================
+# Prometheus Service Discovery Configuration
+# =============================================================================
+# Each config defines: CMDB API connection, target generation, label mappings
+# Configs are accessed via GET /vecmdb-trigger/prometheus/sd/{config_name}
+#
+# CMDB API authentication uses SHA1 signature (api_key + api_secret)
+# Label mappings support {{template}} variables from CMDB CI fields
+#
+# Optional per-config HTTP authentication for the SD endpoint:
+#   http_config:
+#     basic_auth:
+#       username: "prometheus"
+#       password: "secret"
+#   OR
+#   http_config:
+#     authorization:
+#       type: "Bearer"
+#       credentials: "token-value"
+
+prometheus_sd_configs:
+  # Example: Node Exporter service discovery
+  # monitor1:
+  #   cmdb_api_base_url: "https://cmdb-test.exodushk.com"
+  #   cmdb_api_path: "/api/v0.1/ci/s"
+  #   cmdb_api_query: "q=_type:42,monitoringOn:On&fl=name,privateIpAddress,treenode,platformDetails&count=100&page=1"
+  #   cmdb_api_headers:
+  #     Content-Type: "application/json"
+  #     User-Agent: "VecMDB-Trigger-Proxy/1.0"
+  #   cmdb_api_key: "your-api-key"
+  #   cmdb_api_secret: "your-api-secret"
+  #   cmdb_api_timeout: 30
+  #   target_port: 9100
+  #   target_field: "privateIpAddress"
+  #   labels_mapping:
+  #     job: "node_exporter"
+  #     instance: "{{name}}"
+  #     env: "{{treenode}}"
+  #     platform: "{{platformDetails}}"
+  #   default_labels:
+  #     scrape_interval: "30s"
+  #     source: "cmdb"
+  #   http_config: {}

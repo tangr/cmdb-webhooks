@@ -153,6 +153,54 @@ def verify_gitlab_hook_webhook(
         raise HTTPException(status_code=403, detail="Invalid GitLab token")
 
 
+def verify_vecmdb_trigger_webhook(
+    request: Request,
+    api_key: Optional[str] = None,
+) -> bool:
+    """
+    Verify VecMDB Trigger webhook request using API key verification (supports multiple keys)
+
+    Args:
+        request: FastAPI request object
+        api_key: API key from X-API-Key header
+
+    Returns:
+        bool: True if verification passes
+
+    Raises:
+        HTTPException: If verification fails
+    """
+    # Get configured API keys from vecmdb_trigger config YAML
+    from app.services.vecmdb_trigger_service import get_vecmdb_trigger_api_keys
+
+    configured_keys = get_vecmdb_trigger_api_keys()
+
+    # If no keys configured, skip verification
+    if not configured_keys:
+        logger.debug(
+            "VecMDB Trigger webhook verification disabled (no API keys configured)"
+        )
+        return True
+
+    # If no API key provided in request, reject
+    if not api_key:
+        logger.warning("VecMDB Trigger webhook request without API key")
+        raise HTTPException(
+            status_code=403,
+            detail="Webhook verification required. Provide X-API-Key header",
+        )
+
+    # Check if provided key matches any configured key
+    if api_key in configured_keys:
+        logger.debug("VecMDB Trigger webhook verified via API key")
+        return True
+    else:
+        logger.warning(
+            f"Invalid VecMDB Trigger API key provided: {api_key[:8]}..."
+        )
+        raise HTTPException(status_code=403, detail="Invalid API key")
+
+
 def verify_webhook_ip_whitelist(
     request: Request, allowed_ips: List[str] = None
 ) -> bool:

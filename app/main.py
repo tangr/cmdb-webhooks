@@ -10,6 +10,7 @@ from .routers import (
     amis_jenkins,
     harbor_artifacts,
     feishu_approval,
+    vecmdb_trigger,
 )
 from .dependencies import AuthenticationRequiredException
 from config.config import settings
@@ -18,6 +19,7 @@ from .services.amis_jenkins_service import init_amis_jenkins_config
 from .services.harbor_artifacts_service import init_harbor_artifacts_config
 from .services.feishu_bot_service import init_feishu_bot_config
 from .services.users_roles_service import init_users_roles_config
+from .services.vecmdb_trigger_service import init_vecmdb_trigger_config
 from fastapi.staticfiles import StaticFiles
 
 
@@ -33,6 +35,7 @@ async def lifespan(app: FastAPI):
     init_amis_jenkins_config()
     init_harbor_artifacts_config()
     init_feishu_bot_config()
+    init_vecmdb_trigger_config()
     yield
     # Shutdown (if needed)
 
@@ -58,6 +61,9 @@ app.include_router(
 )
 app.include_router(
     feishu_approval.router, prefix="/feishu-approval", tags=["feishu-approval"]
+)
+app.include_router(
+    vecmdb_trigger.router, prefix="/vecmdb-trigger", tags=["vecmdb-trigger"]
 )
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
