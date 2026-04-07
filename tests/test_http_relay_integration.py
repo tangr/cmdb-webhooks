@@ -4,19 +4,19 @@ from unittest.mock import Mock, AsyncMock, patch
 from fastapi import status
 from httpx import AsyncClient, TimeoutException, RequestError, Response
 
-from app.models.cmdb_reqlog import CmdbReqLog
+from app.models.http_relay_reqlog import HttpRelayReqLog
 
 
 @pytest.mark.integration
-class TestCmdbRoutes:
-    """Integration tests for CMDB routes"""
+class TestHttpRelayRoutes:
+    """Integration tests for HTTP Relay routes"""
 
     @pytest.mark.asyncio
-    async def test_create_cmdb_log_success(
+    async def test_create_http_relay_log_success(
         self, async_client: AsyncClient, sample_cmdb_request, api_key_headers
     ):
-        """Test successful CMDB log creation via webhook"""
-        with patch("app.services.cmdb_service.process_cmdb_request") as mock_process:
+        """Test successful HTTP Relay log creation via webhook"""
+        with patch("app.services.http_relay_service.process_http_relay_request") as mock_process:
             mock_process.return_value = {
                 "status": 200,
                 "output": "Success",
@@ -25,7 +25,7 @@ class TestCmdbRoutes:
             }
 
             response = await async_client.post(
-                "/cmdb/", json=sample_cmdb_request, headers=api_key_headers
+                "/http-relay/", json=sample_cmdb_request, headers=api_key_headers
             )
 
             assert response.status_code == status.HTTP_200_OK
@@ -35,10 +35,10 @@ class TestCmdbRoutes:
             assert "processed_at" in data
 
     @pytest.mark.asyncio
-    async def test_create_cmdb_log_missing_host(
+    async def test_create_http_relay_log_missing_host(
         self, async_client: AsyncClient, api_key_headers
     ):
-        """Test CMDB log creation with missing host parameter"""
+        """Test HTTP Relay log creation with missing host parameter"""
         invalid_request = {
             "method": "GET",
             "path": "/api/test",
@@ -47,40 +47,40 @@ class TestCmdbRoutes:
         }
 
         response = await async_client.post(
-            "/cmdb/", json=invalid_request, headers=api_key_headers
+            "/http-relay/", json=invalid_request, headers=api_key_headers
         )
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "Missing 'host' parameter" in response.json()["detail"]
 
     @pytest.mark.asyncio
-    async def test_create_cmdb_log_invalid_api_key(
+    async def test_create_http_relay_log_invalid_api_key(
         self, async_client: AsyncClient, sample_cmdb_request
     ):
-        """Test CMDB log creation with invalid API key"""
+        """Test HTTP Relay log creation with invalid API key"""
         invalid_headers = {"X-API-Key": "invalid-key"}
 
         response = await async_client.post(
-            "/cmdb/", json=sample_cmdb_request, headers=invalid_headers
+            "/http-relay/", json=sample_cmdb_request, headers=invalid_headers
         )
 
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
     @pytest.mark.asyncio
-    async def test_create_cmdb_log_no_api_key(
+    async def test_create_http_relay_log_no_api_key(
         self, async_client: AsyncClient, sample_cmdb_request
     ):
-        """Test CMDB log creation without API key"""
-        response = await async_client.post("/cmdb/", json=sample_cmdb_request)
+        """Test HTTP Relay log creation without API key"""
+        response = await async_client.post("/http-relay/", json=sample_cmdb_request)
 
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
     @pytest.mark.asyncio
-    async def test_create_cmdb_log_timeout_error(
+    async def test_create_http_relay_log_timeout_error(
         self, async_client: AsyncClient, sample_cmdb_request, api_key_headers
     ):
-        """Test CMDB log creation with timeout error"""
-        with patch("app.services.cmdb_service.process_cmdb_request") as mock_process:
+        """Test HTTP Relay log creation with timeout error"""
+        with patch("app.services.http_relay_service.process_http_relay_request") as mock_process:
             from fastapi import HTTPException
 
             mock_process.side_effect = HTTPException(
@@ -88,18 +88,18 @@ class TestCmdbRoutes:
             )
 
             response = await async_client.post(
-                "/cmdb/", json=sample_cmdb_request, headers=api_key_headers
+                "/http-relay/", json=sample_cmdb_request, headers=api_key_headers
             )
 
             assert response.status_code == status.HTTP_504_GATEWAY_TIMEOUT
             assert "timed out" in response.json()["detail"]
 
     @pytest.mark.asyncio
-    async def test_create_cmdb_log_connection_error(
+    async def test_create_http_relay_log_connection_error(
         self, async_client: AsyncClient, sample_cmdb_request, api_key_headers
     ):
-        """Test CMDB log creation with connection error"""
-        with patch("app.services.cmdb_service.process_cmdb_request") as mock_process:
+        """Test HTTP Relay log creation with connection error"""
+        with patch("app.services.http_relay_service.process_http_relay_request") as mock_process:
             from fastapi import HTTPException
 
             mock_process.side_effect = HTTPException(
@@ -107,20 +107,20 @@ class TestCmdbRoutes:
             )
 
             response = await async_client.post(
-                "/cmdb/", json=sample_cmdb_request, headers=api_key_headers
+                "/http-relay/", json=sample_cmdb_request, headers=api_key_headers
             )
 
             assert response.status_code == status.HTTP_502_BAD_GATEWAY
             assert "Failed to connect" in response.json()["detail"]
 
     @pytest.mark.asyncio
-    async def test_get_cmdb_logs_authenticated(
+    async def test_get_http_relay_logs_authenticated(
         self, async_client: AsyncClient, auth_headers, test_session
     ):
-        """Test getting CMDB logs with authentication"""
+        """Test getting HTTP Relay logs with authentication"""
         # Create some test logs
         test_logs = [
-            CmdbReqLog(
+            HttpRelayReqLog(
                 host="http://test1.com",
                 method="GET",
                 path="/api/test1",
@@ -132,7 +132,7 @@ class TestCmdbRoutes:
                 status=200,
                 output="Success",
             ),
-            CmdbReqLog(
+            HttpRelayReqLog(
                 host="http://test2.com",
                 method="POST",
                 path="/api/test2",
@@ -150,26 +150,26 @@ class TestCmdbRoutes:
             test_session.add(log)
         test_session.commit()
 
-        response = await async_client.get("/cmdb/", headers=auth_headers)
+        response = await async_client.get("/http-relay/", headers=auth_headers)
 
         assert response.status_code == status.HTTP_200_OK
         assert "text/html" in response.headers["content-type"]
 
     @pytest.mark.asyncio
-    async def test_get_cmdb_logs_unauthenticated(self, async_client: AsyncClient):
-        """Test getting CMDB logs without authentication"""
-        response = await async_client.get("/cmdb/")
+    async def test_get_http_relay_logs_unauthenticated(self, async_client: AsyncClient):
+        """Test getting HTTP Relay logs without authentication"""
+        response = await async_client.get("/http-relay/")
 
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     @pytest.mark.asyncio
-    async def test_get_cmdb_logs_list_authenticated(
+    async def test_get_http_relay_logs_list_authenticated(
         self, async_client: AsyncClient, auth_headers, test_session
     ):
-        """Test getting CMDB logs list with authentication"""
+        """Test getting HTTP Relay logs list with authentication"""
         # Create test logs
         for i in range(5):
-            log = CmdbReqLog(
+            log = HttpRelayReqLog(
                 host=f"http://test{i}.com",
                 method="GET",
                 path=f"/api/test{i}",
@@ -184,7 +184,7 @@ class TestCmdbRoutes:
             test_session.add(log)
         test_session.commit()
 
-        response = await async_client.get("/cmdb/list", headers=auth_headers)
+        response = await async_client.get("/http-relay/logs", headers=auth_headers)
 
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
@@ -193,13 +193,13 @@ class TestCmdbRoutes:
         assert len(data["logs"]) <= 10  # Default page size
 
     @pytest.mark.asyncio
-    async def test_get_cmdb_logs_list_with_pagination(
+    async def test_get_http_relay_logs_list_with_pagination(
         self, async_client: AsyncClient, auth_headers, test_session
     ):
-        """Test CMDB logs list with pagination parameters"""
+        """Test HTTP Relay logs list with pagination parameters"""
         # Create 15 test logs
         for i in range(15):
-            log = CmdbReqLog(
+            log = HttpRelayReqLog(
                 host=f"http://test{i}.com",
                 method="GET",
                 path=f"/api/test{i}",
@@ -215,7 +215,7 @@ class TestCmdbRoutes:
 
         # Test first page with limit
         response = await async_client.get(
-            "/cmdb/list?page=1&limit=5", headers=auth_headers
+            "/http-relay/logs?skip=0&limit=5", headers=auth_headers
         )
 
         assert response.status_code == status.HTTP_200_OK
@@ -226,7 +226,7 @@ class TestCmdbRoutes:
 
         # Test second page
         response = await async_client.get(
-            "/cmdb/list?page=2&limit=5", headers=auth_headers
+            "/http-relay/logs?skip=5&limit=5", headers=auth_headers
         )
 
         assert response.status_code == status.HTTP_200_OK
@@ -236,18 +236,18 @@ class TestCmdbRoutes:
         assert data["pagination"]["has_prev"] is True
 
     @pytest.mark.asyncio
-    async def test_get_cmdb_logs_list_unauthenticated(self, async_client: AsyncClient):
-        """Test getting CMDB logs list without authentication"""
-        response = await async_client.get("/cmdb/list")
+    async def test_get_http_relay_logs_list_unauthenticated(self, async_client: AsyncClient):
+        """Test getting HTTP Relay logs list without authentication"""
+        response = await async_client.get("/http-relay/logs")
 
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     @pytest.mark.asyncio
-    async def test_get_cmdb_log_by_id_authenticated(
+    async def test_get_http_relay_log_by_id_authenticated(
         self, async_client: AsyncClient, auth_headers, test_session
     ):
-        """Test getting specific CMDB log by ID"""
-        log = CmdbReqLog(
+        """Test getting specific HTTP Relay log by ID"""
+        log = HttpRelayReqLog(
             host="http://example.com",
             method="POST",
             path="/api/specific",
@@ -263,7 +263,7 @@ class TestCmdbRoutes:
         test_session.commit()
         test_session.refresh(log)
 
-        response = await async_client.get(f"/cmdb/{log.id}", headers=auth_headers)
+        response = await async_client.get(f"/http-relay/{log.id}", headers=auth_headers)
 
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
@@ -274,21 +274,21 @@ class TestCmdbRoutes:
         assert data["status"] == 200
 
     @pytest.mark.asyncio
-    async def test_get_cmdb_log_by_id_not_found(
+    async def test_get_http_relay_log_by_id_not_found(
         self, async_client: AsyncClient, auth_headers
     ):
-        """Test getting CMDB log by non-existent ID"""
-        response = await async_client.get("/cmdb/99999", headers=auth_headers)
+        """Test getting HTTP Relay log by non-existent ID"""
+        response = await async_client.get("/http-relay/99999", headers=auth_headers)
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
         assert "not found" in response.json()["detail"].lower()
 
     @pytest.mark.asyncio
-    async def test_get_cmdb_log_by_id_unauthenticated(
+    async def test_get_http_relay_log_by_id_unauthenticated(
         self, async_client: AsyncClient, test_session
     ):
-        """Test getting CMDB log by ID without authentication"""
-        log = CmdbReqLog(
+        """Test getting HTTP Relay log by ID without authentication"""
+        log = HttpRelayReqLog(
             host="http://test.com",
             method="GET",
             path="/test",
@@ -303,16 +303,16 @@ class TestCmdbRoutes:
         test_session.commit()
         test_session.refresh(log)
 
-        response = await async_client.get(f"/cmdb/{log.id}")
+        response = await async_client.get(f"/http-relay/{log.id}")
 
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     @pytest.mark.asyncio
-    async def test_update_cmdb_log_admin(
+    async def test_update_http_relay_log_admin(
         self, async_client: AsyncClient, admin_auth_headers, test_session
     ):
-        """Test updating CMDB log with admin privileges"""
-        log = CmdbReqLog(
+        """Test updating HTTP Relay log with admin privileges"""
+        log = HttpRelayReqLog(
             host="http://original.com",
             method="GET",
             path="/original",
@@ -335,7 +335,7 @@ class TestCmdbRoutes:
         }
 
         response = await async_client.put(
-            f"/cmdb/{log.id}", json=update_data, headers=admin_auth_headers
+            f"/http-relay/{log.id}", json=update_data, headers=admin_auth_headers
         )
 
         assert response.status_code == status.HTTP_200_OK
@@ -345,11 +345,11 @@ class TestCmdbRoutes:
         assert data["author"] == "updated_author"
 
     @pytest.mark.asyncio
-    async def test_update_cmdb_log_non_admin(
+    async def test_update_http_relay_log_non_admin(
         self, async_client: AsyncClient, auth_headers, test_session
     ):
-        """Test updating CMDB log without admin privileges"""
-        log = CmdbReqLog(
+        """Test updating HTTP Relay log without admin privileges"""
+        log = HttpRelayReqLog(
             host="http://test.com",
             method="GET",
             path="/test",
@@ -367,30 +367,30 @@ class TestCmdbRoutes:
         update_data = {"status": 404}
 
         response = await async_client.put(
-            f"/cmdb/{log.id}", json=update_data, headers=auth_headers
+            f"/http-relay/{log.id}", json=update_data, headers=auth_headers
         )
 
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
     @pytest.mark.asyncio
-    async def test_update_cmdb_log_not_found(
+    async def test_update_http_relay_log_not_found(
         self, async_client: AsyncClient, admin_auth_headers
     ):
-        """Test updating non-existent CMDB log"""
+        """Test updating non-existent HTTP Relay log"""
         update_data = {"status": 404}
 
         response = await async_client.put(
-            "/cmdb/99999", json=update_data, headers=admin_auth_headers
+            "/http-relay/99999", json=update_data, headers=admin_auth_headers
         )
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
     @pytest.mark.asyncio
-    async def test_delete_cmdb_log_admin(
+    async def test_delete_http_relay_log_admin(
         self, async_client: AsyncClient, admin_auth_headers, test_session
     ):
-        """Test deleting CMDB log with admin privileges"""
-        log = CmdbReqLog(
+        """Test deleting HTTP Relay log with admin privileges"""
+        log = HttpRelayReqLog(
             host="http://delete-test.com",
             method="DELETE",
             path="/api/delete",
@@ -407,7 +407,7 @@ class TestCmdbRoutes:
         log_id = log.id
 
         response = await async_client.delete(
-            f"/cmdb/{log_id}", headers=admin_auth_headers
+            f"/http-relay/{log_id}", headers=admin_auth_headers
         )
 
         assert response.status_code == status.HTTP_200_OK
@@ -416,16 +416,16 @@ class TestCmdbRoutes:
 
         # Verify log is actually deleted
         verify_response = await async_client.get(
-            f"/cmdb/{log_id}", headers=admin_auth_headers
+            f"/http-relay/{log_id}", headers=admin_auth_headers
         )
         assert verify_response.status_code == status.HTTP_404_NOT_FOUND
 
     @pytest.mark.asyncio
-    async def test_delete_cmdb_log_non_admin(
+    async def test_delete_http_relay_log_non_admin(
         self, async_client: AsyncClient, auth_headers, test_session
     ):
-        """Test deleting CMDB log without admin privileges"""
-        log = CmdbReqLog(
+        """Test deleting HTTP Relay log without admin privileges"""
+        log = HttpRelayReqLog(
             host="http://test.com",
             method="GET",
             path="/test",
@@ -440,27 +440,27 @@ class TestCmdbRoutes:
         test_session.commit()
         test_session.refresh(log)
 
-        response = await async_client.delete(f"/cmdb/{log.id}", headers=auth_headers)
+        response = await async_client.delete(f"/http-relay/{log.id}", headers=auth_headers)
 
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
     @pytest.mark.asyncio
-    async def test_delete_cmdb_log_not_found(
+    async def test_delete_http_relay_log_not_found(
         self, async_client: AsyncClient, admin_auth_headers
     ):
-        """Test deleting non-existent CMDB log"""
-        response = await async_client.delete("/cmdb/99999", headers=admin_auth_headers)
+        """Test deleting non-existent HTTP Relay log"""
+        response = await async_client.delete("/http-relay/99999", headers=admin_auth_headers)
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
     @pytest.mark.asyncio
-    async def test_cmdb_log_filtering_and_search(
+    async def test_http_relay_log_filtering_and_search(
         self, async_client: AsyncClient, auth_headers, test_session
     ):
-        """Test CMDB log filtering and search functionality"""
+        """Test HTTP Relay log filtering and search functionality"""
         # Create logs with different statuses and authors
         logs = [
-            CmdbReqLog(
+            HttpRelayReqLog(
                 host="http://success.com",
                 method="GET",
                 path="/success",
@@ -472,7 +472,7 @@ class TestCmdbRoutes:
                 status=200,
                 output="Success",
             ),
-            CmdbReqLog(
+            HttpRelayReqLog(
                 host="http://error.com",
                 method="POST",
                 path="/error",
@@ -484,7 +484,7 @@ class TestCmdbRoutes:
                 status=500,
                 output="Error",
             ),
-            CmdbReqLog(
+            HttpRelayReqLog(
                 host="http://notfound.com",
                 method="GET",
                 path="/notfound",
@@ -504,7 +504,7 @@ class TestCmdbRoutes:
 
         # Test filtering by author (if supported)
         response = await async_client.get(
-            "/cmdb/list?author=user1", headers=auth_headers
+            "/http-relay/logs?author=user1", headers=auth_headers
         )
         if response.status_code == status.HTTP_200_OK:
             data = response.json()
@@ -515,10 +515,10 @@ class TestCmdbRoutes:
                 assert len(user1_logs) >= 1
 
     @pytest.mark.asyncio
-    async def test_cmdb_request_with_various_http_methods(
+    async def test_http_relay_request_with_various_http_methods(
         self, async_client: AsyncClient, api_key_headers
     ):
-        """Test CMDB requests with different HTTP methods"""
+        """Test HTTP Relay requests with different HTTP methods"""
         test_cases = [
             {"method": "GET", "expected_status": 200},
             {"method": "POST", "expected_status": 200},
@@ -543,7 +543,7 @@ class TestCmdbRoutes:
             }
 
             with patch(
-                "app.services.cmdb_service.process_cmdb_request"
+                "app.services.http_relay_service.process_http_relay_request"
             ) as mock_process:
                 mock_process.return_value = {
                     "status": case["expected_status"],
@@ -553,7 +553,7 @@ class TestCmdbRoutes:
                 }
 
                 response = await async_client.post(
-                    "/cmdb/", json=request_data, headers=api_key_headers
+                    "/http-relay/", json=request_data, headers=api_key_headers
                 )
 
                 assert response.status_code == status.HTTP_200_OK

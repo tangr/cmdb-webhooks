@@ -54,7 +54,7 @@ mock_users:
 # The "admin" role can always see all menus
 
 menu_visibility:
-  cmdb:
+  http_relay:
     - "admin"
   amis_jenkins:
     - "admin"

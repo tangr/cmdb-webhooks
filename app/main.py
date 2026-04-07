@@ -3,7 +3,7 @@ from fastapi import Depends, FastAPI, Request
 from fastapi.responses import RedirectResponse
 
 from .routers import (
-    cmdb_trigger,
+    http_relay,
     auth,
     feishu_bot,
     gitlab_hook,
@@ -49,7 +49,7 @@ async def authentication_exception_handler(
 
 
 app.include_router(auth.router, prefix="/auth", tags=["authentication"])
-app.include_router(cmdb_trigger.router, prefix="/cmdb-trigger", tags=["cmdb-trigger"])
+app.include_router(http_relay.router, prefix="/http-relay", tags=["http-relay"])
 app.include_router(feishu_bot.router, prefix="/feishu-bot", tags=["feishu-bot"])
 app.include_router(gitlab_hook.router, prefix="/gitlab-hook", tags=["gitlab-hook"])
 app.include_router(amis_jenkins.router, prefix="/amis-jenkins", tags=["amis-jenkins"])

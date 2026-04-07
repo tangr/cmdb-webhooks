@@ -47,7 +47,7 @@ pytest tests/ -m redis
 
 ```bash
 # 测试特定模型
-pytest tests/test_models/test_cmdb_reqlog.py
+pytest tests/test_models/test_http_relay_reqlog.py
 pytest tests/test_models/test_feishu_bot_reqlog.py
 
 # 测试特定服务
@@ -57,7 +57,7 @@ pytest tests/test_services/test_webhook_mapping.py
 
 # 测试 API 端点
 pytest tests/test_auth.py
-pytest tests/test_cmdb_integration.py
+pytest tests/test_http_relay_integration.py
 pytest tests/test_feishu_bot_integration.py
 
 # 测试工具类
@@ -122,7 +122,7 @@ tests/
 ├── conftest.py              # 共享固件和配置
 ├── test_auth.py            # 认证 API 测试（现有）
 ├── test_models/            # 模型单元测试
-│   ├── test_cmdb_reqlog.py
+│   ├── test_http_relay_reqlog.py
 │   └── test__feishu_bot_reqlog.py
 ├── test_services/          # 服务单元测试
 │   ├── test_redis_session.py
@@ -130,7 +130,7 @@ tests/
 │   └── test_webhook_mapping.py
 ├── test_utils/            # 工具类单元测试
 │   └── test_logger.py
-├── test_cmdb_integration.py    # CMDB API 集成测试
+├── test_http_relay_integration.py    # HTTP Relay API 集成测试
 ├── test_feishu_bot_integration.py  # 飞书 API 集成测试
 └── test_security.py           # 安全和认证测试
 ```
@@ -205,7 +205,7 @@ pytest tests/ -v --tb=long
 pytest tests/ -x
 
 # 运行特定测试并输出
-pytest tests/test_models/test_cmdb_reqlog.py::TestCmdbReqLogModel::test_create_cmdb_reqlog -v -s
+pytest tests/test_models/test_http_relay_reqlog.py::TestHttpRelayReqLogModel::test_create_http_relay_reqlog -v -s
 
 # 失败时运行 pdb 调试器
 pytest tests/ --pdb

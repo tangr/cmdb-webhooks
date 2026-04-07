@@ -3,7 +3,7 @@ from unittest.mock import Mock, patch
 from fastapi import Request, HTTPException
 
 from app.utils.webhook_security import (
-    verify_cmdb_webhook,
+    verify_http_relay_webhook,
     verify_feishu_bot_webhook,
     verify_webhook_ip_whitelist,
 )
@@ -21,55 +21,55 @@ class TestWebhookSecurity:
         request.headers = {}
         return request
 
-    def test_verify_cmdb_webhook_valid_api_key(self, mock_request):
-        """Test CMDB webhook verification with valid API key"""
+    def test_verify_http_relay_webhook_valid_api_key(self, mock_request):
+        """Test HTTP Relay webhook verification with valid API key"""
         mock_request.headers = {"X-API-Key": "valid-cmdb-key"}
 
         with patch(
-            "config.config.settings.cmdb_webhook_api_keys", "valid-cmdb-key,another-key"
+            "config.config.settings.http_relay_webhook_api_keys", "valid-cmdb-key,another-key"
         ):
             # Should not raise any exception
-            verify_cmdb_webhook(mock_request, "valid-cmdb-key")
+            verify_http_relay_webhook(mock_request, "valid-cmdb-key")
 
-    def test_verify_cmdb_webhook_invalid_api_key(self, mock_request):
-        """Test CMDB webhook verification with invalid API key"""
+    def test_verify_http_relay_webhook_invalid_api_key(self, mock_request):
+        """Test HTTP Relay webhook verification with invalid API key"""
         mock_request.headers = {"X-API-Key": "invalid-key"}
 
         with patch(
-            "config.config.settings.cmdb_webhook_api_keys", "valid-key1,valid-key2"
+            "config.config.settings.http_relay_webhook_api_keys", "valid-key1,valid-key2"
         ):
             with pytest.raises(HTTPException) as exc_info:
-                verify_cmdb_webhook(mock_request, "invalid-key")
+                verify_http_relay_webhook(mock_request, "invalid-key")
 
             assert exc_info.value.status_code == 403
             assert "Invalid API key" in str(exc_info.value.detail)
 
-    def test_verify_cmdb_webhook_missing_api_key(self, mock_request):
-        """Test CMDB webhook verification with missing API key"""
+    def test_verify_http_relay_webhook_missing_api_key(self, mock_request):
+        """Test HTTP Relay webhook verification with missing API key"""
         mock_request.headers = {}
 
-        with patch("config.config.settings.cmdb_webhook_api_keys", "required-key"):
+        with patch("config.config.settings.http_relay_webhook_api_keys", "required-key"):
             with pytest.raises(HTTPException) as exc_info:
-                verify_cmdb_webhook(mock_request, None)
+                verify_http_relay_webhook(mock_request, None)
 
             assert exc_info.value.status_code == 403
             assert "API key required" in str(exc_info.value.detail)
 
-    def test_verify_cmdb_webhook_no_keys_configured(self, mock_request):
-        """Test CMDB webhook verification when no API keys are configured"""
+    def test_verify_http_relay_webhook_no_keys_configured(self, mock_request):
+        """Test HTTP Relay webhook verification when no API keys are configured"""
         mock_request.headers = {}
 
-        with patch("config.config.settings.cmdb_webhook_api_keys", ""):
+        with patch("config.config.settings.http_relay_webhook_api_keys", ""):
             # Should not raise any exception when no keys are configured
-            verify_cmdb_webhook(mock_request, None)
+            verify_http_relay_webhook(mock_request, None)
 
-    def test_verify_cmdb_webhook_empty_api_key(self, mock_request):
-        """Test CMDB webhook verification with empty API key"""
+    def test_verify_http_relay_webhook_empty_api_key(self, mock_request):
+        """Test HTTP Relay webhook verification with empty API key"""
         mock_request.headers = {"X-API-Key": ""}
 
-        with patch("config.config.settings.cmdb_webhook_api_keys", "valid-key"):
+        with patch("config.config.settings.http_relay_webhook_api_keys", "valid-key"):
             with pytest.raises(HTTPException) as exc_info:
-                verify_cmdb_webhook(mock_request, "")
+                verify_http_relay_webhook(mock_request, "")
 
             assert exc_info.value.status_code == 403
 
@@ -227,9 +227,9 @@ class TestWebhookSecurity:
         mock_request.headers = {"X-API-Key": "TestKey123"}
 
         # Different case should not match
-        with patch("config.config.settings.cmdb_webhook_api_keys", "testkey123"):
+        with patch("config.config.settings.http_relay_webhook_api_keys", "testkey123"):
             with pytest.raises(HTTPException):
-                verify_cmdb_webhook(mock_request, "TestKey123")
+                verify_http_relay_webhook(mock_request, "TestKey123")
 
     def test_api_key_with_special_characters(self, mock_request):
         """Test API key verification with special characters"""
@@ -251,17 +251,17 @@ class TestWebhookSecurity:
         for key in ["key1", "key2", "key3"]:
             mock_request.headers = {"X-API-Key": key}
 
-            with patch("config.config.settings.cmdb_webhook_api_keys", configured_keys):
-                verify_cmdb_webhook(mock_request, key)
+            with patch("config.config.settings.http_relay_webhook_api_keys", configured_keys):
+                verify_http_relay_webhook(mock_request, key)
 
     def test_api_key_whitespace_handling(self, mock_request):
         """Test API key verification with whitespace in configuration"""
         configured_keys = " key1 , key2, key3 "  # Keys with spaces
         mock_request.headers = {"X-API-Key": "key2"}
 
-        with patch("config.config.settings.cmdb_webhook_api_keys", configured_keys):
+        with patch("config.config.settings.http_relay_webhook_api_keys", configured_keys):
             # Should handle whitespace in configuration
-            verify_cmdb_webhook(mock_request, "key2")
+            verify_http_relay_webhook(mock_request, "key2")
 
     @pytest.mark.security
     def test_security_headers_not_logged(self):

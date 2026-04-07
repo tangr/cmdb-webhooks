@@ -17,12 +17,12 @@ def get_api_keys_list(keys_str: str) -> List[str]:
     return [key.strip() for key in keys_str.split(",") if key.strip()]
 
 
-def verify_cmdb_trigger_webhook(
+def verify_http_relay_webhook(
     request: Request,
     api_key: Optional[str] = None,
 ) -> bool:
     """
-    Verify CMDB Trigger webhook request using API key verification (supports multiple keys)
+    Verify HTTP Relay webhook request using API key verification (supports multiple keys)
 
     Args:
         request: FastAPI request object
@@ -35,18 +35,18 @@ def verify_cmdb_trigger_webhook(
         HTTPException: If verification fails
     """
     # Get configured API keys
-    configured_keys = get_api_keys_list(settings.cmdb_trigger_webhook_api_keys)
+    configured_keys = get_api_keys_list(settings.http_relay_webhook_api_keys)
 
     # If no keys configured, skip verification
     if not configured_keys:
         logger.debug(
-            "CMDB Trigger webhook verification disabled (no API keys configured)"
+            "HTTP Relay webhook verification disabled (no API keys configured)"
         )
         return True
 
     # If no API key provided in request, reject
     if not api_key:
-        logger.warning("CMDB Trigger webhook request without API key")
+        logger.warning("HTTP Relay webhook request without API key")
         raise HTTPException(
             status_code=403,
             detail="Webhook verification required. Provide X-API-Key header",
@@ -54,10 +54,10 @@ def verify_cmdb_trigger_webhook(
 
     # Check if provided key matches any configured key
     if api_key in configured_keys:
-        logger.debug("CMDB Trigger webhook verified via API key")
+        logger.debug("HTTP Relay webhook verified via API key")
         return True
     else:
-        logger.warning(f"Invalid CMDB Trigger API key provided: {api_key[:8]}...")
+        logger.warning(f"Invalid HTTP Relay API key provided: {api_key[:8]}...")
         raise HTTPException(status_code=403, detail="Invalid API key")
 
 

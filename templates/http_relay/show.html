@@ -195,7 +195,7 @@
       if (currentJobId) {
         // Send PUT request to re-execute the logged request
         $.ajax({
-          url: '/cmdb/' + currentJobId,
+          url: '/http-relay/' + currentJobId,
           type: 'PUT',
           contentType: 'application/json',
           data: JSON.stringify({})

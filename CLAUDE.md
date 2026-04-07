@@ -43,7 +43,7 @@ webhook-proxy/
 │   ├── internal/          # 内部管理模块
 │   │   └── admin.py       # 管理员路由和功能
 │   ├── models/            # 数据模型
-│   │   ├── cmdb_trigger_reqlog.py  # CMDB Trigger请求日志模型
+│   │   ├── http_relay_reqlog.py  # HTTP Relay请求日志模型
 │   │   ├── feishu_bot_reqlog.py # 飞书机器人请求日志模型
 │   │   ├── gitlab_hook_reqlog.py # GitLab Hook请求日志模型
 │   │   ├── amis_jenkins_reqlog.py # Amis Jenkins请求日志模型
@@ -51,14 +51,14 @@ webhook-proxy/
 │   │   └── pending_jenkins_job.py # 待执行Jenkins任务模型（审批关联）
 │   ├── routers/           # API路由处理器
 │   │   ├── auth.py        # 认证相关路由（JWT + Session + OIDC）
-│   │   ├── cmdb_trigger.py        # CMDB Trigger日志路由
+│   │   ├── http_relay.py        # HTTP Relay日志路由
 │   │   ├── feishu_bot.py      # 飞书机器人Webhook代理路由
 │   │   ├── gitlab_hook.py      # GitLab Hook Webhook代理路由
 │   │   ├── amis_jenkins.py    # Amis Jenkins表单代理路由
 │   │   ├── harbor_artifacts.py # Harbor镜像Artifacts查询路由
 │   │   └── feishu_approval.py # 飞书审批代理路由
 │   ├── services/          # 服务层模块
-│   │   ├── cmdb_trigger_service.py      # CMDB Trigger代理请求处理服务
+│   │   ├── http_relay_service.py      # HTTP Relay代理请求处理服务
 │   │   ├── feishu_bot_service.py    # 飞书机器人服务逻辑
 │   │   ├── gitlab_hook_service.py    # GitLab Hook到Jenkins转发服务
 │   │   ├── amis_jenkins_service.py  # Amis Jenkins表单到Jenkins转发服务
@@ -78,7 +78,7 @@ webhook-proxy/
 │   ├── base_menu.html     # 基础模板菜单
 │   ├── dashboard.html     # 用户仪表板页面
 │   ├── login.html         # 登录页面
-│   ├── cmdb/              # CMDB相关模板
+│   ├── http_relay/              # HTTP Relay相关模板
 │   │   └── show.html      # 显示页面模板
 │   ├── feishu/            # 飞书相关模板目录
 │   └── amis_jenkins/      # Amis Jenkins相关模板
@@ -117,7 +117,7 @@ webhook-proxy/
 这是一个全栈 FastAPI 应用程序，主要功能包括：
 
 - **Webhook 代理服务**: 接收并转发各种系统的 Webhook 请求
-- **请求日志记录**: 记录和管理来自 CMDB Trigger、飞书机器人和 GitLab Hook 等系统的 HTTP 请求/响应数据
+- **请求日志记录**: 记录和管理来自 HTTP Relay、飞书机器人和 GitLab Hook 等系统的 HTTP 请求/响应数据
 - **用户认证系统**: 支持 JWT、Session 和 OIDC 三种认证方式的多层次权限管理
 - **Web 管理界面**: 提供直观的 Web 界面进行日志查看和系统管理
 - **Amis Jenkins 表单代理**: 使用百度 Amis 低代码框架构建参数化表单 UI，替代 Jenkins 原生 parameters，支持动态表单渲染和 Jenkins 构建触发
@@ -155,7 +155,7 @@ webhook-proxy/
 
 - 数据库连接在`config/config.py`中配置，连接字符串来自环境变量
 - 主要数据实体包括：
-  - `CmdbTriggerReqLog`: 存储来自 CMDB Trigger 系统的 HTTP 请求/响应数据
+  - `HttpRelayReqLog`: 存储来自 HTTP Relay 系统的 HTTP 请求/响应数据
   - `FeishuBotReqLog`: 存储飞书机器人 Webhook 代理的请求/响应数据
   - `GitlabHookReqLog`: 存储 GitLab Hook Webhook 到 Jenkins 的请求/响应数据
   - `AmisJenkinsReqLog`: 存储 Amis 表单提交到 Jenkins 的请求/响应数据
@@ -173,7 +173,7 @@ webhook-proxy/
 
 ### 关键数据模型
 
-- **CmdbTriggerReqLog**: 存储来自 CMDB Trigger 系统的 HTTP 请求详细信息（方法、路径、标头、正文、状态等）
+- **HttpRelayReqLog**: 存储来自 HTTP Relay 系统的 HTTP 请求详细信息（方法、路径、标头、正文、状态等）
 - **FeishuBotReqLog**: 存储飞书机器人 Webhook 代理请求的详细信息（包括请求和响应数据）
 - **GitlabHookReqLog**: 存储 GitLab Hook Webhook 请求详细信息（事件类型、项目路径、Jenkins 响应等）
 - **AmisJenkinsReqLog**: 存储 Amis 表单提交到 Jenkins 的请求详细信息（表单 ID、触发类型、用户名、Jenkins 响应等）
@@ -191,9 +191,9 @@ webhook-proxy/
   - 自动处理会话过期和清理
   - 包含管理员功能（查看所有会话、批量清理）
 
-- **CmdbTriggerService** (`app/services/cmdb_trigger_service.py`):
+- **HttpRelayService** (`app/services/http_relay_service.py`):
 
-  - 处理 CMDB Trigger 代理请求的核心业务逻辑
+  - 处理 HTTP Relay 代理请求的核心业务逻辑
   - 支持 API Key 验证和 IP 白名单校验
   - 转发 HTTP 请求到目标服务器（支持 GET/POST/PUT/DELETE/PATCH）
   - 记录请求/响应日志到数据库
@@ -282,14 +282,14 @@ webhook-proxy/
 - `GET /auth/oidc/callback` - OIDC 回调处理
 - `GET /auth/` - 根路径重定向
 
-**CMDB Trigger 请求日志模块 (`/cmdb-trigger/*`)**
+**HTTP Relay 请求日志模块 (`/http-relay/*`)**
 
-- `GET /cmdb-trigger/` - 列出所有日志（HTML 页面，需要认证）
-- `POST /cmdb-trigger/` - 创建新日志条目（公开端点，用于接收 Webhook）
-- `GET /cmdb-trigger/logs` - 分页日志列表（需要认证）
-- `GET /cmdb-trigger/{log_id}` - 获取特定日志（需要认证）
-- `PUT /cmdb-trigger/{log_id}` - 更新日志条目（需要管理员权限）
-- `DELETE /cmdb-trigger/{log_id}` - 删除日志条目（需要管理员权限）
+- `GET /http-relay/` - 列出所有日志（HTML 页面，需要认证）
+- `POST /http-relay/` - 创建新日志条目（公开端点，用于接收 Webhook）
+- `GET /http-relay/logs` - 分页日志列表（需要认证）
+- `GET /http-relay/{log_id}` - 获取特定日志（需要认证）
+- `PUT /http-relay/{log_id}` - 更新日志条目（需要管理员权限）
+- `DELETE /http-relay/{log_id}` - 删除日志条目（需要管理员权限）
 
 **飞书机器人 Webhook 模块 (`/feishu-bot/*`)**
 
@@ -394,7 +394,7 @@ webhook-proxy/
 
 **Webhook 安全配置:**
 
-- `cmdb_trigger_webhook_api_keys`: CMDB Trigger Webhook API Keys（逗号分隔，空值表示不验证）
+- `http_relay_webhook_api_keys`: HTTP Relay Webhook API Keys（逗号分隔，空值表示不验证）
 - `webhook_ip_whitelist`: Webhook 请求 IP 白名单（支持单 IP 和 CIDR 格式）
 
 **登录选项配置:**
@@ -429,7 +429,7 @@ webhook-proxy/
 - `mock_users`: 模拟用户数据库（用于开发和测试环境）
 - `menu_visibility`: 菜单项可见性配置（菜单 ID 到允许角色列表的映射）
   - 未配置的菜单项默认隐藏
-  - 示例：`{"cmdb": ["admin"], "amis_jenkins": ["admin", "deploy-prod"]}`
+  - 示例：`{"http_relay": ["admin"], "amis_jenkins": ["admin", "deploy-prod"]}`
 
 **GitLab-Jenkins 配置 (`config/gitlab_jenkins_config.yaml`):**
 
@@ -804,7 +804,7 @@ tests/
 ├── pytest.ini                 # pytest 配置文件
 ├── test_auth.py               # 认证 API 测试
 ├── test_models/               # 数据模型单元测试
-│   ├── test_cmdb_trigger_reqlog.py   # CMDB Trigger 日志模型测试
+│   ├── test_http_relay_reqlog.py   # HTTP Relay 日志模型测试
 │   └── test_feishu_bot_reqlog.py # 飞书机器人日志模型测试
 ├── test_services/             # 服务层单元测试
 │   ├── test_redis_session.py # Redis 会话服务测试
@@ -813,7 +813,7 @@ tests/
 │   └── test_login_config.py  # 登录配置测试
 ├── test_utils/               # 工具类测试
 │   └── test_logger.py        # 日志工具测试
-├── test_cmdb_trigger_integration.py  # CMDB Trigger API 集成测试
+├── test_http_relay_integration.py  # HTTP Relay API 集成测试
 ├── test_feishu_bot_integration.py # 飞书机器人 API 集成测试
 ├── test_security.py          # 安全和认证测试
 ├── Dockerfile.test          # Docker 测试镜像
@@ -908,10 +908,10 @@ pytest tests/ -v
 pytest tests/ --cov=app --cov-report=html
 
 # 运行特定测试文件
-pytest tests/test_models/test_cmdb_trigger_reqlog.py -v
+pytest tests/test_models/test_http_relay_reqlog.py -v
 
 # 运行特定测试方法
-pytest tests/test_models/test_cmdb_trigger_reqlog.py::TestCmdbTriggerReqLogModel::test_create_cmdb_trigger_reqlog -v
+pytest tests/test_models/test_http_relay_reqlog.py::TestHttpRelayReqLogModel::test_create_http_relay_reqlog -v
 
 # 在失败时停止
 pytest tests/ -x

@@ -1,11 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, Header
 from fastapi.responses import HTMLResponse
 from sqlmodel import select, func, desc
-from app.models.cmdb_trigger_reqlog import (
-    CmdbTriggerReqLog,
-    CmdbTriggerReqLogCreate,
-    CmdbTriggerReqLogUpdate,
-    CmdbTriggerReqLogListResponse,
+from app.models.http_relay_reqlog import (
+    HttpRelayReqLog,
+    HttpRelayReqLogCreate,
+    HttpRelayReqLogUpdate,
+    HttpRelayReqLogListResponse,
     PaginationUrls,
     PaginationInfo,
 )
@@ -22,7 +22,7 @@ import time
 import json
 from app.utils.templates import create_templates
 from app.utils.webhook_security import (
-    verify_cmdb_trigger_webhook,
+    verify_http_relay_webhook,
     verify_webhook_ip_whitelist,
 )
 from config.config import settings
@@ -47,13 +47,13 @@ def read_all_logs(
     skip = (page - 1) * limit
 
     # Build query statement with optional status filter
-    statement = select(CmdbTriggerReqLog)
+    statement = select(HttpRelayReqLog)
     if not show_all:
-        statement = statement.where(CmdbTriggerReqLog.status != 200)
+        statement = statement.where(HttpRelayReqLog.status != 200)
 
     # Get paginated logs with one extra record to check if there are more pages
     statement = (
-        statement.order_by(desc(CmdbTriggerReqLog.updated_at))
+        statement.order_by(desc(HttpRelayReqLog.updated_at))
         .offset(skip)
         .limit(limit + 1)
     )
@@ -68,11 +68,11 @@ def read_all_logs(
 
     return templates.TemplateResponse(
         request=request,
-        name="cmdb/show.html",
+        name="http_relay/show.html",
         context={
             "jobs": logs,
             "current_user": current_user,
-            "page_name": "CMDB Trigger Logs",
+            "page_name": "HTTP Relay Logs",
             "url": request.url_for("read_all_logs"),
             "current_page": page,
             "has_next": has_next,
@@ -83,13 +83,13 @@ def read_all_logs(
     )
 
 
-@router.post("/", response_model=CmdbTriggerReqLog)
+@router.post("/", response_model=HttpRelayReqLog)
 async def create_log(
     request: Request,
     session: SessionDep,
     x_api_key: Optional[str] = Header(None, alias="X-API-Key"),
 ):
-    """CMDB Trigger proxy endpoint - forwards request and logs response (Webhook endpoint with API key verification)"""
+    """HTTP Relay proxy endpoint - forwards request and logs response (Webhook endpoint with API key verification)"""
 
     # Read request body
     body_bytes = await request.body()
@@ -98,17 +98,17 @@ async def create_log(
     except json.JSONDecodeError:
         raise HTTPException(status_code=400, detail="Invalid JSON in request body")
 
-    # Process the CMDB Trigger proxy request
-    from app.services.cmdb_trigger_service import process_cmdb_trigger_request
+    # Process the HTTP Relay proxy request
+    from app.services.http_relay_service import process_http_relay_request
 
-    result = await process_cmdb_trigger_request(request_data, request, session, x_api_key)
+    result = await process_http_relay_request(request_data, request, session, x_api_key)
 
     # Return the logged entry from database
     # Get the most recent log entry for this request
     from sqlmodel import desc
 
     statement = (
-        select(CmdbTriggerReqLog).order_by(desc(CmdbTriggerReqLog.created_at)).limit(1)
+        select(HttpRelayReqLog).order_by(desc(HttpRelayReqLog.created_at)).limit(1)
     )
     latest_log = session.exec(statement).first()
 
@@ -119,7 +119,7 @@ async def create_log(
 
 
 # ==================== User-Level Endpoints (Authentication Required) ====================
-@router.get("/logs", response_model=CmdbTriggerReqLogListResponse)
+@router.get("/logs", response_model=HttpRelayReqLogListResponse)
 def read_logs_with_pagination(
     request: Request,
     session: SessionDep,
@@ -133,8 +133,8 @@ def read_logs_with_pagination(
 
     # Get logs with pagination (fetch limit+1 to check if there are more records)
     statement = (
-        select(CmdbTriggerReqLog)
-        .order_by(desc(CmdbTriggerReqLog.updated_at))
+        select(HttpRelayReqLog)
+        .order_by(desc(HttpRelayReqLog.updated_at))
         .offset(skip)
         .limit(limit + 1)
     )
@@ -191,29 +191,29 @@ def read_logs_with_pagination(
     }
 
 
-@router.get("/{log_id}", response_model=CmdbTriggerReqLog)
+@router.get("/{log_id}", response_model=HttpRelayReqLog)
 def read_log_by_id(
     log_id: int,
     session: SessionDep,
     current_user: User = Depends(get_current_user_any_required),
 ):
     """Get single log record by ID (Requires authentication via JWT or Session)"""
-    log = session.get(CmdbTriggerReqLog, log_id)
+    log = session.get(HttpRelayReqLog, log_id)
     if not log:
         raise HTTPException(status_code=404, detail="Log not found")
     return log
 
 
 # ==================== Admin-Level Endpoints (Role-based Access Control) ====================
-@router.put("/{log_id}", response_model=CmdbTriggerReqLog)
+@router.put("/{log_id}", response_model=HttpRelayReqLog)
 def update_log(
     log_id: int,
-    update: CmdbTriggerReqLogUpdate,
+    update: HttpRelayReqLogUpdate,
     session: SessionDep,
     current_user: User = Depends(require_roles("admin")),
 ):
     """Update log record (Requires admin role)"""
-    log = session.get(CmdbTriggerReqLog, log_id)
+    log = session.get(HttpRelayReqLog, log_id)
     if not log:
         raise HTTPException(status_code=404, detail="Log not found")
 
@@ -237,7 +237,7 @@ def delete_log(
     current_user: User = Depends(require_roles("admin")),
 ):
     """Delete log record (Requires admin role)"""
-    log = session.get(CmdbTriggerReqLog, log_id)
+    log = session.get(HttpRelayReqLog, log_id)
     if not log:
         raise HTTPException(status_code=404, detail="Log not found")
 

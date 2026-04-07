@@ -1,10 +1,10 @@
 from fastapi import HTTPException, Request
 from fastapi.responses import JSONResponse
-from app.models.cmdb_trigger_reqlog import CmdbTriggerReqLog, CmdbTriggerReqLogCreate
+from app.models.http_relay_reqlog import HttpRelayReqLog, HttpRelayReqLogCreate
 from app.dependencies import SessionDep
 from config.config import settings
 from app.utils.webhook_security import (
-    verify_cmdb_trigger_webhook,
+    verify_http_relay_webhook,
     verify_webhook_ip_whitelist,
 )
 from typing import Dict, Any, Optional
@@ -16,34 +16,34 @@ import time
 logger = logging.getLogger(__name__)
 
 
-def log_cmdb_trigger_request(session: SessionDep, log_entry: CmdbTriggerReqLogCreate):
-    """Log CMDB Trigger request to database based on configuration"""
+def log_http_relay_request(session: SessionDep, log_entry: HttpRelayReqLogCreate):
+    """Log HTTP Relay request to database based on configuration"""
 
     # Database logging
     if settings.enable_database_logging:
         try:
-            db_log = CmdbTriggerReqLog(**log_entry.model_dump())
+            db_log = HttpRelayReqLog(**log_entry.model_dump())
             session.add(db_log)
             session.commit()
         except Exception as e:
             # If database logging fails and console logging is enabled, log the error
             if settings.enable_console_logging:
-                logger.error(f"Failed to save CMDB Trigger log to database: {str(e)}")
+                logger.error(f"Failed to save HTTP Relay log to database: {str(e)}")
 
 
-async def process_cmdb_trigger_request(
+async def process_http_relay_request(
     request_data: Dict[str, Any],
     request: Request,
     session: SessionDep,
     api_key: Optional[str] = None,
 ):
-    """Process CMDB Trigger proxy request with API key verification and forwarding"""
+    """Process HTTP Relay proxy request with API key verification and forwarding"""
 
     # Verify IP whitelist (empty list = deny all)
     verify_webhook_ip_whitelist(request, settings.webhook_ip_whitelist)
 
-    # Verify CMDB Trigger webhook API key (skip if no API keys configured)
-    verify_cmdb_trigger_webhook(request, api_key)
+    # Verify HTTP Relay webhook API key (skip if no API keys configured)
+    verify_http_relay_webhook(request, api_key)
 
     # Get client IP from request
     client_ip = request.client.host
@@ -70,7 +70,7 @@ async def process_cmdb_trigger_request(
         target_url += f"?{query}"
 
     # Initialize log entry
-    log_entry = CmdbTriggerReqLogCreate(
+    log_entry = HttpRelayReqLogCreate(
         host=target_host,
         method=method,
         path=path,
@@ -134,7 +134,7 @@ async def process_cmdb_trigger_request(
             # Keep the original client_ip from the request to this proxy
 
             # Save log to database
-            log_cmdb_trigger_request(session, log_entry)
+            log_http_relay_request(session, log_entry)
 
             # Return response similar to original request structure
             return {
@@ -151,7 +151,7 @@ async def process_cmdb_trigger_request(
         log_entry.output = error_msg
 
         # Save error log
-        log_cmdb_trigger_request(session, log_entry)
+        log_http_relay_request(session, log_entry)
 
         raise HTTPException(status_code=504, detail=error_msg)
 
@@ -162,7 +162,7 @@ async def process_cmdb_trigger_request(
         log_entry.output = error_msg
 
         # Save error log
-        log_cmdb_trigger_request(session, log_entry)
+        log_http_relay_request(session, log_entry)
 
         raise HTTPException(status_code=502, detail=error_msg)
 
@@ -173,6 +173,6 @@ async def process_cmdb_trigger_request(
         log_entry.output = error_msg
 
         # Save error log
-        log_cmdb_trigger_request(session, log_entry)
+        log_http_relay_request(session, log_entry)
 
         raise HTTPException(status_code=500, detail=error_msg)

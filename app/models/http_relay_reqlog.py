@@ -4,7 +4,7 @@ from typing import Optional, Dict, Any, List
 import time
 
 
-class CmdbTriggerReqLogBase(SQLModel):
+class HttpRelayReqLogBase(SQLModel):
     host: str
     method: str
     path: str
@@ -17,19 +17,19 @@ class CmdbTriggerReqLogBase(SQLModel):
     output: Optional[str] = None
 
 
-class CmdbTriggerReqLog(CmdbTriggerReqLogBase, table=True):
-    __tablename__ = "cmdb_trigger_reqlog"
+class HttpRelayReqLog(HttpRelayReqLogBase, table=True):
+    __tablename__ = "http_relay_reqlog"
 
     id: Optional[int] = Field(default=None, primary_key=True)
     created_at: int = Field(default_factory=lambda: int(time.time()))
     updated_at: int = Field(default_factory=lambda: int(time.time()))
 
 
-class CmdbTriggerReqLogCreate(CmdbTriggerReqLogBase):
+class HttpRelayReqLogCreate(HttpRelayReqLogBase):
     pass
 
 
-class CmdbTriggerReqLogUpdate(SQLModel):
+class HttpRelayReqLogUpdate(SQLModel):
     host: Optional[str] = None
     method: Optional[str] = None
     path: Optional[str] = None
@@ -42,7 +42,7 @@ class CmdbTriggerReqLogUpdate(SQLModel):
     output: Optional[str] = None
 
 
-class CmdbTriggerReqLogRead(CmdbTriggerReqLogBase):
+class HttpRelayReqLogRead(HttpRelayReqLogBase):
     """Model for API responses"""
 
     id: int
@@ -67,10 +67,10 @@ class PaginationInfo(SQLModel):
     urls: PaginationUrls
 
 
-class CmdbTriggerReqLogListResponse(SQLModel):
+class HttpRelayReqLogListResponse(SQLModel):
     """Model for paginated log list response"""
 
-    logs: List[CmdbTriggerReqLog]
+    logs: List[HttpRelayReqLog]
     user: str
     limit: int
     pagination: PaginationInfo

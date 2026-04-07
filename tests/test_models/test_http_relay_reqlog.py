@@ -1,24 +1,24 @@
 import pytest
 import time
 from sqlmodel import Session, select
-from app.models.cmdb_reqlog import (
-    CmdbReqLog,
-    CmdbReqLogCreate,
-    CmdbReqLogUpdate,
-    CmdbReqLogRead,
+from app.models.http_relay_reqlog import (
+    HttpRelayReqLog,
+    HttpRelayReqLogCreate,
+    HttpRelayReqLogUpdate,
+    HttpRelayReqLogRead,
     PaginationUrls,
     PaginationInfo,
-    CmdbReqLogListResponse,
+    HttpRelayReqLogListResponse,
 )
 
 
 @pytest.mark.unit
-class TestCmdbReqLogModel:
-    """Test CMDB request log model functionality"""
+class TestHttpRelayReqLogModel:
+    """Test HTTP Relay request log model functionality"""
 
-    def test_create_cmdb_reqlog(self, test_session: Session):
-        """Test creating a new CMDB request log"""
-        log_data = CmdbReqLogCreate(
+    def test_create_http_relay_reqlog(self, test_session: Session):
+        """Test creating a new HTTP Relay request log"""
+        log_data = HttpRelayReqLogCreate(
             host="http://test.example.com",
             method="POST",
             path="/api/test",
@@ -31,7 +31,7 @@ class TestCmdbReqLogModel:
             output="Success response",
         )
 
-        db_log = CmdbReqLog.model_validate(log_data)
+        db_log = HttpRelayReqLog.model_validate(log_data)
         test_session.add(db_log)
         test_session.commit()
         test_session.refresh(db_log)
@@ -50,11 +50,11 @@ class TestCmdbReqLogModel:
         assert db_log.created_at > 0
         assert db_log.updated_at > 0
 
-    def test_cmdb_reqlog_timestamps(self, test_session: Session):
+    def test_http_relay_reqlog_timestamps(self, test_session: Session):
         """Test that timestamps are automatically set"""
         before_creation = int(time.time())
 
-        log = CmdbReqLog(
+        log = HttpRelayReqLog(
             host="http://test.com",
             method="GET",
             path="/test",
@@ -76,7 +76,7 @@ class TestCmdbReqLogModel:
         assert before_creation <= log.updated_at <= after_creation
         assert log.created_at == log.updated_at
 
-    def test_cmdb_reqlog_json_fields(self, test_session: Session):
+    def test_http_relay_reqlog_json_fields(self, test_session: Session):
         """Test JSON fields can handle complex data"""
         complex_headers = {
             "Content-Type": "application/json",
@@ -91,7 +91,7 @@ class TestCmdbReqLogModel:
             "metadata": {"version": "1.0", "timestamp": "2024-01-01T00:00:00Z"},
         }
 
-        log = CmdbReqLog(
+        log = HttpRelayReqLog(
             host="http://test.com",
             method="POST",
             path="/api/complex",
@@ -112,9 +112,9 @@ class TestCmdbReqLogModel:
         assert log.body["user"]["name"] == "Test User"
         assert log.body["data"][3]["nested"] is True
 
-    def test_cmdb_reqlog_update(self, test_session: Session):
-        """Test updating CMDB request log"""
-        log = CmdbReqLog(
+    def test_http_relay_reqlog_update(self, test_session: Session):
+        """Test updating HTTP Relay request log"""
+        log = HttpRelayReqLog(
             host="http://original.com",
             method="GET",
             path="/original",
@@ -137,7 +137,7 @@ class TestCmdbReqLogModel:
         time.sleep(1)
 
         # Update the log
-        update_data = CmdbReqLogUpdate(
+        update_data = HttpRelayReqLogUpdate(
             status=404, output="Updated output", author="updated_user"
         )
 
@@ -156,9 +156,9 @@ class TestCmdbReqLogModel:
         assert log.created_at == original_created_at
         assert log.updated_at > original_created_at
 
-    def test_cmdb_reqlog_read_model(self, test_session: Session):
-        """Test CmdbReqLogRead model"""
-        log = CmdbReqLog(
+    def test_http_relay_reqlog_read_model(self, test_session: Session):
+        """Test HttpRelayReqLogRead model"""
+        log = HttpRelayReqLog(
             host="http://test.com",
             method="GET",
             path="/test",
@@ -175,7 +175,7 @@ class TestCmdbReqLogModel:
         test_session.commit()
         test_session.refresh(log)
 
-        read_log = CmdbReqLogRead.model_validate(log)
+        read_log = HttpRelayReqLogRead.model_validate(log)
 
         assert read_log.id == log.id
         assert read_log.host == log.host
@@ -212,10 +212,10 @@ class TestCmdbReqLogModel:
         assert pagination.has_prev is True
         assert pagination.urls.current == urls.current
 
-    def test_cmdb_reqlog_list_response(self, test_session: Session):
-        """Test CmdbReqLogListResponse model"""
+    def test_http_relay_reqlog_list_response(self, test_session: Session):
+        """Test HttpRelayReqLogListResponse model"""
         logs = [
-            CmdbReqLog(
+            HttpRelayReqLog(
                 host="http://test1.com",
                 method="GET",
                 path="/test1",
@@ -226,7 +226,7 @@ class TestCmdbReqLogModel:
                 clientip="127.0.0.1",
                 status=200,
             ),
-            CmdbReqLog(
+            HttpRelayReqLog(
                 host="http://test2.com",
                 method="POST",
                 path="/test2",
@@ -248,7 +248,7 @@ class TestCmdbReqLogModel:
             per_page=10, has_next=False, has_prev=False, urls=urls
         )
 
-        response = CmdbReqLogListResponse(
+        response = HttpRelayReqLogListResponse(
             logs=logs, user="test_user", limit=10, pagination=pagination
         )
 
@@ -257,10 +257,10 @@ class TestCmdbReqLogModel:
         assert response.limit == 10
         assert response.pagination.per_page == 10
 
-    def test_query_cmdb_reqlog(self, test_session: Session):
-        """Test querying CMDB request logs"""
+    def test_query_http_relay_reqlog(self, test_session: Session):
+        """Test querying HTTP Relay request logs"""
         logs = [
-            CmdbReqLog(
+            HttpRelayReqLog(
                 host="http://server1.com",
                 method="GET",
                 path="/api/users",
@@ -271,7 +271,7 @@ class TestCmdbReqLogModel:
                 clientip="10.0.0.1",
                 status=200,
             ),
-            CmdbReqLog(
+            HttpRelayReqLog(
                 host="http://server2.com",
                 method="POST",
                 path="/api/users",
@@ -290,20 +290,20 @@ class TestCmdbReqLogModel:
 
         # Query by method
         get_logs = test_session.exec(
-            select(CmdbReqLog).where(CmdbReqLog.method == "GET")
+            select(HttpRelayReqLog).where(HttpRelayReqLog.method == "GET")
         ).all()
         assert len(get_logs) == 1
         assert get_logs[0].path == "/api/users"
 
         # Query by status
         success_logs = test_session.exec(
-            select(CmdbReqLog).where(CmdbReqLog.status >= 200, CmdbReqLog.status < 300)
+            select(HttpRelayReqLog).where(HttpRelayReqLog.status >= 200, HttpRelayReqLog.status < 300)
         ).all()
         assert len(success_logs) == 2
 
         # Query by author
         admin_logs = test_session.exec(
-            select(CmdbReqLog).where(CmdbReqLog.author == "admin")
+            select(HttpRelayReqLog).where(HttpRelayReqLog.author == "admin")
         ).all()
         assert len(admin_logs) == 1
         assert admin_logs[0].method == "GET"

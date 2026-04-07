@@ -14,8 +14,8 @@ class Settings(BaseSettings):
 
     # X-API-Key
     # Webhook Security Configuration - API Key based authentication (supports multiple keys for rotation)
-    cmdb_trigger_webhook_api_keys: str = (
-        "QNbl7W9Ez7hVkR44ja93"  # Comma-separated API keys for CMDB Trigger webhook verification (empty = no verification)
+    http_relay_webhook_api_keys: str = (
+        "QNbl7W9Ez7hVkR44ja93"  # Comma-separated API keys for HTTP Relay webhook verification (empty = no verification)
     )
     webhook_ip_whitelist: List[str] = [
         "0.0.0.0/0",

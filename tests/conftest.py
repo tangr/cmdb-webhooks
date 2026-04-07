@@ -33,7 +33,7 @@ def test_settings():
         oidc_issuer_url="https://test-oidc.example.com",
         oidc_client_id="test-client",
         oidc_client_secret="test-secret",
-        cmdb_webhook_api_keys="test-api-key",
+        http_relay_webhook_api_keys="test-api-key",
     )
 
 

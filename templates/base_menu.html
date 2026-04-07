@@ -5,10 +5,10 @@
     <i class="home icon"></i>
     Dashboard
   </a>
-  {% if can_see_menu(current_user, 'cmdb') %}
-  <a class="item" href="/cmdb-trigger/">
+  {% if can_see_menu(current_user, 'http_relay') %}
+  <a class="item" href="/http-relay/">
     <i class="list icon"></i>
-    CMDB
+    HTTP Relay
   </a>
   {% endif %}
   {% if can_see_menu(current_user, 'amis_jenkins') %}
