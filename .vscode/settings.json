@@ -65,5 +65,7 @@
       "source.fixAll": "explicit"
     },
     "editor.renderWhitespace": "boundary"
-  }
+  },
+
+  "docker.lsp.experimental.scout.criticalHighVulnerabilities": false,
 }
