@@ -159,4 +159,23 @@ curl -X POST http://localhost:8000/feishu-approval/create \
     "form_data": {"widget-id1": "test1: test1;\ntest2: test2;\ntest3: test3;\ntest4: test4;\ntest5: test5;","widget-id2": "test1: test1;\ntest2: test2;\ntest3: test3;\ntest4: test4;\ntest5: test5;","widget-id3": "test1: test1;\ntest2: test2;\ntest3: test3;\ntest4: test4;\ntest5: test5;","widget-id4": "test1: test1;\ntest2: test2;\ntest3: test3;\ntest4: test4;\ntest5: test5;"}
   }'
 
+curl -u user:pswd http://localhost:8000/vecmdb-trigger/prometheus/sd/yax-dt2-ec2
+
+curl -X POST http://localhost:8000/vecmdb-trigger/jms/default1-add \
+  -H "Content-Type: application/json" \
+  -d '{
+    "address": "192.168.1.100",
+    "comment": "Test deployment",
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "name": "test-server",
+    "nodes_display": "ops",
+    "platform": "Linux"
+  }'
+
+curl -X POST http://localhost:8000/vecmdb-trigger/jms/{target} \
+  -H "Content-Type: application/json" \
+  -d '{
+    "id": "550e8400-e29b-41d4-a716-446655440000"
+  }'
+
 ```
