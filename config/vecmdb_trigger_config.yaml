@@ -68,6 +68,57 @@ cmdb_trigger_targets:
     default_output: "Request forwarded to default1 successfully"
     success_status_code: 201
 
+  yax-test-jms-add:
+    # Target API configuration
+    target_api_base_url: "https://jumpserver-test.exodushk.com"
+    target_api_path: "/api/v1/assets/hosts/"
+    target_api_method: "POST"
+    target_api_query: "source=cmdb&env=default"
+    target_api_timeout: 10
+
+    # Target API headers (merged with default_headers)
+    target_api_headers:
+      Content-Type: "application/json"
+      Authorization: "Token d594fe4bfa61751870ddcc457f540cd191d51fbe"
+      X-JMS-ORG: "00000000-0000-0000-0000-000000000002"
+      X-API-Key: "QNbl7W9Ez7hVkR44ja93"
+
+    # Field mapping configuration for this target
+    field_mappings:
+      nodes_mapping_uuid:
+        3fa85f64-5717-4562-b3fc-2c963f66afa6: "test-node"
+
+      nodes_mapping_name:
+        /DEFAULT/eks: "eks"
+        /DEFAULT/exodus: "exodus"
+        /DEFAULT/ops: "ops"
+        /DEFAULT/test: "test"
+        /DEFAULT/web: "web"
+        /DEFAULT/Default: "Default"
+
+      platform_mapping:
+        Linux: "1"
+        Windows: "5"
+        MacOS: "3"
+        Kubernetes: "28"
+        MySQL: "17"
+        PostgreSQL: "19"
+        MongoDB: "23"
+        Redis: "25"
+
+      default_fields:
+        protocols:
+          - name: "ssh"
+            port: 22
+        accounts:
+          - username: "lhsa"
+            template: "ad453f3d-8489-4382-9ce6-3650daff1503"
+        is_active: true
+
+    # Response configuration
+    default_output: "Request forwarded to default1 successfully"
+    success_status_code: 201
+
   # Example: Delete host from JumpServer (uses {{id}} template in path)
   # default1-del:
   #   target_api_base_url: "https://jumpserver-test.exodushk.com"
