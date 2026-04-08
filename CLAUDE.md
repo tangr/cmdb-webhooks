@@ -49,7 +49,6 @@ webhook-proxy/
 │   │   ├── amis_jenkins_reqlog.py # Amis Jenkins请求日志模型
 │   │   ├── feishu_approval_reqlog.py # 飞书审批请求日志模型
 │   │   ├── pending_jenkins_job.py # 待执行Jenkins任务模型（审批关联）
-│   │   ├── vecmdb_trigger_models.py # veCMDB Trigger Pydantic模型
 │   │   └── vecmdb_trigger_reqlog.py # veCMDB Trigger请求日志模型
 │   ├── routers/           # API路由处理器
 │   │   ├── auth.py        # 认证相关路由（JWT + Session + OIDC）
