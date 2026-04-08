@@ -1,31 +1,26 @@
 import base64
 import secrets
-from typing import Optional
+from typing import Optional, Dict, Any
 from fastapi import HTTPException, status
 from fastapi.security.utils import get_authorization_scheme_param
 from starlette.requests import Request
 
-from app.models.vecmdb_trigger_models import HttpConfig
 from app.services.vecmdb_trigger_service import get_prometheus_sd_configs
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
 
-def get_http_config_for_endpoint(config_name: str) -> Optional[HttpConfig]:
+def get_http_config_for_endpoint(config_name: str) -> Optional[Dict[str, Any]]:
     """Get HTTP config for a specific prometheus config"""
     configs = get_prometheus_sd_configs()
     prometheus_config = configs.get(config_name, {})
-    http_config_dict = prometheus_config.get("http_config", {})
+    http_config = prometheus_config.get("http_config")
 
-    if not http_config_dict:
+    if not http_config or not isinstance(http_config, dict):
         return None
 
-    try:
-        return HttpConfig(**http_config_dict)
-    except Exception as e:
-        logger.error(f"Failed to parse http_config for '{config_name}': {e}")
-        return None
+    return http_config
 
 
 async def verify_basic_auth(
@@ -34,21 +29,21 @@ async def verify_basic_auth(
     """Verify HTTP Basic authentication credentials"""
 
     http_config = get_http_config_for_endpoint(config_name)
-    if not http_config or not http_config.basic_auth:
+    basic_auth = (http_config or {}).get("basic_auth")
+    if not basic_auth:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Authentication required",
             headers={"WWW-Authenticate": "Basic"},
         )
 
-    basic_auth = http_config.basic_auth
-    expected_username = basic_auth.username
-    expected_password = basic_auth.password
+    expected_username = basic_auth.get("username")
+    expected_password = basic_auth.get("password")
 
     # Load from file if specified
-    if basic_auth.username_file:
+    if basic_auth.get("username_file"):
         try:
-            with open(basic_auth.username_file, "r") as f:
+            with open(basic_auth["username_file"], "r") as f:
                 expected_username = f.read().strip()
         except Exception as e:
             logger.error(f"Failed to read username file: {e}")
@@ -56,9 +51,9 @@ async def verify_basic_auth(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
-    if basic_auth.password_file:
+    if basic_auth.get("password_file"):
         try:
-            with open(basic_auth.password_file, "r") as f:
+            with open(basic_auth["password_file"], "r") as f:
                 expected_password = f.read().strip()
         except Exception as e:
             logger.error(f"Failed to read password file: {e}")
@@ -90,20 +85,20 @@ async def verify_bearer_auth(token: str, config_name: str) -> bool:
     """Verify Bearer token authentication"""
 
     http_config = get_http_config_for_endpoint(config_name)
-    if not http_config or not http_config.authorization:
+    authorization = (http_config or {}).get("authorization")
+    if not authorization:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Authentication required",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    auth_config = http_config.authorization
-    expected_token = auth_config.credentials
+    expected_token = authorization.get("credentials")
 
     # Load from file if specified
-    if auth_config.credentials_file:
+    if authorization.get("credentials_file"):
         try:
-            with open(auth_config.credentials_file, "r") as f:
+            with open(authorization["credentials_file"], "r") as f:
                 expected_token = f.read().strip()
         except Exception as e:
             logger.error(f"Failed to read credentials file: {e}")
@@ -148,7 +143,7 @@ async def authenticate_request(
     scheme, credentials = get_authorization_scheme_param(authorization_header)
 
     # Handle Basic authentication
-    if http_config.basic_auth and scheme.lower() == "basic":
+    if http_config.get("basic_auth") and scheme.lower() == "basic":
         try:
             decoded = base64.b64decode(credentials).decode("utf-8")
             username, password = decoded.split(":", 1)
@@ -165,7 +160,7 @@ async def authenticate_request(
             )
 
     # Handle Bearer authentication
-    elif http_config.authorization and scheme.lower() == "bearer":
+    elif http_config.get("authorization") and scheme.lower() == "bearer":
         try:
             await verify_bearer_auth(credentials, config_name)
             return True
