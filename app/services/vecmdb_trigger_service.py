@@ -354,8 +354,8 @@ class VecmdbTriggerService:
             is_success = status_code == expected_success_status
             if is_success:
                 message = target_config.get(
-                    "default_output", "Request forwarded successfully"
-                )
+                    "default_output", "Request forwarded to {target_name} successfully"
+                ).format(target_name=target_name)
             else:
                 if isinstance(target_response, dict):
                     response_text = json.dumps(

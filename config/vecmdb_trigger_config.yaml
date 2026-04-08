@@ -116,7 +116,7 @@ cmdb_trigger_targets:
         is_active: true
 
     # Response configuration
-    default_output: "Request forwarded to default1 successfully"
+    default_output: "Request forwarded to {target_name} successfully1"
     success_status_code: 201
 
   # Example: Delete host from JumpServer (uses {{id}} template in path)
