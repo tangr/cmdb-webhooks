@@ -17,6 +17,12 @@
     Amis Jenkins
   </a>
   {% endif %}
+  {% if can_see_menu(current_user, 'vecmdb_trigger') %}
+  <a class="item" href="/vecmdb-trigger/">
+    <i class="project diagram icon"></i>
+    veCMDB Trigger
+  </a>
+  {% endif %}
 
 
   <div class="right menu">

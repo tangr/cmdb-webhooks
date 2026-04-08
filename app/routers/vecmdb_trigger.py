@@ -1,11 +1,19 @@
-from fastapi import APIRouter, Request, HTTPException, Header
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, Depends, Request, HTTPException, Header
+from fastapi.responses import HTMLResponse, JSONResponse
+from sqlmodel import select, desc
 from typing import Optional, List
 
 from app.models.vecmdb_trigger_models import (
     CMDBTriggerRequest,
     ProxyResponse,
     PrometheusTarget,
+)
+from app.models.vecmdb_trigger_reqlog import VecmdbTriggerReqLog
+from app.dependencies import (
+    SessionDep,
+    get_current_user_any_required,
+    get_current_user_web_required,
+    User,
 )
 from app.services.vecmdb_trigger_service import (
     vecmdb_trigger_service,
@@ -18,10 +26,13 @@ from app.utils.webhook_security import (
     verify_vecmdb_trigger_webhook,
     verify_webhook_ip_whitelist,
 )
+from app.utils.templates import create_templates
 from config.config import settings
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
+
+templates = create_templates()
 
 router = APIRouter()
 
@@ -46,6 +57,61 @@ def get_client_ip(request: Request) -> str:
 
 
 # =============================================================================
+# Web UI Endpoints
+# =============================================================================
+
+
+@router.get("/", response_class=HTMLResponse)
+def vecmdb_trigger_logs_page(
+    session: SessionDep,
+    request: Request,
+    current_user: User = Depends(get_current_user_web_required),
+    page: int = 1,
+    limit: int = 20,
+    target_name: Optional[str] = None,
+):
+    """veCMDB Trigger logs page (HTML, requires authentication)"""
+    skip = (page - 1) * limit
+
+    statement = select(VecmdbTriggerReqLog)
+    if target_name:
+        statement = statement.where(
+            VecmdbTriggerReqLog.target_name == target_name
+        )
+    statement = (
+        statement.order_by(desc(VecmdbTriggerReqLog.updated_at))
+        .offset(skip)
+        .limit(limit + 1)
+    )
+    logs = session.exec(statement).all()
+
+    has_next = len(logs) > limit
+    if has_next:
+        logs = logs[:limit]
+    has_prev = page > 1
+
+    # Get available targets for filter dropdown
+    targets = get_cmdb_trigger_targets()
+
+    return templates.TemplateResponse(
+        request=request,
+        name="vecmdb_trigger/logs.html",
+        context={
+            "logs": logs,
+            "current_user": current_user,
+            "page_name": "veCMDB Trigger Logs",
+            "url": request.url_for("vecmdb_trigger_logs_page"),
+            "current_page": page,
+            "has_next": has_next,
+            "has_prev": has_prev,
+            "limit": limit,
+            "filter_target": target_name,
+            "available_targets": list(targets.keys()),
+        },
+    )
+
+
+# =============================================================================
 # CMDB Trigger Endpoints
 # =============================================================================
 
@@ -55,6 +121,7 @@ async def handle_cmdb_trigger(
     target_name: str,
     cmdb_request: CMDBTriggerRequest,
     request: Request,
+    session: SessionDep,
     x_api_key: Optional[str] = Header(None, alias="X-API-Key"),
 ):
     """
@@ -78,7 +145,7 @@ async def handle_cmdb_trigger(
 
     try:
         response = await vecmdb_trigger_service.process_cmdb_request(
-            cmdb_request, client_ip, target_name
+            cmdb_request, client_ip, target_name, session
         )
 
         logger.info(
@@ -139,6 +206,96 @@ async def get_available_targets():
         "total_targets": len(targets_info),
         "targets": targets_info,
     }
+
+
+# =============================================================================
+# Request Log Endpoints
+# =============================================================================
+
+
+@router.get("/logs")
+def get_vecmdb_trigger_logs(
+    request: Request,
+    session: SessionDep,
+    current_user: User = Depends(get_current_user_any_required),
+    target_name: Optional[str] = None,
+    skip: int = 0,
+    limit: int = 10,
+):
+    """Get veCMDB Trigger request logs (Requires authentication)"""
+    limit = min(limit, 1000)
+
+    # Build query with optional target_name filter
+    statement = select(VecmdbTriggerReqLog)
+    if target_name:
+        statement = statement.where(
+            VecmdbTriggerReqLog.target_name == target_name
+        )
+    statement = (
+        statement.offset(skip)
+        .limit(limit + 1)
+        .order_by(VecmdbTriggerReqLog.updated_at.desc())
+    )
+    logs = session.exec(statement).all()
+
+    # Check if there are more records
+    has_next = len(logs) > limit
+    if has_next:
+        logs = logs[:limit]
+
+    has_prev = skip > 0
+
+    # Build base URL with reverse proxy support
+    def get_base_url() -> str:
+        proto = request.headers.get("x-forwarded-proto", "http")
+        host = request.headers.get("x-forwarded-host") or request.headers.get(
+            "host", "localhost:8000"
+        )
+
+        if (proto == "https" and host.endswith(":443")) or (
+            proto == "http" and host.endswith(":80")
+        ):
+            host = host.rsplit(":", 1)[0]
+
+        return f"{proto}://{host}{request.url.path}"
+
+    base_url = get_base_url()
+
+    # Generate pagination URLs
+    pagination_urls = {
+        "current": f"{base_url}?skip={skip}&limit={limit}",
+    }
+
+    if has_prev:
+        prev_skip = max(0, skip - limit)
+        pagination_urls["prev"] = f"{base_url}?skip={prev_skip}&limit={limit}"
+
+    if has_next:
+        next_skip = skip + limit
+        pagination_urls["next"] = f"{base_url}?skip={next_skip}&limit={limit}"
+
+    return {
+        "data": logs,
+        "pagination": {
+            "per_page": limit,
+            "has_next": has_next,
+            "has_prev": has_prev,
+            "urls": pagination_urls,
+        },
+    }
+
+
+@router.get("/logs/{log_id}")
+def get_vecmdb_trigger_log(
+    log_id: int,
+    session: SessionDep,
+    current_user: User = Depends(get_current_user_any_required),
+):
+    """Get single veCMDB Trigger request log by ID (Requires authentication)"""
+    log = session.get(VecmdbTriggerReqLog, log_id)
+    if not log:
+        raise HTTPException(status_code=404, detail="Log not found")
+    return log
 
 
 # =============================================================================

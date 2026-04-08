@@ -1,0 +1,229 @@
+{% include "base_head.html" %}
+
+<body>
+
+  <div class="wrapper">
+
+    <div class="ui container maincontainer">
+
+      {% include "base_menu.html" %}
+
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <div class="ui breadcrumb">
+          <a class="section" href="{{ url }}">veCMDB Trigger Logs</a>
+          <div class="divider"> / </div>
+        </div>
+
+        <div>
+          {% if filter_target %}
+          <a href="{{ url }}?page={{ current_page }}&limit={{ limit }}" class="ui primary button">
+            <i class="eye icon"></i>Show All Targets
+          </a>
+          {% endif %}
+          <div class="ui inline dropdown" id="targetFilter">
+            <div class="text"><i class="filter icon"></i>Filter Target</div>
+            <i class="dropdown icon"></i>
+            <div class="menu">
+              <div class="item" data-value="">All Targets</div>
+              {% for t in available_targets %}
+              <div class="item" data-value="{{ t }}">{{ t }}</div>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <table class="ui selectable celled table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Target</th>
+            <th>Request ID</th>
+            <th>Method</th>
+            <th>Status</th>
+            <th>Time</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for log in logs %}
+          <tr class="{% if log.error_message %}negative{% elif log.status >= 200 and log.status < 300 %}positive{% elif log.status >= 400 %}warning{% endif %}">
+            <td>{{ log.id }}</td>
+            <td><span class="ui label">{{ log.target_name }}</span></td>
+            <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"
+                data-tooltip="{{ log.request_id }}">{{ log.request_id }}</td>
+            <td><span class="ui tiny label {% if log.method == 'POST' %}blue{% elif log.method == 'DELETE' %}red{% elif log.method == 'PUT' %}orange{% else %}grey{% endif %}">{{ log.method }}</span></td>
+            <td>
+              <span class="ui tiny label {% if log.status >= 200 and log.status < 300 %}green{% elif log.status >= 400 and log.status < 500 %}orange{% elif log.status >= 500 %}red{% else %}grey{% endif %}">
+                {{ log.status }}
+              </span>
+              {% if log.error_message %}
+              <i class="exclamation triangle icon red" data-tooltip="{{ log.error_message }}"></i>
+              {% endif %}
+            </td>
+            <td data-tooltip="{{ log.created_at | timeToStr }}">{{ log.created_at | timeDiffNow }}</td>
+            <td>
+              <span style="display: inline-flex; align-items: center; gap: 4px;">
+                <i class="eye icon" style="color: #2185d0; cursor: pointer;" onclick="showDetail({{ log.id }})"
+                  title="View Detail"></i>
+              </span>
+            </td>
+          </tr>
+          {% endfor %}
+
+          {% if not logs %}
+          <tr>
+            <td colspan="7" class="center aligned">
+              <div class="ui placeholder segment">
+                <div class="ui icon header">
+                  <i class="inbox icon"></i>
+                  No logs found
+                </div>
+              </div>
+            </td>
+          </tr>
+          {% endif %}
+        </tbody>
+      </table>
+
+      <div class="ui centered grid">
+        <div class="row">
+          <div class="center aligned column">
+            {% if has_prev or has_next %}
+            <div class="ui pagination menu">
+              {% if has_prev %}
+              <a class="icon item"
+                href="{{ url }}?page={{ current_page - 1 }}&limit={{ limit }}{% if filter_target %}&target_name={{ filter_target }}{% endif %}">
+                <i class="angle left icon"></i>
+              </a>
+              {% endif %}
+
+              <div class="active item">{{ current_page }}</div>
+
+              {% if has_next %}
+              <a class="icon item"
+                href="{{ url }}?page={{ current_page + 1 }}&limit={{ limit }}{% if filter_target %}&target_name={{ filter_target }}{% endif %}">
+                <i class="angle right icon"></i>
+              </a>
+              {% endif %}
+            </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  {% include "base_foot.html" %}
+
+  </div>
+
+  <!-- Detail Modal -->
+  <div class="ui large modal" id="detailModal">
+    <i class="close icon"></i>
+    <div class="header">
+      Request Detail
+    </div>
+    <div class="scrolling content">
+      <div class="ui form" id="detailContent">
+        <div class="ui active centered inline loader"></div>
+      </div>
+    </div>
+    <div class="actions">
+      <div class="ui cancel button">Close</div>
+    </div>
+  </div>
+
+  <style>
+    pre.json-block {
+      background-color: #f8f8f8;
+      border: 1px solid #e0e0e0;
+      border-radius: 4px;
+      padding: 1em;
+      font-family: monospace;
+      font-size: 0.85em;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+  </style>
+
+  <script type="text/javascript">
+    $('.ui.dropdown').dropdown();
+
+    // Target filter dropdown change handler
+    $('#targetFilter').dropdown({
+      onChange: function (value) {
+        var baseUrl = '{{ url }}';
+        if (value) {
+          window.location.href = baseUrl + '?page=1&limit={{ limit }}&target_name=' + encodeURIComponent(value);
+        } else {
+          window.location.href = baseUrl + '?page=1&limit={{ limit }}';
+        }
+      }
+    });
+
+    function formatJson(obj) {
+      if (obj === null || obj === undefined) return '<em>N/A</em>';
+      try {
+        if (typeof obj === 'string') obj = JSON.parse(obj);
+        return '<pre class="json-block">' + DOMPurify.sanitize(JSON.stringify(obj, null, 2)) + '</pre>';
+      } catch (e) {
+        return '<pre class="json-block">' + DOMPurify.sanitize(String(obj)) + '</pre>';
+      }
+    }
+
+    function showDetail(logId) {
+      $('#detailContent').html('<div class="ui active centered inline loader"></div>');
+      $('#detailModal').modal('show');
+
+      $.ajax({
+        url: '/vecmdb-trigger/logs/' + logId,
+        type: 'GET',
+        dataType: 'json',
+        success: function (data) {
+          var html = '';
+          html += '<div class="two fields">';
+          html += '<div class="field"><label>ID</label><div>' + data.id + '</div></div>';
+          html += '<div class="field"><label>Target</label><div><span class="ui label">' + DOMPurify.sanitize(data.target_name) + '</span></div></div>';
+          html += '</div>';
+
+          html += '<div class="two fields">';
+          html += '<div class="field"><label>Request ID</label><div>' + DOMPurify.sanitize(data.request_id) + '</div></div>';
+          html += '<div class="field"><label>Method</label><div><span class="ui label">' + DOMPurify.sanitize(data.method) + '</span></div></div>';
+          html += '</div>';
+
+          html += '<div class="two fields">';
+          html += '<div class="field"><label>Path</label><div>' + DOMPurify.sanitize(data.path) + '</div></div>';
+          html += '<div class="field"><label>Client IP</label><div>' + DOMPurify.sanitize(data.clientip) + '</div></div>';
+          html += '</div>';
+
+          html += '<div class="two fields">';
+          html += '<div class="field"><label>Status</label><div><span class="ui label ' +
+            (data.status >= 200 && data.status < 300 ? 'green' : data.status >= 400 ? 'red' : 'grey') +
+            '">' + data.status + '</span></div></div>';
+          html += '<div class="field"><label>Time</label><div>' + new Date(data.created_at * 1000).toLocaleString() + '</div></div>';
+          html += '</div>';
+
+          if (data.error_message) {
+            html += '<div class="field"><label>Error</label><div class="ui red message">' + DOMPurify.sanitize(data.error_message) + '</div></div>';
+          }
+
+          html += '<div class="field"><label>Request Headers</label>' + formatJson(data.headers) + '</div>';
+          html += '<div class="field"><label>Request Body</label>' + formatJson(data.body) + '</div>';
+          html += '<div class="field"><label>Target Response</label>' + formatJson(data.target_response) + '</div>';
+
+          $('#detailContent').html(html);
+        },
+        error: function (xhr) {
+          $('#detailContent').html('<div class="ui red message">Failed to load log detail: ' + xhr.statusText + '</div>');
+        }
+      });
+    }
+  </script>
+
+</body>
+
+</html>

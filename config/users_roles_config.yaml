@@ -58,6 +58,8 @@ menu_visibility:
     - "admin"
   amis_jenkins:
     - "admin"
+  vecmdb_trigger:
+    - "admin"
   # Example: allow multiple roles to see amis_jenkins menu
   # amis_jenkins:
   #   - "admin"

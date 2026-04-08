@@ -158,7 +158,7 @@ def verify_vecmdb_trigger_webhook(
     api_key: Optional[str] = None,
 ) -> bool:
     """
-    Verify VecMDB Trigger webhook request using API key verification (supports multiple keys)
+    Verify veCMDB Trigger webhook request using API key verification (supports multiple keys)
 
     Args:
         request: FastAPI request object
@@ -178,13 +178,13 @@ def verify_vecmdb_trigger_webhook(
     # If no keys configured, skip verification
     if not configured_keys:
         logger.debug(
-            "VecMDB Trigger webhook verification disabled (no API keys configured)"
+            "veCMDB Trigger webhook verification disabled (no API keys configured)"
         )
         return True
 
     # If no API key provided in request, reject
     if not api_key:
-        logger.warning("VecMDB Trigger webhook request without API key")
+        logger.warning("veCMDB Trigger webhook request without API key")
         raise HTTPException(
             status_code=403,
             detail="Webhook verification required. Provide X-API-Key header",
@@ -192,11 +192,11 @@ def verify_vecmdb_trigger_webhook(
 
     # Check if provided key matches any configured key
     if api_key in configured_keys:
-        logger.debug("VecMDB Trigger webhook verified via API key")
+        logger.debug("veCMDB Trigger webhook verified via API key")
         return True
     else:
         logger.warning(
-            f"Invalid VecMDB Trigger API key provided: {api_key[:8]}..."
+            f"Invalid veCMDB Trigger API key provided: {api_key[:8]}..."
         )
         raise HTTPException(status_code=403, detail="Invalid API key")
 

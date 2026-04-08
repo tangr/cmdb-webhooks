@@ -4,6 +4,7 @@ from typing import Dict, Any, Tuple, List
 from urllib.parse import parse_qs
 from pathlib import Path
 from fastapi import HTTPException
+from sqlmodel import Session
 import yaml
 
 from app.models.vecmdb_trigger_models import (
@@ -11,6 +12,11 @@ from app.models.vecmdb_trigger_models import (
     TransformedBody,
     ProxyResponse,
 )
+from app.models.vecmdb_trigger_reqlog import (
+    VecmdbTriggerReqLog,
+    VecmdbTriggerReqLogCreate,
+)
+from config.config import settings
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -29,7 +35,7 @@ def _find_project_root() -> Path:
 
 
 def load_vecmdb_trigger_config() -> Dict[str, Any]:
-    """Load VecMDB Trigger configuration from YAML file"""
+    """Load veCMDB Trigger configuration from YAML file"""
     project_root = _find_project_root()
     config_path = project_root / "config" / "vecmdb_trigger_config.yaml"
 
@@ -38,22 +44,22 @@ def load_vecmdb_trigger_config() -> Dict[str, Any]:
             config = yaml.safe_load(file)
             return config or {}
     except FileNotFoundError:
-        logger.warning(f"VecMDB Trigger config file not found at {config_path}")
+        logger.warning(f"veCMDB Trigger config file not found at {config_path}")
         return {}
     except yaml.YAMLError as e:
-        logger.error(f"Error parsing VecMDB Trigger config YAML: {e}")
+        logger.error(f"Error parsing veCMDB Trigger config YAML: {e}")
         return {}
 
 
 def init_vecmdb_trigger_config():
-    """Initialize VecMDB Trigger configuration on startup"""
+    """Initialize veCMDB Trigger configuration on startup"""
     global _vecmdb_trigger_config
     _vecmdb_trigger_config = load_vecmdb_trigger_config()
     api_keys = _vecmdb_trigger_config.get("vecmdb_trigger_webhook_api_keys") or []
     targets = _vecmdb_trigger_config.get("cmdb_trigger_targets") or {}
     prometheus_configs = _vecmdb_trigger_config.get("prometheus_sd_configs") or {}
     logger.info(
-        f"Loaded VecMDB Trigger config: "
+        f"Loaded veCMDB Trigger config: "
         f"api_keys={len(api_keys)} key(s), "
         f"cmdb_trigger_targets={len(targets)} target(s), "
         f"prometheus_sd_configs={len(prometheus_configs)} config(s)"
@@ -61,7 +67,7 @@ def init_vecmdb_trigger_config():
 
 
 def get_vecmdb_trigger_api_keys() -> List[str]:
-    """Get the list of VecMDB Trigger API keys for webhook verification"""
+    """Get the list of veCMDB Trigger API keys for webhook verification"""
     keys = _vecmdb_trigger_config.get("vecmdb_trigger_webhook_api_keys") or []
     if isinstance(keys, list):
         return [str(k).strip() for k in keys if str(k).strip()]
@@ -81,6 +87,40 @@ def get_cmdb_trigger_targets() -> Dict[str, Any]:
 def get_prometheus_sd_configs() -> Dict[str, Any]:
     """Get Prometheus service discovery configurations"""
     return dict(_vecmdb_trigger_config.get("prometheus_sd_configs") or {})
+
+
+def log_vecmdb_trigger_request(
+    session: Session, log_entry: VecmdbTriggerReqLogCreate
+):
+    """Log veCMDB Trigger request to database based on configuration"""
+
+    # Console logging
+    if settings.enable_console_logging:
+        log_message = (
+            f"veCMDB Trigger - "
+            f"Target: {log_entry.target_name}, "
+            f"Request ID: {log_entry.request_id}, "
+            f"Method: {log_entry.method}, "
+            f"Status: {log_entry.status}"
+        )
+
+        if log_entry.error_message:
+            log_message += f", Error: {log_entry.error_message}"
+            logger.error(log_message)
+        else:
+            logger.info(log_message)
+
+    # Database logging
+    if settings.enable_database_logging:
+        try:
+            db_log = VecmdbTriggerReqLog(**log_entry.model_dump())
+            session.add(db_log)
+            session.commit()
+        except Exception as e:
+            if settings.enable_console_logging:
+                logger.error(
+                    f"Failed to save veCMDB Trigger log to database: {str(e)}"
+                )
 
 
 class VecmdbTriggerService:
@@ -278,12 +318,27 @@ class VecmdbTriggerService:
         cmdb_request: CMDBTriggerRequest,
         client_ip: str,
         target_name: str,
+        session: Session = None,
     ) -> ProxyResponse:
         """Main method to process CMDB trigger requests for specific target"""
 
         logger.info(
             f"Processing CMDB request {cmdb_request.id} from {client_ip} for target '{target_name}'"
         )
+
+        # Prepare log entry data
+        log_data = {
+            "target_name": target_name,
+            "request_id": cmdb_request.id,
+            "method": "",
+            "path": "",
+            "headers": {},
+            "body": {},
+            "clientip": client_ip,
+            "status": 0,
+            "target_response": None,
+            "error_message": None,
+        }
 
         try:
             # Get and validate target configuration
@@ -294,10 +349,20 @@ class VecmdbTriggerService:
                 cmdb_request, client_ip, target_config
             )
 
+            # Update log data with request details
+            log_data["method"] = request_config.get("method", "")
+            log_data["path"] = request_config.get("path", "")
+            log_data["headers"] = request_config.get("headers", {})
+            log_data["body"] = transformed_body.model_dump()
+
             # Forward to target API
             target_response, status_code = await self.forward_request(
                 request_config, transformed_body, target_config
             )
+
+            # Update log data with response
+            log_data["status"] = status_code
+            log_data["target_response"] = target_response
 
             # Create response based on status code
             expected_success_status = target_config.get("success_status_code", 200)
@@ -327,13 +392,28 @@ class VecmdbTriggerService:
             )
             return response
 
-        except HTTPException:
+        except HTTPException as e:
+            log_data["status"] = e.status_code
+            log_data["error_message"] = e.detail
             raise
 
         except Exception as e:
             error_msg = f"Unexpected error processing request {cmdb_request.id} for target '{target_name}': {str(e)}"
             logger.error(error_msg)
+            log_data["status"] = 500
+            log_data["error_message"] = error_msg
             raise HTTPException(status_code=500, detail=error_msg)
+
+        finally:
+            # Log to database in both success and error paths
+            if session is not None:
+                try:
+                    log_entry = VecmdbTriggerReqLogCreate(**log_data)
+                    log_vecmdb_trigger_request(session, log_entry)
+                except Exception as e:
+                    logger.error(
+                        f"Failed to create log entry for request {cmdb_request.id}: {str(e)}"
+                    )
 
 
 # Global service instance

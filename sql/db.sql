@@ -124,3 +124,23 @@ CREATE TABLE IF NOT EXISTS `pending_jenkins_jobs` (
   INDEX `idx_expire_at` (`expire_at`)
 ) ENGINE=InnoDB AUTO_INCREMENT=10000 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS `vecmdb_trigger_reqlog` (
+  `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `target_name` varchar(100) NOT NULL COMMENT 'Target config name',
+  `request_id` varchar(255) NOT NULL COMMENT 'CMDB request UUID',
+  `method` varchar(10) NOT NULL COMMENT 'Target API HTTP method',
+  `path` varchar(255) NOT NULL COMMENT 'Target API path',
+  `headers` JSON NOT NULL COMMENT 'Target API request headers',
+  `body` JSON NOT NULL COMMENT 'Transformed request body',
+  `clientip` varchar(45) NOT NULL,
+  `status` int(11) UNSIGNED NOT NULL,
+  `target_response` JSON DEFAULT NULL COMMENT 'Response from target API',
+  `error_message` longtext DEFAULT NULL,
+  `created_at` bigint(10) UNSIGNED NOT NULL,
+  `updated_at` bigint(10) UNSIGNED NOT NULL,
+  PRIMARY KEY (`id`),
+  INDEX `idx_target_name` (`target_name`),
+  INDEX `idx_request_id` (`request_id`),
+  INDEX `idx_created_at` (`created_at`)
+) ENGINE=InnoDB AUTO_INCREMENT=10000 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+

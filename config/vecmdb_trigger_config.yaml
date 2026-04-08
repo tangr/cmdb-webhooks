@@ -1,11 +1,11 @@
-# VecMDB Trigger Proxy Configuration
-# This file configures the VecMDB trigger proxy and Prometheus service discovery
+# veCMDB Trigger Proxy Configuration
+# This file configures the veCMDB trigger proxy and Prometheus service discovery
 
 # =============================================================================
 # Security Configuration
 # =============================================================================
 
-# API keys for VecMDB trigger webhook verification
+# API keys for veCMDB trigger webhook verification
 # Requests must include a matching X-API-Key header when keys are configured
 # Empty list = no verification (all requests accepted)
 # Example:
@@ -19,7 +19,7 @@ vecmdb_trigger_webhook_api_keys: [
 # Default HTTP headers applied to all target API requests
 default_headers:
   Content-Type: "application/json"
-  User-Agent: "VecMDB-Trigger-Proxy/1.0"
+  User-Agent: "veCMDB-Trigger-Proxy/1.0"
 
 # =============================================================================
 # CMDB Trigger Multi-Target Configuration
@@ -109,7 +109,7 @@ prometheus_sd_configs:
   #   cmdb_api_query: "q=_type:42,monitoringOn:On&fl=name,privateIpAddress,treenode,platformDetails&count=100&page=1"
   #   cmdb_api_headers:
   #     Content-Type: "application/json"
-  #     User-Agent: "VecMDB-Trigger-Proxy/1.0"
+  #     User-Agent: "veCMDB-Trigger-Proxy/1.0"
   #   cmdb_api_key: "your-api-key"
   #   cmdb_api_secret: "your-api-secret"
   #   cmdb_api_timeout: 30
