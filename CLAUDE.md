@@ -277,7 +277,7 @@ webhook-proxy/
   - 支持默认字段注入（protocols、accounts 等）
   - 支持 API 路径模板变量替换（如 `{{id}}`）
   - 转发 HTTP 请求到目标 API（支持 GET/POST/PUT/DELETE）
-  - 无状态服务，不写数据库
+  - 记录请求/响应日志到数据库（受 `enable_database_logging` 配置控制）
 
 - **VecmdbPrometheusService** (`app/services/vecmdb_prometheus_service.py`):
   - 从 CMDB API 获取 CI 资源数据（SHA1 签名认证，自动分页）
@@ -758,7 +758,7 @@ curl "http://localhost:8000/feishu-approval/status/instance/2B2ADE11-B477-4C84-A
       - `nodes_mapping_name`: 节点显示路径到短名称的映射
       - `platform_mapping`: 平台字符串映射（如 Linux → 1）
       - `default_fields`: 默认注入字段
-    - `default_output`: 成功时的响应消息
+    - `default_output`: 成功时的响应消息（支持 `{target_name}` 占位符，默认值: `"Request forwarded to {target_name} successfully"`）
     - `success_status_code`: 预期的成功状态码
 - `prometheus_sd_configs`: Prometheus Service Discovery 多配置
   - 每个配置包含：
