@@ -91,15 +91,30 @@ cmdb_trigger_targets:
 # Label mappings support {{template}} variables from CMDB CI fields
 #
 # Optional per-config HTTP authentication for the SD endpoint:
-#   http_config:
-#     basic_auth:
-#       username: "prometheus"
-#       password: "secret"
-#   OR
-#   http_config:
-#     authorization:
-#       type: "Bearer"
-#       credentials: "token-value"
+#
+#   Basic Auth (inline):
+#     http_config:
+#       basic_auth:
+#         username: "prometheus"
+#         password: "secret"
+#
+#   Basic Auth (from file):
+#     http_config:
+#       basic_auth:
+#         username_file: "/etc/secrets/prometheus_username"
+#         password_file: "/etc/secrets/prometheus_password"
+#
+#   Bearer Token (inline):
+#     http_config:
+#       authorization:
+#         type: "Bearer"
+#         credentials: "your-token-value"
+#
+#   Bearer Token (from file):
+#     http_config:
+#       authorization:
+#         type: "Bearer"
+#         credentials_file: "/etc/secrets/prometheus_token"
 
 prometheus_sd_configs:
   # Example: Node Exporter service discovery
