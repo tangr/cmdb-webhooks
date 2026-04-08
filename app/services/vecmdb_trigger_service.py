@@ -7,11 +7,7 @@ from fastapi import HTTPException
 from sqlmodel import Session
 import yaml
 
-from app.models.vecmdb_trigger_models import (
-    CMDBTriggerRequest,
-    TransformedBody,
-    ProxyResponse,
-)
+from app.models.vecmdb_trigger_models import ProxyResponse
 from app.models.vecmdb_trigger_reqlog import (
     VecmdbTriggerReqLog,
     VecmdbTriggerReqLogCreate,
@@ -139,10 +135,10 @@ class VecmdbTriggerService:
 
     def transform_request(
         self,
-        cmdb_request: CMDBTriggerRequest,
+        cmdb_body: Dict[str, Any],
         client_ip: str,
         target_config: Dict[str, Any],
-    ) -> Tuple[Dict[str, Any], TransformedBody]:
+    ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         """Transform CMDB trigger request to separate request config and body"""
 
         # Get field mappings from target config
@@ -152,31 +148,24 @@ class VecmdbTriggerService:
         platform_mapping = field_mappings.get("platform_mapping", {})
         default_fields = field_mappings.get("default_fields", {})
 
-        # Apply platform transformation
-        transformed_platform = platform_mapping.get(
-            cmdb_request.platform, cmdb_request.platform
-        )
+        # Start with a copy of the original body (transparent forwarding)
+        body_data = dict(cmdb_body)
 
-        # Initialize body data with required fields
-        body_data = {"id": cmdb_request.id}
-
-        # Add optional fields if they have values
-        if cmdb_request.address:
-            body_data["address"] = cmdb_request.address
-        if cmdb_request.comment:
-            body_data["comment"] = cmdb_request.comment
-        if cmdb_request.name:
-            body_data["name"] = cmdb_request.name
-        if cmdb_request.platform:
-            body_data["platform"] = transformed_platform
+        # Apply platform transformation if mapping exists
+        raw_platform = cmdb_body.get("platform")
+        if raw_platform and platform_mapping:
+            body_data["platform"] = platform_mapping.get(
+                raw_platform, raw_platform
+            )
 
         # Handle nodes field transformation
-        if cmdb_request.nodes:
-            node_names = [name.strip() for name in cmdb_request.nodes.split(",")]
+        raw_nodes = cmdb_body.get("nodes")
+        if raw_nodes and isinstance(raw_nodes, str) and nodes_mapping_uuid:
+            node_names = [name.strip() for name in raw_nodes.split(",")]
             transformed_nodes = []
             for node_name in node_names:
-                # Find UUID for each node name in nodes_mapping_uuid
-                node_uuid = node_name  # Default to original name if not found
+                # Find UUID for each node name (reverse lookup: name -> UUID)
+                node_uuid = node_name
                 for uuid, name in nodes_mapping_uuid.items():
                     if name == node_name:
                         node_uuid = uuid
@@ -185,23 +174,23 @@ class VecmdbTriggerService:
             body_data["nodes"] = transformed_nodes
 
         # Handle nodes_display field transformation
-        if cmdb_request.nodes_display:
+        raw_nodes_display = cmdb_body.get("nodes_display")
+        if raw_nodes_display and isinstance(raw_nodes_display, str) and nodes_mapping_name:
             node_display_names = [
-                name.strip() for name in cmdb_request.nodes_display.split(",")
+                name.strip() for name in raw_nodes_display.split(",")
             ]
-            transformed_nodes_display = []
-            for node_display_name in node_display_names:
-                transformed_name = nodes_mapping_name.get(
-                    node_display_name, node_display_name
-                )
-                transformed_nodes_display.append(transformed_name)
-            body_data["nodes_display"] = transformed_nodes_display
+            body_data["nodes_display"] = [
+                nodes_mapping_name.get(name, name)
+                for name in node_display_names
+            ]
 
-        # Add default fields from config
-        body_data.update(default_fields)
+        # Merge default fields from config (don't overwrite existing keys)
+        for key, value in default_fields.items():
+            if key not in body_data:
+                body_data[key] = value
 
-        # Create transformed body
-        transformed_body = TransformedBody(**body_data)
+        # Remove None values
+        body_data = {k: v for k, v in body_data.items() if v is not None}
 
         # Create headers by merging default headers with target-specific headers
         headers = get_default_headers()
@@ -217,30 +206,27 @@ class VecmdbTriggerService:
             "headers": headers,
         }
 
-        logger.info(f"Transformed CMDB request {cmdb_request.id} for target")
+        request_id = cmdb_body.get("id", "unknown")
+        logger.info(f"Transformed CMDB request {request_id} for target")
 
         # Log field transformations
-        if cmdb_request.nodes:
+        if raw_nodes:
             logger.debug(
-                f"Field transformations: nodes '{cmdb_request.nodes}' -> {body_data.get('nodes')}, "
-                f"platform '{cmdb_request.platform}' -> '{transformed_platform}'"
+                f"Field transformations: nodes '{raw_nodes}' -> {body_data.get('nodes')}, "
+                f"platform '{raw_platform}' -> '{body_data.get('platform')}'"
             )
-        elif cmdb_request.nodes_display:
+        elif raw_nodes_display:
             logger.debug(
-                f"Field transformations: nodes_display '{cmdb_request.nodes_display}' -> {body_data.get('nodes_display')}, "
-                f"platform '{cmdb_request.platform}' -> '{transformed_platform}'"
-            )
-        else:
-            logger.debug(
-                f"Field transformations: platform '{cmdb_request.platform}' -> '{transformed_platform}'"
+                f"Field transformations: nodes_display '{raw_nodes_display}' -> {body_data.get('nodes_display')}, "
+                f"platform '{raw_platform}' -> '{body_data.get('platform')}'"
             )
 
-        return request_config, transformed_body
+        return request_config, body_data
 
     async def forward_request(
         self,
         request_config: Dict[str, Any],
-        transformed_body: TransformedBody,
+        body_data: Dict[str, Any],
         target_config: Dict[str, Any],
     ) -> Tuple[Dict[str, Any], int]:
         """Forward transformed request to target API"""
@@ -251,8 +237,7 @@ class VecmdbTriggerService:
         # Build API path with template variable support
         target_api_path = target_config.get("target_api_path", "")
         if target_api_path and "{{" in target_api_path:
-            body_dict = transformed_body.model_dump()
-            for key, value in body_dict.items():
+            for key, value in body_data.items():
                 if value is not None:
                     target_api_path = target_api_path.replace(
                         f"{{{{{key}}}}}", str(value)
@@ -260,16 +245,15 @@ class VecmdbTriggerService:
 
         target_url = f"{target_api_base_url}{target_api_path}"
         timeout = target_config.get("target_api_timeout", 30)
+        request_id = body_data.get("id", "unknown")
 
         try:
-            logger.info(
-                f"Forwarding request {transformed_body.id} to {target_url}"
-            )
+            logger.info(f"Forwarding request {request_id} to {target_url}")
             logger.debug(f"Request method: {request_config['method']}")
             logger.debug(f"Request path: {request_config['path']}")
             logger.debug(f"Request query: {request_config['query']}")
             logger.debug(f"Request headers: {request_config['headers']}")
-            logger.debug(f"Request body: {transformed_body.model_dump()}")
+            logger.debug(f"Request body: {body_data}")
 
             # Parse query string to dict for httpx
             query_params = None
@@ -284,7 +268,7 @@ class VecmdbTriggerService:
                     method=request_config["method"],
                     url=target_url,
                     params=query_params,
-                    json=transformed_body.model_dump(),
+                    json=body_data,
                     headers=request_config["headers"],
                 )
 
@@ -297,7 +281,7 @@ class VecmdbTriggerService:
                     response_data = {"raw_response": response.text}
 
                 logger.info(
-                    f"Forwarded request {transformed_body.id} with status {response.status_code}"
+                    f"Forwarded request {request_id} with status {response.status_code}"
                 )
                 return response_data, response.status_code
 
@@ -315,21 +299,23 @@ class VecmdbTriggerService:
 
     async def process_cmdb_request(
         self,
-        cmdb_request: CMDBTriggerRequest,
+        cmdb_body: Dict[str, Any],
         client_ip: str,
         target_name: str,
         session: Session = None,
     ) -> ProxyResponse:
         """Main method to process CMDB trigger requests for specific target"""
 
+        request_id = cmdb_body.get("id", "unknown")
+
         logger.info(
-            f"Processing CMDB request {cmdb_request.id} from {client_ip} for target '{target_name}'"
+            f"Processing CMDB request {request_id} from {client_ip} for target '{target_name}'"
         )
 
         # Prepare log entry data
         log_data = {
             "target_name": target_name,
-            "request_id": cmdb_request.id,
+            "request_id": request_id,
             "method": "",
             "path": "",
             "headers": {},
@@ -345,19 +331,19 @@ class VecmdbTriggerService:
             target_config = self.get_target_config(target_name)
 
             # Transform request using target-specific configuration
-            request_config, transformed_body = self.transform_request(
-                cmdb_request, client_ip, target_config
+            request_config, body_data = self.transform_request(
+                cmdb_body, client_ip, target_config
             )
 
             # Update log data with request details
             log_data["method"] = request_config.get("method", "")
             log_data["path"] = request_config.get("path", "")
             log_data["headers"] = request_config.get("headers", {})
-            log_data["body"] = transformed_body.model_dump()
+            log_data["body"] = body_data
 
             # Forward to target API
             target_response, status_code = await self.forward_request(
-                request_config, transformed_body, target_config
+                request_config, body_data, target_config
             )
 
             # Update log data with response
@@ -384,11 +370,11 @@ class VecmdbTriggerService:
                 statuscode=status_code,
                 success=is_success,
                 message=message,
-                request_id=cmdb_request.id,
+                request_id=request_id,
             )
 
             logger.info(
-                f"Successfully processed CMDB request {cmdb_request.id} for target '{target_name}'"
+                f"Successfully processed CMDB request {request_id} for target '{target_name}'"
             )
             return response
 
@@ -398,7 +384,7 @@ class VecmdbTriggerService:
             raise
 
         except Exception as e:
-            error_msg = f"Unexpected error processing request {cmdb_request.id} for target '{target_name}': {str(e)}"
+            error_msg = f"Unexpected error processing request {request_id} for target '{target_name}': {str(e)}"
             logger.error(error_msg)
             log_data["status"] = 500
             log_data["error_message"] = error_msg
@@ -412,7 +398,7 @@ class VecmdbTriggerService:
                     log_vecmdb_trigger_request(session, log_entry)
                 except Exception as e:
                     logger.error(
-                        f"Failed to create log entry for request {cmdb_request.id}: {str(e)}"
+                        f"Failed to create log entry for request {request_id}: {str(e)}"
                     )
 
 

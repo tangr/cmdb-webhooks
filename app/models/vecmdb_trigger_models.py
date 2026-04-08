@@ -2,44 +2,6 @@ from pydantic import BaseModel, Field
 from typing import Dict, Any, Optional, List
 
 
-class CMDBTriggerRequest(BaseModel):
-    """Model for incoming CMDB trigger requests from veops"""
-
-    address: Optional[str] = Field(None, description="Private IP address from template")
-    comment: Optional[str] = Field(None, description="Comment field")
-    id: str = Field(..., description="UUID identifier")
-    name: Optional[str] = Field(None, description="Name field")
-    nodes: Optional[str] = Field(None, description="Node UUID information")
-    nodes_display: Optional[str] = Field(
-        None, description="Node display name information"
-    )
-    platform: Optional[str] = Field(None, description="Platform type")
-
-
-class TransformedBody(BaseModel):
-    """Model for the transformed request body (simplified output format)"""
-
-    address: Optional[str] = Field(None, description="Private IP address")
-    comment: Optional[str] = Field(None, description="Comment field")
-    id: str = Field(..., description="UUID identifier")
-    name: Optional[str] = Field(None, description="Name field")
-    nodes: Optional[List[str]] = Field(
-        default=None, description="Node UUID information"
-    )
-    nodes_display: Optional[List[str]] = Field(
-        default=None, description="Node display name information"
-    )
-    platform: Optional[str] = Field(None, description="Platform type")
-
-    class Config:
-        extra = "allow"
-
-    def model_dump(self, **kwargs):
-        """Override model_dump to exclude None values"""
-        kwargs.setdefault("exclude_none", True)
-        return super().model_dump(**kwargs)
-
-
 class ProxyResponse(BaseModel):
     """Simple response model for proxy operations"""
 

@@ -4,7 +4,6 @@ from sqlmodel import select, desc
 from typing import Optional, List
 
 from app.models.vecmdb_trigger_models import (
-    CMDBTriggerRequest,
     ProxyResponse,
     PrometheusTarget,
 )
@@ -119,7 +118,6 @@ def vecmdb_trigger_logs_page(
 @router.post("/jms/{target_name}")
 async def handle_cmdb_trigger(
     target_name: str,
-    cmdb_request: CMDBTriggerRequest,
     request: Request,
     session: SessionDep,
     x_api_key: Optional[str] = Header(None, alias="X-API-Key"),
@@ -137,20 +135,27 @@ async def handle_cmdb_trigger(
     # Verify API key
     verify_vecmdb_trigger_webhook(request, x_api_key)
 
+    # Parse raw JSON body
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid JSON in request body")
+
+    request_id = body.get("id", "unknown")
     client_ip = get_client_ip(request)
     logger.info(
         f"Received CMDB trigger request for target '{target_name}' "
-        f"from {client_ip}: {cmdb_request.id}"
+        f"from {client_ip}: {request_id}"
     )
 
     try:
         response = await vecmdb_trigger_service.process_cmdb_request(
-            cmdb_request, client_ip, target_name, session
+            body, client_ip, target_name, session
         )
 
         logger.info(
             f"Successfully handled CMDB trigger request for target '{target_name}': "
-            f"{cmdb_request.id}"
+            f"{request_id}"
         )
         return JSONResponse(
             status_code=response.statuscode,
@@ -162,7 +167,7 @@ async def handle_cmdb_trigger(
 
     except Exception as e:
         error_msg = (
-            f"Internal server error processing request {cmdb_request.id} "
+            f"Internal server error processing request {request_id} "
             f"for target '{target_name}': {str(e)}"
         )
         logger.error(error_msg)
