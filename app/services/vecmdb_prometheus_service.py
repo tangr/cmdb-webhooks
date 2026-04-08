@@ -4,7 +4,6 @@ from typing import Dict, Any, List
 from urllib.parse import parse_qs, urlparse
 from fastapi import HTTPException
 
-from app.models.vecmdb_trigger_models import CMDBSearchResponse, PrometheusTarget
 from app.services.vecmdb_trigger_service import get_prometheus_sd_configs
 from app.utils.logger import get_logger
 
@@ -53,7 +52,7 @@ class VecmdbPrometheusService:
 
     async def fetch_cmdb_data(
         self, prometheus_config: Dict[str, Any]
-    ) -> CMDBSearchResponse:
+    ) -> Dict[str, Any]:
         """Fetch CI data from CMDB API with authentication and pagination"""
 
         cmdb_base_url = prometheus_config.get("cmdb_api_base_url")
@@ -124,25 +123,25 @@ class VecmdbPrometheusService:
 
                     try:
                         response_data = response.json()
-                        page_response = CMDBSearchResponse(**response_data)
 
                         # Update total found from first page
                         if page == 1:
-                            total_found = page_response.numfound
+                            total_found = response_data.get("numfound", 0)
                             logger.info(f"Total CI records found: {total_found}")
 
                         # Add current page results
-                        all_results.extend(page_response.result)
+                        page_results = response_data.get("result", [])
+                        all_results.extend(page_results)
 
                         logger.info(
-                            f"Page {page}: got {len(page_response.result)} records, "
+                            f"Page {page}: got {len(page_results)} records, "
                             f"total collected: {len(all_results)}"
                         )
 
                         # Check if we have all records
                         if (
                             len(all_results) >= total_found
-                            or len(page_response.result) < page_size
+                            or len(page_results) < page_size
                         ):
                             break
 
@@ -156,18 +155,12 @@ class VecmdbPrometheusService:
                         raise HTTPException(status_code=502, detail=error_msg)
 
                 # Create final response with all results
-                final_response = CMDBSearchResponse(
-                    numfound=total_found,
-                    total=len(all_results),
-                    page=1,
-                    result=all_results,
-                    facet=page_response.facet
-                    if "page_response" in locals()
-                    else None,
-                    counter=page_response.counter
-                    if "page_response" in locals()
-                    else None,
-                )
+                final_response = {
+                    "numfound": total_found,
+                    "total": len(all_results),
+                    "page": 1,
+                    "result": all_results,
+                }
 
                 logger.info(
                     f"Successfully fetched all {len(all_results)} CI records from {page} pages"
@@ -191,9 +184,9 @@ class VecmdbPrometheusService:
 
     def transform_to_prometheus_format(
         self,
-        cmdb_data: CMDBSearchResponse,
+        cmdb_data: Dict[str, Any],
         prometheus_config: Dict[str, Any],
-    ) -> List[PrometheusTarget]:
+    ) -> List[Dict[str, Any]]:
         """Transform CMDB data to Prometheus service discovery format"""
 
         target_port = prometheus_config.get("target_port", 9100)
@@ -203,8 +196,8 @@ class VecmdbPrometheusService:
 
         prometheus_targets = []
 
-        for ci_item in cmdb_data.result:
-            ci_dict = ci_item.model_dump()
+        for ci_item in cmdb_data.get("result", []):
+            ci_dict = ci_item if isinstance(ci_item, dict) else {}
             target_host = ci_dict.get(target_field)
 
             if not target_host:
@@ -236,10 +229,10 @@ class VecmdbPrometheusService:
                     # Static label value
                     item_labels[label_key] = str(label_template)
 
-            prometheus_target = PrometheusTarget(
-                targets=[target_endpoint],
-                labels=item_labels,
-            )
+            prometheus_target = {
+                "targets": [target_endpoint],
+                "labels": item_labels,
+            }
             prometheus_targets.append(prometheus_target)
 
             logger.debug(
@@ -248,13 +241,13 @@ class VecmdbPrometheusService:
 
         logger.info(
             f"Generated {len(prometheus_targets)} prometheus target groups "
-            f"from {cmdb_data.total} CMDB CIs"
+            f"from {cmdb_data.get('total', 0)} CMDB CIs"
         )
         return prometheus_targets
 
     async def get_prometheus_sd_config(
         self, config_name: str
-    ) -> List[PrometheusTarget]:
+    ) -> List[Dict[str, Any]]:
         """Main method to generate Prometheus service discovery configuration"""
 
         logger.info(f"Generating Prometheus SD config for '{config_name}'")

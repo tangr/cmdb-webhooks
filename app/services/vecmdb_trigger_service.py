@@ -7,7 +7,6 @@ from fastapi import HTTPException
 from sqlmodel import Session
 import yaml
 
-from app.models.vecmdb_trigger_models import ProxyResponse
 from app.models.vecmdb_trigger_reqlog import (
     VecmdbTriggerReqLog,
     VecmdbTriggerReqLogCreate,
@@ -303,7 +302,7 @@ class VecmdbTriggerService:
         client_ip: str,
         target_name: str,
         session: Session = None,
-    ) -> ProxyResponse:
+    ) -> Dict[str, Any]:
         """Main method to process CMDB trigger requests for specific target"""
 
         request_id = cmdb_body.get("id", "unknown")
@@ -366,12 +365,12 @@ class VecmdbTriggerService:
                     response_text = str(target_response)
                 message = f"Target API returned status {status_code}: {response_text}"
 
-            response = ProxyResponse(
-                statuscode=status_code,
-                success=is_success,
-                message=message,
-                request_id=request_id,
-            )
+            response = {
+                "statuscode": status_code,
+                "success": is_success,
+                "message": message,
+                "request_id": request_id,
+            }
 
             logger.info(
                 f"Successfully processed CMDB request {request_id} for target '{target_name}'"

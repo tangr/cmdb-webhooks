@@ -1,50 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Dict, Any, Optional, List
-
-
-class ProxyResponse(BaseModel):
-    """Simple response model for proxy operations"""
-
-    statuscode: int = Field(..., description="HTTP status code from backend")
-    success: bool = Field(..., description="Request success status")
-    message: str = Field(..., description="Response message")
-    request_id: str = Field(..., description="Original request ID")
-
-
-class CMDBCIItem(BaseModel):
-    """Model for CMDB CI item in search results"""
-
-    name: Optional[str] = Field(None, description="CI name")
-    privateIpAddress: Optional[str] = Field(None, description="Private IP address")
-    treenode: Optional[str] = Field(None, description="Tree node name")
-    platformDetails: Optional[str] = Field(None, description="Platform details")
-
-    class Config:
-        extra = "allow"
-
-
-class CMDBSearchResponse(BaseModel):
-    """Model for CMDB CI search API response"""
-
-    numfound: int = Field(..., description="Total number of CIs found")
-    total: int = Field(..., description="Number of CIs in current page")
-    page: int = Field(..., description="Current page number")
-    result: List[CMDBCIItem] = Field(..., description="List of CI items")
-    facet: Optional[Dict[str, Any]] = Field(
-        None, description="Facet aggregation data"
-    )
-    counter: Optional[Dict[str, Any]] = Field(
-        None, description="Counter statistics"
-    )
-
-
-class PrometheusTarget(BaseModel):
-    """Model for a single Prometheus service discovery target group"""
-
-    targets: List[str] = Field(..., description="List of target endpoints")
-    labels: Dict[str, str] = Field(
-        default_factory=dict, description="Labels for this target group"
-    )
+from typing import Optional
 
 
 class BasicAuth(BaseModel):
