@@ -1,12 +1,8 @@
 from fastapi import APIRouter, Depends, Request, HTTPException, Header
 from fastapi.responses import HTMLResponse, JSONResponse
 from sqlmodel import select, desc
-from typing import Optional, List
+from typing import Optional
 
-from app.models.vecmdb_trigger_models import (
-    ProxyResponse,
-    PrometheusTarget,
-)
 from app.models.vecmdb_trigger_reqlog import VecmdbTriggerReqLog
 from app.dependencies import (
     SessionDep,
@@ -158,8 +154,8 @@ async def handle_cmdb_trigger(
             f"{request_id}"
         )
         return JSONResponse(
-            status_code=response.statuscode,
-            content=response.model_dump(),
+            status_code=response["statuscode"],
+            content=response,
         )
 
     except HTTPException:
@@ -308,9 +304,7 @@ def get_vecmdb_trigger_log(
 # =============================================================================
 
 
-@router.get(
-    "/prometheus/sd/{config_name}", response_model=List[PrometheusTarget]
-)
+@router.get("/prometheus/sd/{config_name}")
 async def get_prometheus_sd_config(config_name: str, request: Request):
     """
     Generate Prometheus HTTP service discovery configuration
